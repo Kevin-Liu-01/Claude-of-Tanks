@@ -21,7 +21,7 @@ import { WORLD_FLAG_DESIGNS, drawWorldFlag } from '../worldFlags.ts';
 // (the maps lane, 2026-10-15; the blind critics on Verdant v2: the gate's sign blew out under High bloom) the banner's
 // frame, its lettering and the crest in a painted white, not a lamp's
 // (world-flags-279, Kevin on the arch: its red banners "read as real Soviet flags") the name banner in the farm's world
-// flag colours (worldFlags.ts 'furrow': an umber field, an ochre band at its foot), its lettering, frame and stars kept
+// flag colours (worldFlags.ts 'furrow': its red field, an ochre band at its foot), its lettering, frame and stars kept
 const FURROW = WORLD_FLAG_DESIGNS.furrow, BANNER_FIELD = rgb(FURROW.field), BANNER_BAND = rgb(FURROW.band.hex);
 const STAR_RED = rgb(0xb3221c), WHITE = rgb(0xc9c5bb), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
 const VERMILION = rgb(0xc4452c), LACQUER_BLACK = rgb(0x1e1c1b), FRAME_WHITE = rgb(0xe8e4da), GILT = rgb(0xb8933e);

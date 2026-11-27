@@ -13,7 +13,8 @@
 //      plain cloths' sites (a new one gets a window here, or a PLAIN_CLOTHS id).
 // (world-flags-279, Kevin on the kolkhoz arch: its red banners "read as real Soviet flags") part 2 also renders the arch's
 // pillar flag, the Lorraine mairie's (a real tricolour until 279) and the arch's name banner: a banner is no design, so
-// it must read as no real flag and keep no red field. Each site's build is censused: it notes its cloth by design id.
+// it must read as no real flag and keep its field's colour family (the arch's stays red: 279-r2, Kevin: "for the flags on
+// that sign keep them red not brown"). Each site's build is censused: it notes its cloth by design id.
 //
 // Controls: forts.ts with the flag of Jordan restored (git show 1e7afa12dc:src/world/landmarks/forts.ts) fails parts 2
 // and 3: its drawn cloth matches Jordan and Palestine, it keeps FLAG_* colours, names the flag of Jordan, and leaves the
@@ -267,7 +268,7 @@ const SITES = [
 ];
 /** (279) The banners: lettered boards, no design, so no real flag and no red field. */
 const BANNERS = [
-  { file: 'src/world/landmarks/gates.ts', name: "the kolkhoz arch's name banner", build: KOLKHOZ, box: [[-5, 3.48, 0], [5, 4.83, 0.2]], face: 'z' },
+  { file: 'src/world/landmarks/gates.ts', name: "the kolkhoz arch's name banner", build: KOLKHOZ, box: [[-5, 3.48, 0], [5, 4.83, 0.2]], face: 'z', field: 'red' },
 ];
 const _c = new THREE.Color();
 /** The cloth in the window as drawn: the faces turned to the viewer, nearest first, each column stretched to its height. */
@@ -332,7 +333,7 @@ for (const banner of BANNERS) {
   for (const row of labels) for (const k of row) if (k >= 0) counts[k]++;
   const field = means[counts.indexOf(Math.max(...counts))];
   check(!near.match, `${banner.name}: reads as a real flag: ${fmt(near)}`);
-  check(family(field) !== 'red', `${banner.name}: its field is red (a red banner reads as a real Soviet flag: Kevin, 279)`);
+  check(family(field) === banner.field, `${banner.name}: its field is ${family(field)}, not ${banner.field}`);
   console.log(`  ${banner.name}: ${area.toFixed(2)} m², field ${family(field)}, nearest real flag ${fmt(near)}`);
 }
 
