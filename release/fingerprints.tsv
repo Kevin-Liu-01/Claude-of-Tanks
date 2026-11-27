@@ -198,9 +198,9 @@ comp	world:map:wreckPlan:urban	5d806f76e9ba0e3f
 comp	world:map:wreckPlan:verdant	3b6387d506b30848
 comp	world:map:wreckPlan:whiteout	b58e21f3c720beab
 comp	world:map:wreckPlan:winter	8be5504b53f983f9
-comp	world:tool:collision	24354eb01c0197b6
-comp	world:tool:trenches	303bd4ed7c5fe52b
-comp	world:tool:wreckPlan	34ae27b642905f77
+comp	world:tool:collision	bf1707e5f327a0b0
+comp	world:tool:trenches	fe4ddf719afce9ba
+comp	world:tool:wreckPlan	9a9a5c46c1f779fa
 core	a0c7fee38eb3cee8
 file	anatomy	src/vehicles/combatAnatomyCalibrations.ts	d604534bea1fdf2c
 file	anatomy	src/vehicles/combatAnatomyGroups/abrams.generated.ts	8a63f094b3f7c42f
@@ -305,7 +305,7 @@ file	anatomy	src/vehicles/combatAnatomyGroups/uk.generated.ts	66759187516202d7
 file	anatomy	src/vehicles/combatAnatomyGroups/ukraine.generated.ts	f51c0bf3bcc84264
 file	anatomy	src/vehicles/combatAnatomyGroups/xk2.generated.ts	9c3140bf6100acce
 file	anatomy	src/vehicles/combatAnatomyLoaders.generated.ts	c2d38473636213ab
-file	centering	src/vehicles/presentationAnchors.generated.ts	138a1d17c9e03674
+file	centering	src/vehicles/presentationAnchors.generated.ts	522851bd54f733f2
 file	collision	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	controls	src/ui/garageAuxiliarySummary.generated.ts	0d4feb13c017befc
 file	controls	src/vehicles/auxiliaryInventory.generated.ts	61d373ae3f7c5ebf
@@ -1730,39 +1730,39 @@ key	centering	ztz99_longwei	25c807e884dc3950	ad531543e0844453
 key	centering	ztz99a	9ecde4703d2248cd	c325d87b4db65c1d
 key	centering	ztz99a2	4fc50dbe6810d214	cc5a848373bd6561
 key	centering	ztz99a2_qinglong	7f5ae399cfb8f56f	ed09798a111ad394
-key	collision	airfield	ce61411b00bc067f	0c7a8f76873d1575
-key	collision	alpine	8c4d7f0348a48e37	d45966046a0daeb3
-key	collision	autumn	ac8ccf92b4c77868	98e8cf862408133e
-key	collision	badlands	6e3d8ae1a262c247	d39fc21698f36b99
-key	collision	blackglass	05f90171066fff6a	b539c648556383bb
-key	collision	caldera	a8899a2213a76768	fe0aed713950689b
-key	collision	cliffbridge	1c1e1f48e3671435	e40a2b5d67c92b8d
-key	collision	coastal	ab727d8298d94d57	2f637776c867a196
-key	collision	copper_mesa	d04fa2618443be76	e2984ccea4c963cc
-key	collision	delta	b888d3231797bb11	49fead8677893ecb
-key	collision	desert	d3965d6cfeae1ec1	5507ec0dd7406e19
-key	collision	fjord	692ea17cf02146a3	ad8d9b372cf4fdad
-key	collision	foundry	791394bebd5799cc	51952ee0376e3b73
-key	collision	frontier	113a2f3265bec799	bca440f3e9a79e01
-key	collision	longleaf	e0ba92458fa9c6aa	8e49fa8bd6c774e3
-key	collision	mangrove	0707a72e0d411365	ab3f1ce95605202b
-key	collision	mars	66cb5f274ebc7907	ad738cfe2d4ebf8b
-key	collision	monsoon	5a2ec7b23ed36137	7f4ee8c2eedf041b
-key	collision	moon	4b3d7a3ad530e030	b66b962d4b06f1f4
-key	collision	oasis	5561a9dc5c605cb8	dd078777ba59a214
-key	collision	orchard	a8caa7493167f5c6	76fa4bdec2770439
-key	collision	polders	c08f319a1c78309f	49a0ddd79e3b0ce5
-key	collision	railyard	81b1ed85838a0a6c	4b3d37d287516b15
-key	collision	reservoir	5c762cb88883b84c	7389966b78e1d3cd
-key	collision	ruinspires	01942ebfad7c4b1f	90b36440a10dffce
-key	collision	saltwind	b5f338fd51dd445f	f9540467ed87c101
-key	collision	skybridge	fb1cab22a6509533	25f7544a5ddf9f61
-key	collision	steppe	2067f9cb91e573ed	42effc81cc73e79f
-key	collision	titan_gorge	617d0c2d935f1260	b22fccadc61dcbbc
-key	collision	urban	d93acaa45e3b580a	8b8222989a8f7ebe
-key	collision	verdant	54044321a5123596	c65ffc079e88cee5
-key	collision	whiteout	2a79298d39541a05	cb58fb12710fe608
-key	collision	winter	14ca3a051f08b13e	fd9736bb1ba63fac
+key	collision	airfield	85a6f1532e781b70	0c7a8f76873d1575
+key	collision	alpine	59f8d7bb69b7232f	d45966046a0daeb3
+key	collision	autumn	f0a31f4017a8a8a8	98e8cf862408133e
+key	collision	badlands	f0bb748a2962edbd	d39fc21698f36b99
+key	collision	blackglass	c7fbfefc675f983b	b539c648556383bb
+key	collision	caldera	b2ba2a7fc2c57258	fe0aed713950689b
+key	collision	cliffbridge	073d03fcc3acda13	e40a2b5d67c92b8d
+key	collision	coastal	00dae6f09c55e35d	2f637776c867a196
+key	collision	copper_mesa	0d9d258fa82370cd	e2984ccea4c963cc
+key	collision	delta	0f7e97ce1f584ed5	49fead8677893ecb
+key	collision	desert	c5ea742dc0b50dde	5507ec0dd7406e19
+key	collision	fjord	8e2e8b26266206e0	ad8d9b372cf4fdad
+key	collision	foundry	578a33da771410a3	51952ee0376e3b73
+key	collision	frontier	83706bbdcbcce52d	bca440f3e9a79e01
+key	collision	longleaf	63bbb1ae57bdb98c	8e49fa8bd6c774e3
+key	collision	mangrove	6a0533e8c1a9c844	ab3f1ce95605202b
+key	collision	mars	46f40e79bf2fa8e0	ad738cfe2d4ebf8b
+key	collision	monsoon	23c7529ca3be12f3	7f4ee8c2eedf041b
+key	collision	moon	ee1783a368815fc7	b66b962d4b06f1f4
+key	collision	oasis	6ace4b367a23ff35	dd078777ba59a214
+key	collision	orchard	a4961f23130edfd3	76fa4bdec2770439
+key	collision	polders	d02389046373c41f	49a0ddd79e3b0ce5
+key	collision	railyard	fe06513a4186f186	4b3d37d287516b15
+key	collision	reservoir	cebb6b60a26e4fc3	7389966b78e1d3cd
+key	collision	ruinspires	c358bd9db87aa937	90b36440a10dffce
+key	collision	saltwind	ee037186141f7e7d	f9540467ed87c101
+key	collision	skybridge	79ed79afb21f0604	25f7544a5ddf9f61
+key	collision	steppe	bd72d52ab65c7cc0	42effc81cc73e79f
+key	collision	titan_gorge	0567724ae2eb9342	b22fccadc61dcbbc
+key	collision	urban	133d56c0787988c4	8b8222989a8f7ebe
+key	collision	verdant	083e644ac9f58dcb	c65ffc079e88cee5
+key	collision	whiteout	a915b0a370c579f8	cb58fb12710fe608
+key	collision	winter	ecc55defb030206d	fd9736bb1ba63fac
 key	controls	abramsx	eb4ddcfeb25f79bf	24a265f7d3d83395
 key	controls	aft10	ab2b759ce710d3a7	3946b5f7fd4317bb
 key	controls	ajax	d900fb1dbf22f21f	1d97cf907c7c2799
@@ -4561,72 +4561,72 @@ key	spareTrack	ztz99_longwei	84882f8ca2d574f7	6578e2512d74b0ed
 key	spareTrack	ztz99a	f66cc41d1865dd89	a975ea57ffd4617a
 key	spareTrack	ztz99a2	388c759c438122fd	16c65ccfa2061a7a
 key	spareTrack	ztz99a2_qinglong	adf67b9c6dd43b23	ba98acdb8b5e19e8
-key	trenches	airfield	fa11e22a0bfd4315	533c989b6637b690
-key	trenches	alpine	bac1d7ad31afc210	68a710f65044f66d
-key	trenches	autumn	541e0dd016edd687	d622c0bab7e4ee3e
-key	trenches	badlands	e3ab4a242503071d	637d6cf579796efd
-key	trenches	blackglass	bf463f4576786dda	ecb4fdb9e922a0ae
-key	trenches	caldera	362654b750b11885	5961e7ee0870ac5f
-key	trenches	cliffbridge	84b49a4067c7cf86	2ba16d8200051d20
-key	trenches	coastal	dc2f1a91f516b120	aeedd9d4b01184ef
-key	trenches	copper_mesa	b8fa18c3a2b5e07e	d58c653afa1bf268
-key	trenches	delta	435a4ffbd51d2627	596f7d6cf234f0de
-key	trenches	desert	82f4e764b67b98f6	b51eecadd8f15324
-key	trenches	fjord	5c77aa865500c086	43eac3fece5079ac
-key	trenches	foundry	53e6589e15dfe5af	98ccd9e8b9b07942
-key	trenches	frontier	f497ac64ac6e6cd8	f25d44c3951d9b03
-key	trenches	longleaf	0752046bfb98a07e	39981bdc94f227ff
-key	trenches	mangrove	a764fa15bc94b9d8	8cf3273d8d4a5655
-key	trenches	mars	ef8587f4d25afe63	dd7254f4dfb27bed
-key	trenches	monsoon	7420595a1796a043	eb2bfb9adece3031
-key	trenches	moon	e3bb24b3dbc8864e	c0a3d95b41b50656
-key	trenches	oasis	8f5f01ad5aa62841	807cbc1b26e9becc
-key	trenches	orchard	51599452b362724f	1b0c0803d91315dd
-key	trenches	polders	fc293db5d326351c	457914aebcddb4c1
-key	trenches	railyard	74da6947836f3bec	fb01aab2921059b4
-key	trenches	reservoir	a22f85de96ef86f3	54beef4e25b1a0fa
-key	trenches	ruinspires	563f96639e88a499	d703829a4fd4a826
-key	trenches	saltwind	d3a3404b505b26c5	447447283b591560
-key	trenches	skybridge	2cabe9eb778d1101	209632030525c7f1
-key	trenches	steppe	fcb1df06c53c7b05	f6b36a15c65f0043
-key	trenches	titan_gorge	e43612ce51b2e609	02ca1a35cf4e84c0
-key	trenches	urban	2778d17a30dc443d	d83de2c59df9bb6a
-key	trenches	verdant	d0631d4cdb5f97cc	aa3055abf9b0262a
-key	trenches	whiteout	f0c4ca37c25f9ead	485ed3319f2e4dda
-key	trenches	winter	b216a89bea065713	6abbd69548799f7e
-key	wreckPlan	airfield	7d85dd0011fbf6fd	899ff45063b4544c
-key	wreckPlan	alpine	02e21afa0c2f6fc9	17d7ac50d0551188
-key	wreckPlan	autumn	6763ffaeb945987c	67aaf5b9f0214389
-key	wreckPlan	badlands	e1acece61667015b	6bcc0ce50de25ac4
-key	wreckPlan	blackglass	d15dc847acf2471d	db65887cd1d3d0e2
-key	wreckPlan	caldera	94a912a6e1206c9f	0b7a7ca2b0171a8d
-key	wreckPlan	cliffbridge	869126969169a119	c23b02ad5fe6f7c3
-key	wreckPlan	coastal	7157aadc8c1266e8	8648cb543dde8557
-key	wreckPlan	copper_mesa	f3ec1284bdb2b280	9d9cab5026625e66
-key	wreckPlan	delta	1f00bdf698cbb1cd	95498a1f08d53729
-key	wreckPlan	desert	c4e6387adc5798df	b5b1e2285f4bfb2b
-key	wreckPlan	fjord	8e59b969683442b0	096ade4ed1c27fc1
-key	wreckPlan	foundry	a56a620540e7a8d5	c66b51f9c3552a14
-key	wreckPlan	frontier	a3164770a3d8763f	edbb8a3620412b36
-key	wreckPlan	longleaf	4fef6dd87142106b	f1ee89bcddbbf046
-key	wreckPlan	mangrove	3671820f24657167	d9e7692ca6aef2ab
-key	wreckPlan	mars	69978f092bc99107	47362b41a59b7815
-key	wreckPlan	monsoon	e7c60320d466fd9e	445133d941297455
-key	wreckPlan	moon	6355f3f38a41fa65	19f700552e567e8f
-key	wreckPlan	oasis	7473c62909a215d5	cea263596dabdc0a
-key	wreckPlan	orchard	c99c7e185d09d25b	4289b0100d2b581a
-key	wreckPlan	polders	187ed764edbfe7fc	4137c19c8a6504fa
-key	wreckPlan	railyard	b3a8cfd9b1f1c0fe	1187ceca337bfb18
-key	wreckPlan	reservoir	f5ee6df6b499ea27	84648362fb4dfba4
-key	wreckPlan	ruinspires	03f2e3dc7b1b60e4	ebacf1d2e6c6f845
-key	wreckPlan	saltwind	26aa55dd0d0b368a	a5d6af9f86295cc0
-key	wreckPlan	skybridge	ed400cf73f075fcf	167cdf72e02ca431
-key	wreckPlan	steppe	414e724b7d99bce5	1435cac507c4b74d
-key	wreckPlan	titan_gorge	f9b2638091c5484a	5dc7fe28fe0e5297
-key	wreckPlan	urban	aeff0aa0948621ac	e6372c9c27735dd6
-key	wreckPlan	verdant	246f33905482e124	5f2ee2a7f69a47c0
-key	wreckPlan	whiteout	5680a919342f4c0e	50a567c9905a872f
-key	wreckPlan	winter	05043e067ec118b5	c6210636e7e2720f
+key	trenches	airfield	b4f37914027e6491	533c989b6637b690
+key	trenches	alpine	c3a5ff84839b851b	68a710f65044f66d
+key	trenches	autumn	d1b564dfee44e46f	d622c0bab7e4ee3e
+key	trenches	badlands	2dd6ca1a95e61e93	637d6cf579796efd
+key	trenches	blackglass	71801c9a3161b04c	ecb4fdb9e922a0ae
+key	trenches	caldera	050492bc762229ab	5961e7ee0870ac5f
+key	trenches	cliffbridge	b3c3d58dfc5df3ec	2ba16d8200051d20
+key	trenches	coastal	1867ce45af1b3082	aeedd9d4b01184ef
+key	trenches	copper_mesa	dae7348a157c91b4	d58c653afa1bf268
+key	trenches	delta	f80c1b019e223d2b	596f7d6cf234f0de
+key	trenches	desert	e1b439fbd6b6ac6e	b51eecadd8f15324
+key	trenches	fjord	1f22ba72af939ba2	43eac3fece5079ac
+key	trenches	foundry	f5e78005eac11861	98ccd9e8b9b07942
+key	trenches	frontier	4ee1ce8841094e45	f25d44c3951d9b03
+key	trenches	longleaf	1d149cca2afd3e2c	39981bdc94f227ff
+key	trenches	mangrove	e268d786e020dbb9	8cf3273d8d4a5655
+key	trenches	mars	3dc6c29d10a14bb0	dd7254f4dfb27bed
+key	trenches	monsoon	a203aab5b104d2ca	eb2bfb9adece3031
+key	trenches	moon	78f71b057a613d47	c0a3d95b41b50656
+key	trenches	oasis	3982f4413facc8fa	807cbc1b26e9becc
+key	trenches	orchard	2504b64e917ec56e	1b0c0803d91315dd
+key	trenches	polders	1c7f2bd9e4541e41	457914aebcddb4c1
+key	trenches	railyard	5babe0d10032509b	fb01aab2921059b4
+key	trenches	reservoir	174d6f8f1b7b4225	54beef4e25b1a0fa
+key	trenches	ruinspires	7bdea56a3f2af63c	d703829a4fd4a826
+key	trenches	saltwind	11322ebef581ab09	447447283b591560
+key	trenches	skybridge	d7d8092ab7e0a192	209632030525c7f1
+key	trenches	steppe	67bcc3ef1348ebd0	f6b36a15c65f0043
+key	trenches	titan_gorge	88bf914849e13519	02ca1a35cf4e84c0
+key	trenches	urban	a81d838b4f1754bb	d83de2c59df9bb6a
+key	trenches	verdant	fe27e8a42dce0f03	aa3055abf9b0262a
+key	trenches	whiteout	cbbe3961aa8766c6	485ed3319f2e4dda
+key	trenches	winter	c94b8efb1cd3f2d3	6abbd69548799f7e
+key	wreckPlan	airfield	91311a859eaec4da	899ff45063b4544c
+key	wreckPlan	alpine	0dd972bd550df1df	17d7ac50d0551188
+key	wreckPlan	autumn	1dd517cba4b4e6c9	67aaf5b9f0214389
+key	wreckPlan	badlands	310fe498e2f64dc0	6bcc0ce50de25ac4
+key	wreckPlan	blackglass	0bd7265459404a73	db65887cd1d3d0e2
+key	wreckPlan	caldera	04f296f177a051c0	0b7a7ca2b0171a8d
+key	wreckPlan	cliffbridge	fea82d0f0aaa6378	c23b02ad5fe6f7c3
+key	wreckPlan	coastal	21becf5ce7e0bcbe	8648cb543dde8557
+key	wreckPlan	copper_mesa	f336ebaf491f0be4	9d9cab5026625e66
+key	wreckPlan	delta	05159d290affce1b	95498a1f08d53729
+key	wreckPlan	desert	8559a112db0e17bc	b5b1e2285f4bfb2b
+key	wreckPlan	fjord	07ad138761de684f	096ade4ed1c27fc1
+key	wreckPlan	foundry	56f59521650aa8ee	c66b51f9c3552a14
+key	wreckPlan	frontier	38304fb6f39237ca	edbb8a3620412b36
+key	wreckPlan	longleaf	214e42ff38d5c4a7	f1ee89bcddbbf046
+key	wreckPlan	mangrove	4f476ba29d12597d	d9e7692ca6aef2ab
+key	wreckPlan	mars	85217714e0f1a6ba	47362b41a59b7815
+key	wreckPlan	monsoon	49fb2ff69e6109a6	445133d941297455
+key	wreckPlan	moon	06aa8b7fa83c554e	19f700552e567e8f
+key	wreckPlan	oasis	7b22d86b7f4fb320	cea263596dabdc0a
+key	wreckPlan	orchard	a9749f85ed979257	4289b0100d2b581a
+key	wreckPlan	polders	8f397f35fc0e7ecb	4137c19c8a6504fa
+key	wreckPlan	railyard	b4283a76c7e2056d	1187ceca337bfb18
+key	wreckPlan	reservoir	d6f84ee1e7d4fcd4	84648362fb4dfba4
+key	wreckPlan	ruinspires	2e7d606ef384ea08	ebacf1d2e6c6f845
+key	wreckPlan	saltwind	ac12983aea843c6e	a5d6af9f86295cc0
+key	wreckPlan	skybridge	e4985c185170a4e8	167cdf72e02ca431
+key	wreckPlan	steppe	a8cdbf81796b29a4	1435cac507c4b74d
+key	wreckPlan	titan_gorge	db91d78f88a11720	5dc7fe28fe0e5297
+key	wreckPlan	urban	516dd40f6514f0ad	e6372c9c27735dd6
+key	wreckPlan	verdant	665346bd373c555e	5f2ee2a7f69a47c0
+key	wreckPlan	whiteout	ec189cedeb51f416	50a567c9905a872f
+key	wreckPlan	winter	a48204992e4d50ef	c6210636e7e2720f
 roster	anatomy	f4b7ed2e07df201b
 roster	centering	f4b7ed2e07df201b
 roster	collision	c3797f6fbc261c2e
