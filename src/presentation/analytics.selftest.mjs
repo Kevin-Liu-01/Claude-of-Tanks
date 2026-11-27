@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { posix } from 'node:path';
 import { runtimeImportSpecifiers } from '../../tools/static-import-closure.mjs';
+import { blobOrigin } from '../../tools/media-files.mjs';
 
 const entrypoints = [
   'site/home.html',
@@ -46,13 +47,20 @@ assert.match(analyticsSource, /requestIdleCallback/,
 assert.match(analyticsSource, /VITE_SELF_HOSTED\s*===\s*['"]1['"]/,
   'self-hosted builds can compile out hosted telemetry');
 
+// An automatic subresource from another origin. The site's own media store is the one allowed (media-blob-279, Main's
+// ruling at integ 279): a film with no /media/ path (an id item of src/presentation/blobMedia.json, the manual's feature
+// videos) is named by its Blob URL.
+const externalSubresources = (html) => [...html.matchAll(/<(?:script|img|audio|video|source)\b[^>]*\bsrc=["'](https?:\/\/[^"']+)/gi)]
+  .map(([, url]) => url).filter((url) => new URL(url).origin !== blobOrigin());
+assert.deepEqual(externalSubresources(`<source src="${blobOrigin()}/media/a-0123456789abcdef.mp4">`), [], 'the Blob store is the site\'s own');
+assert.deepEqual(externalSubresources('<source src="https://cdn.example.com/a.mp4"><img src="https://x.blob.vercel-storage.com/b.webp">'),
+  ['https://cdn.example.com/a.mp4', 'https://x.blob.vercel-storage.com/b.webp'], 'control: any other origin, another Blob store too, fails');
+
 for (const entrypoint of entrypoints) {
   const html = await readFile(entrypoint, 'utf8');
   const references = html.match(/src=["']\/src\/analytics\.ts["']/g) ?? [];
   assert.equal(references.length, 1, `${entrypoint} must load analytics exactly once`);
-  assert.doesNotMatch(html,
-    /<(?:script|img|audio|video|source)\b[^>]*\bsrc=["']https?:\/\//i,
-    `${entrypoint} must package every automatic subresource locally`);
+  assert.deepEqual(externalSubresources(html), [], `${entrypoint} must package every automatic subresource locally (or on the site's Blob store)`);
 }
 
 // --- Google Analytics 4: the listed public non-game pages only --------------------------------------------------

@@ -10,6 +10,7 @@ import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import { WEAPON_CLASSES } from '../audio/weaponAudio.ts';
 import { staleChapters } from '../../tools/docs-prerender.mjs';
 import { heroFlagMaskCss } from '../ui/heroCardPolicy.ts';
+import { mediaExists } from '../../tools/media-files.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = [
@@ -42,10 +43,10 @@ for (const id of TOPIC_ORDER) {
       assert.match(section.id, /^[a-z][a-z0-9-]*$/, `${id}#${section.id}: a plain anchor`);
       assert.ok(section.title && section.html && section.text, `${id}#${section.id}: a heading, markup and text`);
       for (const [, src] of section.html.matchAll(/(?:src|srcset)="(\/[^" ,?]+)/g)) {
-        assert.ok(existsSync(join(ROOT, 'public', src)), `${id}#${section.id}: ${src} is on disk`);
+        assert.ok(mediaExists(src), `${id}#${section.id}: ${src} ships (public/ or Blob)`);
       }
     }
-    assert.ok(existsSync(join(ROOT, 'public', topic.hero)), `${id}: its banner take exists`);
+    assert.ok(mediaExists(topic.hero), `${id}: its banner take ships`);
   } else {
     assert.ok(topic.sections.length >= 5, `${id} remains a substantive manual`);
     assert.equal(topic.sectionIcons.length, topic.sections.length, `${id} has an icon for every section`);
@@ -56,7 +57,7 @@ for (const id of TOPIC_ORDER) {
     const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
     assert.ok(firstFigureAt < secondFigureAt && secondFigureAt < topic.sections.length, `${id} places both figures after its own sections`);
     for (const asset of [topic.hero, ...topic.media.map(([src]) => src)]) {
-      assert.ok(existsSync(join(ROOT, 'public', asset)), `${id}: referenced media exists (${asset})`);
+      assert.ok(mediaExists(asset), `${id}: referenced media ships, public/ or Blob (${asset})`);
     }
   }
   assert.ok(existsSync(join(ROOT, `site/docs-${id}.html`)), `${id} has an independently indexed HTML entry`);

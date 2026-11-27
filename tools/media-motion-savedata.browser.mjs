@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { openCaptureHold } from './capture-hold.mjs';
 import { stillRungs } from '../src/presentation/responsivePicture.ts';
+import { mediaExists } from './media-files.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const arg = (name, fallback) => process.argv.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -130,7 +131,7 @@ try {
       const largeStills = flag === 'saveData' ? rows.map((row) => new URL(row.url).pathname).filter((pathname) => {
         if (!/\.(?:webp|jpe?g)$/.test(pathname) || eager.includes(pathname)) return false;
         const rungs = stillRungs(pathname);
-        return rungs.length > 1 && rungs[0].width <= 640 && rungs[0].src !== pathname && existsSync(join(ROOT, 'public', rungs[0].src));
+        return rungs.length > 1 && rungs[0].width <= 640 && rungs[0].src !== pathname && mediaExists(rungs[0].src);
       }) : [];
       const shot = join(OUT, `${flag}${path.replace(/\//g, '_') || '_root'}.png`);
       await page.screenshot({ path: shot });

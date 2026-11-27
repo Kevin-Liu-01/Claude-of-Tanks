@@ -8,6 +8,7 @@
 //   node tools/media-r5/site-media/retire.mjs --root=<tree> [--apply]
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
+import { mediaExists } from '../../media-files.mjs';
 
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const ROOT = resolve(arg('root') ?? '');
@@ -90,7 +91,7 @@ if (apply) {
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     if (!Array.isArray(manifest.shots)) continue;
     const before = manifest.shots.length;
-    manifest.shots = manifest.shots.filter((shot) => existsSync(join(ROOT, 'public', String(shot.src ?? '').replace(/^\//, ''))));
+    manifest.shots = manifest.shots.filter((shot) => mediaExists(`/${String(shot.src ?? '').replace(/^\//, '')}`));
     for (const key of Object.keys(manifest)) {
       if (/^(battle|studio)ShotCount$/.test(key)) manifest[key] = manifest.shots.filter((s) => (s.kind ?? '').startsWith(key.slice(0, -9))).length;
     }
@@ -104,7 +105,7 @@ if (apply) {
   if (existsSync(recipesPath)) {
     const catalog = JSON.parse(readFileSync(recipesPath, 'utf8'));
     const before = [Object.keys(catalog.media).length, Object.keys(catalog.recipes).length];
-    catalog.media = Object.fromEntries(Object.entries(catalog.media).filter(([url]) => existsSync(join(ROOT, 'public', url.replace(/^\//, '')))));
+    catalog.media = Object.fromEntries(Object.entries(catalog.media).filter(([url]) => mediaExists(`/${url.replace(/^\//, '')}`)));
     const named = new Set(Object.values(catalog.media));
     catalog.recipes = Object.fromEntries(Object.entries(catalog.recipes).filter(([id]) => named.has(id)));
     writeFileSync(recipesPath, `${JSON.stringify(catalog)}\n`); // compact, as build-capture-recipes.mjs writes it

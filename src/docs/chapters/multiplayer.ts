@@ -2,11 +2,9 @@
 // what happens when someone leaves. Copyright © 2026 Kevin B. Liu.
 // Every number is the room service's own (src/mp/room/protocol.ts, src/mp/room/roomPolicy.ts): the seat caps, the
 // default team size, the co-op modes, the seat and host grace periods, the chat limits; the LAN helper's port is
-// server/rooms/main.ts's default. The room lobby's picture shows once the media lane's still is in public/ (re-run the
-// prerender). Node only (tools/docs-prerender.mjs).
-import { existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+// server/rooms/main.ts's default. The room lobby's picture shows once the media lane's still ships, from public/ or Blob
+// (tools/media-files.mjs; re-run the prerender). Node only (tools/docs-prerender.mjs).
+import { mediaExists } from '../../../tools/media-files.mjs';
 import {
   ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_CHAT_HISTORY, ROOM_CHAT_MAX_CHARS, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS,
   ROOM_MAX_COOP_PLAYERS, ROOM_MAX_EQUIPMENT, ROOM_MAX_NAME_CHARS, ROOM_MAX_PLAYERS, ROOM_MAX_SPECTATORS, ROOM_MAX_TEAM_SIZE,
@@ -24,7 +22,6 @@ import { COUCH_RULES } from '../../sim/matchRuleset.ts';
 import { PAD_LOBBY_SEATS } from '../../pad/padProtocol.ts';
 import type { RichSection } from './types.ts';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 /** The LAN helper's default port (server/rooms/main.ts COT_ROOMS_PORT). */
 const LAN_PORT = 8792;
 const LOBBY_STILL = '/media/docs-r1/mp-lobby-1920.webp';
@@ -44,7 +41,7 @@ function waysSection(): string {
   ];
   const cards = ways.map(([glyph, title, body, values]) => `<li>${icon(glyph, { size: 22 })}<div><b>${esc(t(title))}</b>`
     + `<p>${esc(t(body, values)).replace(/`([^`]+)`/g, '<code>$1</code>')}</p></div></li>`).join('');
-  const lobby = existsSync(join(ROOT, 'public', LOBBY_STILL))
+  const lobby = mediaExists(LOBBY_STILL)
     ? `<figure class="dm-figure">${pictureMarkup({ src: LOBBY_STILL, width: 1920, height: 1080, alt: t('docs.mp.lobbyAlt'), sizes: '(width < 1100px) 100vw, 60vw',
       rungs: [{ src: LOBBY_STILL.replace('-1920.', '-640.'), width: 640 }, { src: LOBBY_STILL, width: 1920 }] }, false)}</figure>` : '';
   return `<ul class="dm-roles dm-roles--ways">${cards}</ul>${lobby}`;
