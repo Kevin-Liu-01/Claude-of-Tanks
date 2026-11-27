@@ -200,13 +200,18 @@ export async function runParity(options) {
     await leaveViewer(page);
     // the planted Worker over the same recording
     await page.evaluate((url) => { window.__replayIndexerPlant = url; }, PLANTED);
-    await watchNewest(page);
+    // the second Watch goes out as the end screen's Watch does (ui:replayWatch, the newest recording): hold 2 of 279 found
+    // the Service Record's Watch row missing after a viewer was left, a UI path the honest Watch above already covers
+    await page.evaluate(() => window.__DEBUG.bus.emit('ui:replayWatch', { id: null }));
     const plantedReply = await indexed(page, 2);
     log({ at: 'planted', reply: plantedReply });
     const planted = await takeJob(page);
     await shot('planted-indexed');
     pageJobs = { honest, planted };
     await context.close();
+  } catch (error) {
+    try { const pages = await browser?.pages(); await pages?.at(-1)?.screenshot({ path: path.join(options.out, 'failed.png') }); } catch { /* best effort */ }
+    throw error;
   } finally {
     if (browser) await browser.close().catch(() => {});
     if (server) await server.close();
