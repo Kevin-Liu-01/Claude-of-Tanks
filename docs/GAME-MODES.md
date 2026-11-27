@@ -624,7 +624,7 @@ in `sim/matchRuleset.ts`):
   carry a boosted flight. Each firing nozzle draws a flame sized by the thrust the step applied and sheds fire and smoke
   (`fx/hullThrusterPlumes.ts`), each burn's ignition is heard (`tank:thrust`), and a network peer's or a replay's hull
   draws a ghost of the burn from its `tank:airSpin` or `tank:turbo` event's nozzle. `thrustArrows=1` draws each
-  nozzle's force. Bots take the belly boost alone, once a flight, and never Turbo in flight.
+  nozzle's force. Bots never boost; in flight they take Turbo's butt burn once, early in a climb, to carry a jump forward.
 - The boost greys when the sim would refuse it (the HUD tile, the phone controller's key, the touch button); the jump
   dims in flight; Turbo shows its cooldown. A phone's survival edge seats the jump, Turbo and the boost as round buttons.
 - Checks by hand: `node tools/turbo-spin-clip.mjs --out=DIR` films them in real time through the real keys (render lock);
