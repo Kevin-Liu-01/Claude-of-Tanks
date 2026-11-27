@@ -26,7 +26,7 @@ import {
   auditRoofPlanePitch, gableAttic, gableSlabSeat, pitchRoofPlane, pitchSkillionRoof,
 } from '../propGeometry.ts';
 import { registerBuildScope } from './buildScopes.ts';
-import { WORLD_FLAG_LIFT, worldFlagPanels, type WorldFlagId } from '../worldFlags.ts';
+import { WORLD_FLAG_LIFT, noteWorldCloth, worldFlagPanels, type WorldFlagId } from '../worldFlags.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -420,7 +420,8 @@ function paint<T extends THREE.BufferGeometry>(geo: T, hex: number, rng: Rng, ji
 }
 
 /** A world flag (worldFlags.ts) as one part, both faces, its colours as paint() sets them; `cloth` as drawWorldFlag's. */
-function worldFlagGeometry(id: WorldFlagId, cloth: (u: number, v: number, lift: number) => [number, number, number], aspect: number): THREE.BufferGeometry {
+function worldFlagGeometry(id: WorldFlagId, cloth: (u: number, v: number, lift: number) => [number, number, number], aspect: number, site: string): THREE.BufferGeometry {
+  noteWorldCloth(id, site);
   const pos: number[] = [], nor: number[] = [], uvs: number[] = [], col: number[] = [];
   const n = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
   for (const p of worldFlagPanels(id, { aspect })) {
@@ -3049,7 +3050,7 @@ function makeSecurityOfficeCraft(rng: Rng, style?: Palette, form: SecurityForm =
     const px = w / 2 + 0.45, pz = d / 2 + 0.6;
     colored(out, mbox(0.5, 0.2, 0.5).translate(px, 0.1, pz), conc, r, 0.03);
     colored(out, cylinder(0.04, 0.065, 5.0, 6).translate(px, 2.7, pz), 0xc8c8c4, r, 0.02);
-    out.push(worldFlagGeometry('march', (u, v, lift) => [px + lift, 4.575 + v * 0.51, pz - 0.04 - u * 0.82], 0.82 / 0.51));
+    out.push(worldFlagGeometry('march', (u, v, lift) => [px + lift, 4.575 + v * 0.51, pz - 0.04 - u * 0.82], 0.82 / 0.51, 'franconian border post'));
   }
   return mergeConnectedStructure('securityoffice', out);
 }

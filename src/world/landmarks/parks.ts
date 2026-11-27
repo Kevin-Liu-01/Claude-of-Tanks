@@ -864,7 +864,7 @@ function furnishSquare(sink: PartSink, W: number, D: number, flags: number, grou
     // nation's flag on a mast in the world) the coast's world flag, a stone swallowtail with its slate-teal band and open
     // lozenge (worldFlags.ts 'quay'), both faces, the fly drooping 5 cm
     const L = 1.84, H = 1.1, x0 = 0.06, y0 = 8.25;
-    drawWorldFlag(sink, 'structureMetal', 'quay', (u, v, lift) => [x + x0 + u * L, y + y0 + v * H - 0.05 * u, z + lift], { aspect: L / H, back: 1 });
+    drawWorldFlag(sink, 'structureMetal', 'quay', (u, v, lift) => [x + x0 + u * L, y + y0 + v * H - 0.05 * u, z + lift], { aspect: L / H, back: 1, site: 'piazza stendardo' });
   }
   // the benches before the house fronts, facing into the square
   for (const sz of [-1, 1]) for (const x of [-5.2, 4.2]) props.push({ kind: 'bench', x, z: sz * (D / 2 - 1.1), yawDeg: sz > 0 ? 180 : 0, lift: flags });

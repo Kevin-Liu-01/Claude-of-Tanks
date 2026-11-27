@@ -25,6 +25,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DESTRUCTIBLE_TYPES } from '../inhabitKit.ts';
 import { bSandbagBroken } from '../fieldworksKit.ts';
+import { noteWorldCloth } from '../../worldFlags.ts';
 
 type Rng = () => number;
 /** A colour in HSL (sRGB), the world code's authoring space; stored linear. */
@@ -208,6 +209,7 @@ function tether(seed: number): THREE.BufferGeometry {
     }
   }
   for (let k = 1; k <= 3; k++) {
+    noteWorldCloth('beaconPennant', 'lunartether pennant');
     const z = -TETHER_HALF + k * (2 * TETHER_HALF) / 4, y = 0.9 - 0.06 * Math.sin((k / 4) * Math.PI);
     parts.push(paint(new THREE.BoxGeometry(0.006, 0.16, 0.14).translate(0, y - 0.085, z), ORANGE, 0.06, rng));
   }
@@ -268,6 +270,7 @@ function blockRowBroken(seed: number): THREE.BufferGeometry {
 /** A delineator beacon: its base plate, the pole, the solar cap and its pennant (in the cone's 0.8 m). */
 function beacon(seed: number): THREE.BufferGeometry {
   const rng = mulberry32(seed);
+  noteWorldCloth('beaconPennant', 'lunarbeacon pennant');
   return merge([
     paint(new THREE.CylinderGeometry(0.24, 0.26, 0.05, 10).translate(0, 0.025, 0), STEEL, 0.05, rng),
     paint(new THREE.CylinderGeometry(0.025, 0.03, 0.68, 6).translate(0, 0.39, 0), PANEL, 0.03, rng),

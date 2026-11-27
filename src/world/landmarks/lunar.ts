@@ -28,7 +28,7 @@
 import { PartSink, normalize3, rgb, shade, type EmitOptions, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 import { finishLandmark } from './pieces.ts';
-import { drawWorldFlag } from '../worldFlags.ts';
+import { drawWorldFlag, noteWorldCloth } from '../worldFlags.ts';
 
 const GOLD = rgb(0xc8a04a), GOLD_DARK = rgb(0x8a6a2c), BLACK = rgb(0x1f2023), SILVER = rgb(0xb8babd), WHITE = rgb(0xe6e4de);
 const STEEL = rgb(0x8d8a84), DARK = rgb(0x3e4349), ORANGE = rgb(0xd46f2a), CELL = rgb(0x151b28), PANEL = rgb(0xeceae4);
@@ -64,6 +64,7 @@ function groundCable(sink: PartSink, g: (x: number, z: number) => number, a: rea
 /** A small flag on a thin pole at (x, z): the pole and the cloth on its crossbar. */
 function smallFlag(sink: PartSink, g: (x: number, z: number) => number, x: number, z: number, h: number, colour: Rgb): void {
   const y = g(x, z);
+  noteWorldCloth('surveyOrange', 'apolloSite survey flag');
   bar(sink, [x, y - 0.1, z], [x, y + h, z], 0.02, { colour: SILVER, decor: true, fine: true });
   sink.span(M, x + 0.01, y + h - 0.16, z - 0.005, x + 0.2, y + h - 0.02, z + 0.005, { colour, decor: true, fine: true });
 }
@@ -184,7 +185,7 @@ export const apolloSite: LandmarkBuilder = (ctx) => {
     bar(sink, [fx, y - 0.2, fz], [fx, y + 2.45, fz], 0.035, { colour: SILVER, decor: true });
     bar(sink, [fx, y + 2.42, fz], [fx + 1.55, y + 2.42, fz], 0.025, { colour: SILVER, decor: true });
     drawWorldFlag(sink, M, 'survey', (u, v, lift) => [fx + 0.02 + u * 1.53, y + 1.5 + v * 0.91, fz + 0.028 * Math.sin(u * Math.PI * 3) + lift],
-      { aspect: 1.53 / 0.91, columns: 6, fade: 0.25, back: 0.94 });
+      { aspect: 1.53 / 0.91, columns: 6, fade: 0.25, back: 0.94, site: 'apolloSite mission banner' });
   }
   // the ALSEP: the central station under its sunshield, its antenna turned to the Earth, the finned RTG beside it, the
   // experiments out round them on their flat cables, and the geophone line on its flags

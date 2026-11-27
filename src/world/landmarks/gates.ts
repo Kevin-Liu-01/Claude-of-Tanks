@@ -16,10 +16,14 @@ import { gateStubs } from './plan.ts';
 import type { LandmarkBuilder } from './types.ts';
 import { finishLandmark, piece } from './pieces.ts';
 import { chamferedBox } from './monuments.ts';
+import { WORLD_FLAG_DESIGNS, drawWorldFlag } from '../worldFlags.ts';
 
 // (the maps lane, 2026-10-15; the blind critics on Verdant v2: the gate's sign blew out under High bloom) the banner's
 // frame, its lettering and the crest in a painted white, not a lamp's
-const BANNER_RED = rgb(0xa8261e), STAR_RED = rgb(0xb3221c), WHITE = rgb(0xc9c5bb), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
+// (world-flags-279, Kevin on the arch: its red banners "read as real Soviet flags") the name banner in the farm's world
+// flag colours (worldFlags.ts 'furrow': its red field, an ochre band at its foot), its lettering, frame and stars kept
+const FURROW = WORLD_FLAG_DESIGNS.furrow, BANNER_FIELD = rgb(FURROW.field), BANNER_BAND = rgb(FURROW.band.hex);
+const STAR_RED = rgb(0xb3221c), WHITE = rgb(0xc9c5bb), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
 const VERMILION = rgb(0xc4452c), LACQUER_BLACK = rgb(0x1e1c1b), FRAME_WHITE = rgb(0xe8e4da), GILT = rgb(0xb8933e);
 
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
@@ -59,8 +63,8 @@ function archedBlock(sink: PartSink, bucket: RegionalBucket, w: number, d: numbe
 
 /**
  * The kolkhoz entrance arch (the collective farms' gates of the 1930s): two whitewashed brick pillars on plinths, a
- * timber beam braced into them carrying the red name banner in its white frame, a crest with the red star over it, a
- * flag on each pillar. The road runs between the pillars.
+ * timber beam braced into them carrying the name banner in its white frame (the farm's colours, worldFlags.ts 'furrow'),
+ * a crest with the red star over it, the farm's world flag on each pillar. The road runs between the pillars.
  */
 export const kolkhozArch: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
@@ -91,11 +95,10 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
     // the flag on its pole (it topples when the arch is breached: props lane A, E12, landmarks/pieces.ts)
     piece(sink, { name: `flag-${sx < 0 ? 'l' : 'r'}`, kind: 'detach', at: 'breached', fall: 'topple' }, (s) => {
       s.span('structureMetal', x - 0.025, pillarTop + 0.6, -0.025, x + 0.025, pillarTop + 3.0, 0.025, { colour: rgb(0x3a3a38), decor: true });
-      const fy = pillarTop + 2.05, fl = 1.15; // both flags stream the same way, with the wind
-      s.quad('structureWood', [x, fy, 0.012], [x + fl * 0.5, fy - 0.06, 0.03], [x + fl * 0.5, fy + 0.84, 0.03], [x, fy + 0.9, 0.012], { colour: BANNER_RED, decor: true });
-      s.quad('structureWood', [x + fl * 0.5, fy - 0.06, 0.03], [x + fl, fy + 0.02, 0.0], [x + fl, fy + 0.86, 0.0], [x + fl * 0.5, fy + 0.84, 0.03], { colour: shade(BANNER_RED, 0.9), decor: true });
-      s.quad('structureWood', [x, fy + 0.9, -0.012], [x + fl * 0.5, fy + 0.84, -0.03], [x + fl * 0.5, fy - 0.06, -0.03], [x, fy, -0.012], { colour: shade(BANNER_RED, 0.8), decor: true });
-      s.quad('structureWood', [x + fl * 0.5, fy + 0.84, -0.03], [x + fl, fy + 0.86, 0.0], [x + fl, fy + 0.02, 0.0], [x + fl * 0.5, fy - 0.06, -0.03], { colour: shade(BANNER_RED, 0.72), decor: true });
+      // (world-flags-279: they flew plain red) the farm's world flag, worldFlags.ts 'furrow', both flying the same way
+      const fy = pillarTop + 2.05, fl = 1.15, fh = 0.9; // both flags stream the same way, with the wind
+      drawWorldFlag(s, 'structureWood', 'furrow', (u, v, lift) => [x + u * fl, fy + v * fh - 0.06 * u, 0.03 * Math.sin(u * Math.PI) + lift],
+        { aspect: fl / fh, columns: 4, site: 'kolkhozArch pillar flag' });
     });
   }
   // the beam and the banner over the passage (a solid of their own, clear of the pillars' tops)
@@ -105,7 +108,12 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
   const by0 = beamY + 0.3 + ARCH_GAP_M, by1 = by0 + 1.2;
   // the banner, its frame and its lettering (laid flat when the arch is breached: props lane A, E12)
   piece(sink, { name: 'banner', kind: 'detach', at: 'breached', fall: 'flat' }, (s) => {
-    chamferedBox(s, 'structureWood', [-inner + 0.25, by0, -0.07], [inner - 0.25, by1, 0.07], 0, 0.03, { colour: BANNER_RED });
+    chamferedBox(s, 'structureWood', [-inner + 0.25, by0, -0.07], [inner - 0.25, by1, 0.07], 0, 0.03, { colour: BANNER_FIELD });
+    // the band along its foot inside the frame, a painted face on each side 1.5 mm proud (under the lettering's 4 mm, and
+    // a face, not a slab: an 8.9 m slab 5 mm deep was all slivers)
+    const bx0 = -inner + 0.3, bx1 = inner - 0.3, bb0 = by0 + 0.08, bb1 = by0 + 0.3, bz = 0.0715;
+    s.quad('structureWood', [bx0, bb0, bz], [bx1, bb0, bz], [bx1, bb1, bz], [bx0, bb1, bz], { colour: BANNER_BAND, decor: true });
+    s.quad('structureWood', [bx0, bb1, -bz], [bx1, bb1, -bz], [bx1, bb0, -bz], [bx0, bb0, -bz], { colour: BANNER_BAND, decor: true });
     for (const [x0, x1, y0, y1] of [[-inner + 0.15, inner - 0.15, by0 - 0.06, by0 + 0.08], [-inner + 0.15, inner - 0.15, by1 - 0.08, by1 + 0.06],
       [-inner + 0.15, -inner + 0.3, by0, by1], [inner - 0.3, inner - 0.15, by0, by1]] as const) {
       s.span('structureWood', x0, y0, -0.1, x1, y1, 0.1, { colour: WHITE, decor: true });
