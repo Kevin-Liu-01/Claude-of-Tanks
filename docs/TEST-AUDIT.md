@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1960 | 428.4 |
+| KEEP | 1961 | 428.4 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 681 | 1195.9 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2642 | 1624.7 | 276.2 |
-| After: the default tier | 1960 | 428.4 | 70.0 |
+| Before: every receipt (npm test without the tiers) | 2643 | 1624.7 | 276.2 |
+| After: the default tier | 1961 | 428.4 | 70.0 |
 
 Default tier: 26.4 % of the whole registry's CPU; 46.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 51.2 min pool, 18.6 min browser receipts.
 
@@ -80,6 +80,7 @@ Sim determinism and driver boundaries, the authority rules, armour/ballistics/da
 - `src/vehicles/decorPlanWire.selftest.mjs`: the decor plan over the Worker wire (vehicle core)
 - `src/vehicles/decorationsStaging.selftest.mjs`: staged decorations (vehicle core)
 - `src/vehicles/equipmentDamage.selftest.mjs`: equipment damage on real builds (must-keep: damage sample)
+- `src/vehicles/farHullDraw.selftest.mjs`: one draw per far hull (vehicle core)
 - `src/vehicles/farLod.selftest.mjs`: the far LOD swap (vehicle core)
 - `src/vehicles/fleetParity.selftest.mjs`: one fleet on every load path (must-keep: loader boundary)
 - `src/vehicles/jagdpanzerE100XArmor.selftest.mjs`: Jagdpanzer E100 armour (must-keep: armour sample)
@@ -830,7 +831,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/game/ai.watchResumeLevels.selftest.mjs` | 1.1 | MANUAL (bots) | bots: bot behaviour played out on the authority (every mode, objectives, levels, approaches), 1.1 s: 2026-11-02 audit M7 (round 6 V4): the hand-back's cases that repeat ai.watchResume's, split off it, and the wa | test:heavy -- bots; test:recommend flags it when its inputs change |
 | `src/vehicles/fleetBattleBuilds.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: The battle fleet pass (roster-errors-279, 2026-11-26; manual `fleet` suite): every roster id built as a battle | test:heavy -- fleet; test:recommend flags it when its inputs change |
 
-## KEEP (1960)
+## KEEP (1961)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1031,12 +1032,12 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/wreckTurretDriverLoader.selftest.mjs` | 20 | KEEP | the wreck path stays a lazy chunk (vehicle core: bundle boundary) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/mp-p2p-decline.selftest.mjs` | 20 | KEEP | the decline rule on the real room actor (must-keep: authority) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/tank-sealed-check.selftest.mjs` | 20 | KEEP | the sealed ledger holds every playable id; the rasteriser's controls (generated-output guard) | default tier (npm test, the release gate; lane mode by its closure) |
-| `tools/gear-frame-bench.selftest.mjs` | 19 | KEEP | tool contract, 19 s: gear-alloc-279: the running gear's per-frame conform + update allocates nothing of its own (a 4-unit rig in a | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/session/matchSessionBootRace.selftest.mjs` | 19 | KEEP | multiplayer wire, session or host, 19 s: 2026-11-02 audit M2: an election boot a newer election supersedes is no failure | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/trackContact.selftest.mjs` | 19 | KEEP | host and solo read track contact alike (must-keep: parity) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/hudLifecycle.selftest.mjs` | 19 | KEEP | interface contract, 19 s: 2026-11-02 audit F8: one HUD lifecycle; hidden cleanup; one display owner | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/tacticalRoles.selftest.mjs` | 19 | KEEP | every vehicle has a role profile; scouting ranges (table guard) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/changed-only/chain.selftest.mjs` | 19 | KEEP | changed-only == whole-fleet regen byte for byte (must-keep: changed-only guard) | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/gear-frame-bench.selftest.mjs` | 19 | KEEP | tool contract, 19 s: gear-alloc-279: the running gear's per-frame conform + update allocates nothing of its own (a 4-unit rig in a | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/motion-lint.selftest.mjs` | 19 | KEEP | static motion lint (must-keep: UI lint) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/sourced-building-source.browser.selftest.mjs` | 19 | KEEP | GPU regression, 19 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/tank-id-rekey-assets.selftest.mjs` | 19 | KEEP | tool contract, 19 s: 2026-10-14 (SSOT 2.19 ID.04/05): the tank asset manifest is keyed to the current ids; the CPU re-key reproduce | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2786,6 +2787,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/ui/settingsQualityLevels.selftest.mjs` | 0.0 | KEEP | interface contract, 0.0 s: texture-diet-277: every graphics level's preview and note match engine/quality.ts | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/tutorial/tutorialGuide.selftest.mjs` | 0.0 | KEEP | interface contract, 0.0 s: 273: the tutorial's guide (marker, bracket, HUD chevron, aim ghost): its geometry, and that it never takes the | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/tutorial/tutorialTour.selftest.mjs` | 0.0 | KEEP | interface contract, 0.0 s: 273 (storyboard §6): the debrief, the five-stop tour and the close, and the access that chains them | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/farHullDraw.selftest.mjs` | n/a | KEEP | one draw per far hull (vehicle core) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/roofStationKeepOut.selftest.mjs` | 0.0 | KEEP | vehicle rule, 0.0 s: 275 (lane roof-station-keepout-275, the owner's Oplot ask): no decor inside a roof station's traverse, on ever | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/workerCalls.selftest.mjs` | 0.0 | KEEP | contract, 0.0 s: workerCalls.selftest — improve-271 (plans 017, 031, the surface paint prefetch; on R6's count): the plumbing. | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/approved-openings.selftest.mjs` | 0.0 | KEEP | tool contract, 0.0 s: owner 2026-11-12: the standard check's B2 openings verdict on the build alone (pinned cells, bounded bays) | default tier (npm test, the release gate; lane mode by its closure) |
