@@ -155,8 +155,12 @@ async function leaveViewer(page) {
 
 /** Watch the newest saved recording again from the Service Record (the Garage's R, Replays, Watch). */
 async function watchNewest(page) {
-  await page.keyboard.press('KeyR');
-  await page.waitForSelector('[data-record-tab="replays"]', { visible: true, timeout: 30_000 });
+  // the Service Record's R (a second watch: the record may still be open behind the viewer, where R would close it)
+  const tabShown = () => page.evaluate(() => !!document.querySelector('[data-record-tab="replays"]')?.offsetParent);
+  for (let attempt = 0; attempt < 3 && !(await tabShown()); attempt++) {
+    await page.keyboard.press('KeyR');
+    await page.waitForSelector('[data-record-tab="replays"]', { visible: true, timeout: 10_000 }).catch(() => {});
+  }
   await page.evaluate(() => document.querySelector('[data-record-tab="replays"]')?.click());
   await page.waitForSelector('[data-replay-watch]', { visible: true, timeout: 30_000 });
   await page.evaluate(() => [...document.querySelectorAll('[data-replay-watch]')].find((el) => el.offsetParent)?.click());

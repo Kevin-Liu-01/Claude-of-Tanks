@@ -449,3 +449,17 @@ them moves every map's world-step key for no change in what they build. The reco
 wire are unchanged: only the viewer was wrong, so a 279 viewer plays 279 Frontline recordings. Receipt:
 `replayTerrainVariant.selftest.mjs` (MANUAL 'sims'): every mode with a variant replays headless and through the
 Worker's job, its track the battle's byte for byte; the Worker's old flat field drifts at step 600 (the control).
+
+## The UI-flow drive raises its gun; replay-trace parity (replay-receipts-279, 2026-11-27)
+
+- `tools/replay-ui-flow.browser.selftest.mjs` failed paths A and C on 278 by luck of the map: its blind drive pressed a
+  little under the middle of the screen, so on a hilly map every shot left into the ground ahead and died before the
+  track's first sample. The drive (`tools/replay-flow.test-support.mjs`) now moves the mouse up and fires there (a
+  pointer-locked aim turns up; the cursor-aim fallback aims into the sky), logging each press's gun pitch. The effects gate
+  reads the indexer's own track census (shell entries > 0) beside the shells drawn. `--raise=0` is the old drive, the
+  control; `--map=<id>` enters a given map.
+- `tools/replay-trace-parity.browser.selftest.mjs` (manual 'browser' suite): the page's indexer Worker's job, copied as
+  posted, and its reply must equal Node's `runReplayIndexJob` over the same job byte for byte (track samples, shells,
+  hulls, steps, problem, cues), the first difference named by field. The planted control,
+  `tools/replay-trace-parity.planted-worker.ts`, is the Worker with its world's `heightField` getter keyed by the job
+  instead of the world; the receipt must name where it parts.
