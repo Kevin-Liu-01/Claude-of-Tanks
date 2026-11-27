@@ -186,15 +186,21 @@ const warm = async () => {
   server = await createServer(options);
   await server.listen();
   const listening = server.httpServer.address().port;
-  const browser = await launchGuardedBrowser(puppeteer, mapProbeLaunchOptions({ width: 1600, height: 900 }), { label: 'thrust-boosts-clip' });
-  receipt.browserPid = browser.process()?.pid ?? null;
   receipt.serverPort = listening;
-  // One live battle at a time (the dry run, 2026-11-27: two booted battles took the browser tree to 10.35 GB, past the
-  // guard's 10 GB cap): the first take boots while the ticket waits, each later one after the one before has closed.
+  // One battle a browser (the dry runs, 2026-11-27: two booted battles in one browser took its tree to 10.35 GB, past the
+  // guard's 10 GB cap, and so did one booted after another's page had closed, 10.36 GB): the first take boots while the
+  // ticket waits; each later take closes the browser before and boots in a fresh one.
+  const state = { browser: await launchBrowser() };
   const tags = Object.keys(TAKES).filter((tag) => !only || only === tag);
-  const first = tags.length ? await bootTake(browser, listening, tags[0]) : null;
-  return { pages: first ? [first] : [], browser, listening, tags, first,
-    close: async () => { await browser.close(); await server.close(); } };
+  const first = tags.length ? await bootTake(state.browser, listening, tags[0]) : null;
+  return { pages: first ? [first] : [], state, listening, tags, first,
+    close: async () => { await state.browser?.close(); await server.close(); } };
+};
+/** A guarded browser, its pid in the receipt (every one this run launched). */
+const launchBrowser = async () => {
+  const browser = await launchGuardedBrowser(puppeteer, mapProbeLaunchOptions({ width: 1600, height: 900 }), { label: 'thrust-boosts-clip' });
+  (receipt.browserPids ??= []).push(browser.process()?.pid ?? null);
+  return browser;
 };
 /** A fresh page in `tag`'s battle (TAKES[tag]), its errors kept in the receipt. */
 const bootTake = async (browser, listening, tag) => {
@@ -236,10 +242,15 @@ async function filmPhone(page, signal) {
   await untilGrounded(page);
 }
 const FILMS = { ball: filmBall, moon: filmMoon, phone: filmPhone };
-const shoot = async ({ browser, listening, tags, first, signal }) => {
+const shoot = async ({ state, listening, tags, first, signal }) => {
   for (const tag of tags) {
     if (signal.aborted) break;
-    const page = tag === tags[0] ? first : await bootTake(browser, listening, tag);
+    if (tag !== tags[0]) {
+      await state.browser.close();
+      state.browser = null;
+      state.browser = await launchBrowser();
+    }
+    const page = tag === tags[0] ? first : await bootTake(state.browser, listening, tag);
     try {
       await page.bringToFront();
       await page.evaluate(clearMenus);
