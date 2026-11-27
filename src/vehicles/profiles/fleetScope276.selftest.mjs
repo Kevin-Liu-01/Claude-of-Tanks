@@ -50,6 +50,13 @@ const MOVED_ON_PURPOSE = Object.freeze({
   // (split) are named above already.
   ...Object.fromEntries(['t90a_burlak_proto', 'm6_linebacker', 'object148_proto', 'amx40_proto', 'mbt70', 'chieftain_mk10',
     'm48_super'].map((id) => [id, 'turret-foot-seat-279: the seat\'s foot fit closes the slots under the lip [armor, build, anatomy]'])),
+  // t90-lamps-279 (Main ruling 2026-11-27, t90-lamps regen approved 2026-11-26 17:08): the glacis lamps are drawn on the
+  // hull, so the build moves and armour and anatomy hold. A { kinds } row exempts only the kinds it names: any other kind
+  // that moves is still caught. t90a_burlak_proto is named above (turret-foot-seat-279); bmpt_t90 holds its build.
+  ...Object.fromEntries(['t90a', 't90a_2004', 't90a_2006', 't90a_vladimir', 't90m', 't90m_proryv'].map((id) => [id, Object.freeze({
+    kinds: Object.freeze(['build']),
+    why: 't90-lamps-279 (Main ruling 2026-11-27, t90-lamps regen approved 2026-11-26 17:08): the glacis lamps on the hull [build]',
+  })])),
 });
 const KINDS = Object.freeze(['armor', 'build', 'anatomy']);
 const fingerprint = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
@@ -70,9 +77,12 @@ for (const id of fleetRoster()) {
 function outOfScope(baseline, measured) {
   const moved = [];
   for (const id of Object.keys(measured).sort()) {
-    if (TARGETS.includes(id) || Object.hasOwn(MOVED_ON_PURPOSE, id)) continue;
+    if (TARGETS.includes(id)) continue;
+    const exempt = MOVED_ON_PURPOSE[id];
+    if (typeof exempt === 'string') continue; // a prose row: every kind of that id may move
     const before = baseline[id];
-    const kinds = before ? KINDS.filter((kind) => before[kind] !== measured[id][kind]) : ['missing from the baseline'];
+    const kinds = (before ? KINDS.filter((kind) => before[kind] !== measured[id][kind]) : ['missing from the baseline'])
+      .filter((kind) => !exempt?.kinds.includes(kind));
     if (kinds.length) moved.push(`${id} (${kinds.join(', ')})`);
   }
   return moved;
@@ -96,6 +106,11 @@ if (process.argv.includes('--write')) {
   // the Olifant Mk 2 may move; its TTD sibling, which shared its old turret builder, may not
   const ttd = { ...rows, ttd: { ...rows.ttd, build: 'moved' } };
   assert.deepEqual(outOfScope(baseline, ttd), ['ttd (build)'], 'control: the TTD moving is caught');
+  // a { kinds: ['build'] } row: the T-90A's build may move, its armour may not
+  const t90aBuild = { ...rows, t90a: { ...rows.t90a, build: 'moved' } };
+  assert.deepEqual(outOfScope(baseline, t90aBuild), [], 'control: the T-90A build-only row lets its build move');
+  const t90aArmor = { ...rows, t90a: { ...rows.t90a, build: 'moved', armor: 'moved' } };
+  assert.deepEqual(outOfScope(baseline, t90aArmor), ['t90a (armor)'], 'control: the T-90A build-only row still catches its armour');
 
   console.log(`fleetScope276.selftest: ${Object.keys(rows).length - TARGETS.length - Object.keys(MOVED_ON_PURPOSE).length} ids outside ${TARGETS.join(", ")} and ${Object.keys(MOVED_ON_PURPOSE).join(", ")} keep their armour, build and anatomy fingerprints; planted Feng plate change caught PASS`);
 }
