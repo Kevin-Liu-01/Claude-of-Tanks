@@ -109,7 +109,10 @@ const sourceBytes = closure.reduce((sum, file) => sum + statSync(resolve(root, f
 // and weapon body repeated) to 103 kB in its compact form (auxiliaryInventoryCodec.ts: each smoke set and weapon body
 // once, mirrored sets halved, exact integers of 1/10000 m, the roof-gun table's bodies shared; every record back exactly):
 // 8.89 MB (8,893,880 B, 524 files); in the built Worker the table goes from 424 kB minified to about 101 kB.
-assert.ok(sourceBytes < 8.92e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
+// 2026-11-27 Main ruling: 8,899,901 -> 9,022,582 B (+122.7 KB), 97.6% mp-migration-drift-279 (PROTOCOL 18 migration
+// state + carried sim fields), fleet-debt +2.3 KB, life-reset +0.7 KB; closure unchanged at 524 files; bound = measure
+// + 2% (9.20 MB).
+assert.ok(sourceBytes < 9.20e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
 
 // Behaviour, in this fresh process: nothing loaded until the roster asks.
 const { createMatchActor } = await import('../../../server/match/matchActor.ts');
