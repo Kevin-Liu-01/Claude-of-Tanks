@@ -140,6 +140,13 @@ interface SoloBattleEntryRuntime {
    * press's announcement only once it accepts the start (round 4 F1).
    */
   refuses(): boolean;
+  /**
+   * (replay-receipts-279 r2) The player's own Leave while this entry still loads (main.ts leaveBattleToGarage, the one
+   * path every Leave takes): the entry in flight is marked cancelled, so the supersede the Leave's return causes brings
+   * it back to the Garage quietly, with no failure notice and no failure beacon. A supersede nobody asked for still
+   * surfaces. True when an entry was in flight to cancel.
+   */
+  cancel(): boolean;
 }
 
 /**
@@ -208,6 +215,9 @@ export function createSoloBattleEntryRuntime({
     throw new TypeError('solo battle entry runtime requires every recovery port');
   }
 
+  /** The entry in flight (the latch runs one at a time) and whether the player's own Leave cancelled it. */
+  let inFlight: { cancelled: boolean } | null = null;
+
   /** The entry's own announcement (the `announce` port) of an entry its caller did not announce. */
   const announcedByEntry = (
     specId: string,
@@ -225,6 +235,8 @@ export function createSoloBattleEntryRuntime({
     options: SoloBattleLoadingStartOptions | undefined,
     announcement: (() => void) | null,
   ): Promise<void> => (sceneRefused() ? Promise.resolve() : lifecycle.run(async () => {
+    const entry = { cancelled: false };
+    inFlight = entry;
     // (round 5 Q2) the pointer lock this start holds while it waits for a return: released if it is refused, or fails,
     // before its announcement; an accepted start keeps it
     let heldPointer: (() => void) | null = null;
@@ -276,6 +288,20 @@ export function createSoloBattleEntryRuntime({
       lifecycle.coverRendering();
       await loading.begin(specId, mapId, options);
     } catch (error) {
+      if (entry.cancelled) {
+        // (279 r2) the player left while it loaded: the Leave's own return is the Garage they asked for. The recovery
+        // below still runs (the cover comes down over a painted Garage); nothing says the battle failed
+        releasePointer();
+        console.info('[battle] entry cancelled by the player\'s Leave:', String(Reflect.get(Object(error), 'message') ?? error));
+        audio.loadingOn(false);
+        // (a return that fails is the Leave's to report: main's leaveBattleToGarage opens its notice)
+        let returned = false;
+        try { await enterGarage(); returned = true; } catch (recoveryError) { reportError('[battle] cancelled entry return failed', recoveryError); }
+        lifecycle.uncoverRendering();
+        if (returned) await nextFrame();
+        await battleLoad.hide?.();
+        return;
+      }
       // (round 5 Q2) a failure before the acceptance: nothing announced, no lock kept. Defensive (review r1): main's
       // whenGarageSettled (garageReturn.whenSettled) never rejects and its scene checks do not throw;
       // soloBattleEntryAnnounce drives it with ports that do
@@ -310,6 +336,8 @@ export function createSoloBattleEntryRuntime({
       } catch (noticeError) {
         reportError('[battle] entry failure notice unavailable', noticeError);
       }
+    } finally {
+      if (inFlight === entry) inFlight = null;
     }
   }, undefined));
 
@@ -339,5 +367,10 @@ export function createSoloBattleEntryRuntime({
     },
     /** (round 3 B2, review r1) The press's refusal, before it does anything: the same check begin() makes first. */
     refuses: () => sceneRefused(),
+    cancel: () => {
+      if (!inFlight) return false;
+      inFlight.cancelled = true;
+      return true;
+    },
   });
 }

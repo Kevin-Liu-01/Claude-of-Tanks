@@ -4069,6 +4069,11 @@ const leaveBattleToGarage = (): Promise<void> => {
     v2.leaveRoom('explicit_leave');
     return Promise.resolve();
   }
+  // (replay-receipts-279 r2) a solo battle still loading: this Leave cancels it, so the supersede its return causes comes
+  // back to the Garage quietly ("The battle could not start" read as a failure of the player's own Leave). The one
+  // cancel: every Leave (the HUD's, the replay bar's, the range card's, a watched replay's) comes through here. A Leave
+  // the return refuses as busy (during Battle Again, whose entry this is) cancels nothing
+  if (battleEntryLifecycle.pending && (!garageReturn.transitioning || garageReturn.operation === 'leave')) soloBattleEntry.cancel();
   // (leave-no-loss-276; Kevin 2026-11-24 "leaving battles early should not count as a loss") a battle left before its
   // verdict has no result: the records stand it in the history as "Left" and count it toward no total
   // (game/battleOutcome.ts; game/state.ts recordBattleLeft, the room's presentation recordLeft); no report or ending follows

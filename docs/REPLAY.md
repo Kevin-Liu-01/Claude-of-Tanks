@@ -463,3 +463,14 @@ Worker's job, its track the battle's byte for byte; the Worker's old flat field 
   hulls, steps, problem, cues), the first difference named by field. The planted control,
   `tools/replay-trace-parity.planted-worker.ts`, is the Worker with its world's `heightField` getter keyed by the job
   instead of the world; the receipt must name where it parts.
+
+## A Leave while a replay loads (replay-receipts-279 r2, 2026-11-27)
+
+The replay bar, and its Leave, show as soon as the indexer replies, which is often while the replay's battle is still
+loading. A Leave there made the Garage return supersede the entry, and the entry's failure branch answered the player's
+own Leave with "The battle could not start: Solo battle deployment was superseded". The class: every Leave goes through
+`main.ts` `leaveBattleToGarage`, which now cancels the solo entry in flight (`soloBattleEntryRuntime.ts` `cancel()`), and a
+cancelled entry comes back to the Garage with no notice and no failure beacon; a supersede nobody asked for still
+surfaces. Receipts: `src/game/soloBattleEntryRuntime.selftest.mjs` (the cancel cases, its reverted control and the
+wiring), and `tools/replay-ui-flow.browser.selftest.mjs` path E (Leave pressed while the app lifecycle reads 'loading';
+`--cancel=0` serves `main.ts` without the cancel and must fail by that dialog).
