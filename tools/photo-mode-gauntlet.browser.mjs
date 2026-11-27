@@ -9,6 +9,14 @@
 // (runWarmHold): the battles warm while queued, the hold takes the shots.
 // node tools/photo-mode-gauntlet.browser.mjs --out=~/cot-lanes/photo-mode-271/gauntlet/r1 --only=desktop-en (one page a run:
 // four battles warmed together pass the browser guard's tree cap)
+// photo-from-pause-279 (Kevin 2026-11-26), step 5 at every size: P in the paused Settings opens photo mode alone and its
+// Esc returns to the paused Settings; Resume is pressed at once and the battle runs; on a desktop, Resume 300 ms after a
+// fresh Esc on a locked battle (inside Chrome's 1250 ms relock refusal) keeps Settings closed for 2 s, sampled every
+// 100 ms, with the battle running and the pointer locked within 1.3 s of the Resume. That Esc is the browser's
+// (tools/chrome-esc-model.mjs): headless Chrome hands the key to the page and refuses no relock. --url=<origin> runs against a build already
+// served (the reverted control: b6c100411f, where P does nothing in Settings and the refused relock reopens it).
+// --root=<checkout> serves that checkout's dev server instead of this one (the reverted control, the receipt unchanged).
+import { browserEsc, chromeEscTimes, installChromeEscModel } from './chrome-esc-model.mjs';
 import puppeteer from 'puppeteer';
 import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -21,6 +29,7 @@ const out = resolve(arg('out', 'outputs/photo-mode-gauntlet').replace(/^~/, proc
 const only = arg('only', '').split(',').filter(Boolean);
 const TANK = arg('tank', 'm1a1_abrams_hc');
 const MAP = arg('map', '') || null;
+const ROOT = resolve(arg('root', process.cwd()).replace(/^~/, process.env.HOME));
 
 const DESKTOP = [[2560, 1440], [1920, 1080], [1440, 900], [1280, 800], [1024, 600], [900, 700]];
 const TOUCH = [[390, 844], [844, 390]];
@@ -310,16 +319,70 @@ async function shootPage(page, spec, { signal, checkpoint }) {
       entry.ways.settingsAgain = await state();
       backToSettings('Esc from photo mode reopened in Settings', entry.ways.settingsAgain);
     }
-    // Resume runs the battle. Chrome refuses every pointer relock for 1250 ms after an Esc, and a refused relock reopens
-    // Settings paused by design (aim-focus 243, settings.ts relockRefused), so Resume waits out that window as a player's
-    // hand does, then the battle must be running (unpaused, Settings closed) before anything else is pressed
-    await sleep(1500);
-    await clickIn(page, '.cot-set-btn.resume');
-    await page.waitForFunction(() => !window.__DEBUG.pauseInfo.paused && !document.querySelector('.cot-settings.open'),
-      { timeout: 8_000, polling: 100 }).catch(() => {});
-    await sleep(600);
+    // way back in 3 (photo-from-pause-279, Kevin 2026-11-26): P in the paused Settings opens photo mode alone (Settings
+    // closed, the battle still), and its Esc returns to the paused Settings
+    await page.keyboard.press('KeyP');
+    entry.ways.openedByPInSettings = await waitShown(page, '.cot-photo-bar', { timeout: 20_000 }).then(() => true, () => false);
+    if (!entry.ways.openedByPInSettings) report.problems.push(`${spec.id} ${size}: P in the paused Settings did not open photo mode`);
+    else {
+      await sleep(600);
+      const t0 = await page.evaluate(() => window.__DEBUG.game.timeS);
+      await sleep(500);
+      entry.ways.photoByPInSettings = { ...(await state()), ran: (await page.evaluate(() => window.__DEBUG.game.timeS)) !== t0,
+        owner: await page.evaluate(() => window.__DEBUG.input?.pointerUnlockOwner?.() ?? null) };
+      const at = entry.ways.photoByPInSettings;
+      if (!at.on || at.settings || !at.paused || at.ran) report.problems.push(`${spec.id} ${size}: P in the paused Settings did not draw photo mode alone over the still battle ${JSON.stringify(at)}`);
+      if (at.owner !== 'photo-mode') report.problems.push(`${spec.id} ${size}: photo mode opened by P in Settings does not own the free pointer (${at.owner})`);
+      await closePhoto('opened by P in Settings');
+      entry.ways.settingsAfterP = await state();
+      backToSettings('Esc from photo mode opened by P in Settings', entry.ways.settingsAfterP);
+    }
+    // Resume runs the battle at once (photo-from-pause-279: the 1500 ms this step waited for Chrome's relock refusal is
+    // gone): Settings closed and the battle running 300 ms after the press, and Settings never drawn again for 2 s
+    const resumeAtOnce = async (how) => {
+      await clickIn(page, '.cot-set-btn.resume');
+      const reopened = [];
+      let at300 = null, lockedAtMs = null;
+      const start = Date.now();
+      for (let i = 1; i <= 20; i++) {
+        await sleep(100);
+        const now = await state();
+        const ms = Date.now() - start;
+        if (now.settings) reopened.push(ms);
+        if (lockedAtMs === null && await page.evaluate(() => !!document.pointerLockElement)) lockedAtMs = ms;
+        if (i === 3) at300 = now;
+      }
+      const result = { at300, reopened, lockedAtMs, end: await state() };
+      if (!at300 || at300.paused || at300.settings) report.problems.push(`${spec.id} ${size}: ${how}: the battle is not running 300 ms after Resume ${JSON.stringify(at300)}`);
+      if (reopened.length) report.problems.push(`${spec.id} ${size}: ${how}: Settings drawn again after Resume (at ${reopened.slice(0, 4).join(', ')} ms)`);
+      return result;
+    };
+    entry.ways.resumeAtOnce = await resumeAtOnce('Resume');
     entry.ways.resumed = await state();
     backToBattle('Resume', entry.ways.resumed);
+    // a desktop's Resume inside Chrome's 1250 ms relock refusal: the browser's Esc on the locked battle
+    // (tools/chrome-esc-model.mjs: an unclaimed unlock with no key event, and the refusal window after it, neither of
+    // which headless Chrome does), then Resume 300 ms after it. Before, the refused relock reopened the paused Settings
+    if (!spec.touch && !entry.ways.resumed.paused && !entry.ways.resumed.settings) {
+      const vp = page.viewport();
+      await installChromeEscModel(page);
+      if (!(await page.evaluate(() => !!document.pointerLockElement))) { await page.mouse.click(vp.width / 2, vp.height / 2); await sleep(400); }
+      const how = await browserEsc(page);
+      const opened = await waitShown(page, '.cot-set-btn.resume', { timeout: 3_000 }).then(() => true, () => false);
+      await sleep(300);
+      entry.ways.escResume = { how, opened };
+      if (how === 'not locked') report.problems.push(`${spec.id} ${size}: the battle did not hold the pointer before the Esc`);
+      else if (!opened) report.problems.push(`${spec.id} ${size}: the Esc did not open the paused Settings`);
+      else {
+        Object.assign(entry.ways.escResume, await resumeAtOnce('Resume 300 ms after an Esc'));
+        // Main 2026-11-27: the lock lands within 1.3 s of the Resume (the page's clock), Settings closed the whole way
+        const times = await chromeEscTimes(page);
+        Object.assign(entry.ways.escResume, { sampledLockMs: entry.ways.escResume.lockedAtMs, lockedAtMs: times.lockedAfterClickMs, refused: times.refused });
+        const lockedAt = times.lockedAfterClickMs;
+        if (lockedAt === null || lockedAt > 1300) report.problems.push(`${spec.id} ${size}: the pointer is not locked within 1.3 s of Resume (${lockedAt} ms)`);
+      }
+      entry.ways.resumed = await state();
+    }
     // way back in 2, a desktop's: P from the running battle; its Esc returns to the battle, running
     if (!spec.touch && !entry.ways.resumed.paused && !entry.ways.resumed.settings) {
       await page.keyboard.press('KeyP');
@@ -551,7 +614,7 @@ const result = await runWarmHold({
   place: `photo-mode-271-gauntlet-${only.join('+') || 'all'}`,
   lockClass: 'render',
   warm: async () => {
-    const server = await startViteChild({ mode: 'dev', port: 5600 + (process.pid % 300) });
+    const server = await startViteChild({ root: ROOT, mode: 'dev', port: 5600 + (process.pid % 300) });
     const browser = await launchGuardedBrowser(puppeteer, {
       headless: 'new',
       // a warm page waits in the background for the lock; Chrome's throttled timers there starved every interval poll

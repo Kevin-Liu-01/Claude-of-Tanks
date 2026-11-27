@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { CHROME_ESCAPE_REFUSAL_MS, createChromePointerLockPage } from './chromePointerLockPage.test-support.mjs';
+import { relockWaitMs } from './input.ts';
 import { createPlayerFrameInput } from './playerFrameInput.ts';
 
 // Item 243 (owner 2026-10-23: "clicking buttons like resume, x etc ... the tank ends up stuck looking at the cursor's
@@ -11,6 +12,12 @@ import { createPlayerFrameInput } from './playerFrameInput.ts';
 
 let clock = 1000;
 const flush = () => new Promise((resolve) => setImmediate(resolve));
+/** Past a relock's wait (input.ts relockWaitMs): the page's clock moves on, and the wait's real timer runs out. */
+async function passWindow() {
+  clock += CHROME_ESCAPE_REFUSAL_MS + 300;
+  await new Promise((resolve) => setTimeout(resolve, 1700));
+  await flush();
+}
 
 /** The shared Chrome model on this file's clock (its post-Esc window modelled), with two menu buttons to click. */
 function createPage(options = {}) {
@@ -42,8 +49,10 @@ function frameAim(input) {
 }
 const aimsAtCentre = (aim) => !aim.cursorAim || (aim.x === 0 && aim.y === 0);
 
-// 1. Three fast Esc -> RESUME cycles inside Chrome's post-Esc refusal window: the refusals never latch cursor aim, the
-//    gun keeps aiming through the screen centre (never at the RESUME button), and the next canvas click locks.
+// 1. Three fast Esc -> RESUME cycles inside Chrome's post-Esc refusal window: (photo-from-pause-279) no Resume asks
+//    inside it, so none is refused (a refused one reopened Settings); each waits it out and the last one's lock lands as
+//    it closes. Nothing latches cursor aim, and the gun keeps aiming through the screen centre (never at the RESUME
+//    button).
 {
   const page = createPage();
   try {
@@ -65,12 +74,12 @@ const aimsAtCentre = (aim) => !aim.cursorAim || (aim.x === 0 && aim.y === 0);
       await flush();
       clock += 150;
     }
-    assert.equal(page.stats.refused, 3, 'every RESUME landed inside Chrome\'s refusal window');
-    assert.equal(page.input.isLocked(), false);
-    assert.equal(page.input.isCursorAim(), false, 'refusals of the UI relock never latch cursor aim');
+    assert.equal(page.stats.attempts, 1, 'no RESUME inside Chrome\'s refusal window asks the browser');
+    assert.equal(page.stats.refused, 0, 'so none is refused');
+    assert.deepEqual(refusals, [], 'and no caller hears a refusal');
+    assert.equal(page.input.isLocked(), false, 'the lock waits for the window');
+    assert.equal(page.input.isCursorAim(), false, 'waiting UI relocks never latch cursor aim');
     assert.equal(deniedEvents, 0, 'no cursor-aim notice for a browser cooldown');
-    assert.equal(refusals.length, 3, 'each refused relock reports once (promise rejection and event are one attempt)');
-    assert.ok(refusals[0] > 0 && refusals[0] <= 1600, `the first refusal says when to retry (${refusals[0]} ms)`);
     const aim = frameAim(page.input);
     assert.ok(aimsAtCentre(aim), `the gun aims through the screen centre, not the RESUME button (${JSON.stringify(aim)})`);
     const ndc = page.input.getCursorNdc({ x: 9, y: 9 });
@@ -79,12 +88,12 @@ const aimsAtCentre = (aim) => !aim.cursorAim || (aim.x === 0 && aim.y === 0);
     // a canvas press inside the same window is refused too, and does not count either
     page.input.requestLock();
     await flush();
+    assert.equal(page.stats.refused, 1, 'a battle click inside the window asks, and is refused');
     assert.equal(page.input.isCursorAim(), false, 'a battle click inside the refusal window is not evidence either');
 
-    clock += CHROME_ESCAPE_REFUSAL_MS;
-    page.input.requestLock();
-    await flush();
-    assert.equal(page.input.isLocked(), true, 'the first click after the window locks again');
+    await passWindow();
+    assert.equal(page.input.isLocked(), true, "the last Resume's wait ends in the lock as the window closes");
+    assert.deepEqual(refusals, [], 'with no refusal on the way');
     assert.equal(lockedEvents, 0, 'no restore notice: the fallback never engaged');
   } finally {
     page.restore();
@@ -290,6 +299,73 @@ for (const answered of ['engaged', 'refused']) {
   } finally {
     page.restore();
   }
+}
+
+// 7. (photo-from-pause-279, Kevin 2026-11-26) Resume works at once after an Esc: a UI relock asked on a press inside the
+//    post-Esc window waits it out (input.ts relockWaitMs) instead of asking, being refused and reopening Settings. A
+//    release withdraws the wait (Settings reopened, photo mode opened by P from the battle Resume ran), a withdrawn
+//    attempt's refusal reaches nobody, and the page's own unlock starts no wait.
+{
+  const page = createPage();
+  try {
+    page.input.requestLock();
+    await flush();
+    page.userEscape();
+    openSettings(page);
+    clock += 200;
+    const refusals = [];
+    clickToClose(page, page.resumeButton, 1180, 760, refusals);
+    await flush();
+    assert.equal(page.stats.attempts, 1, 'Resume 200 ms after the Esc asks nothing yet');
+    // P from the running battle: photo mode releases the pointer, withdrawing the wait
+    page.input.releaseLock('photo-mode');
+    await passWindow();
+    assert.equal(page.input.isLocked(), false, "the withdrawn wait never locks the photo mode's free pointer");
+    assert.equal(page.stats.attempts, 1);
+    assert.deepEqual(refusals, []);
+    // photo mode's Esc back to the battle: the window has passed, so its relock asks at once and locks
+    page.input.requestLock({ fromUi: true });
+    await flush();
+    assert.equal(page.input.isLocked(), true);
+
+    // an Esc that closes Settings carries no activation: it asks at once (a wait would end in the same refusal later);
+    // P lands before the refusal does, and that refusal reaches nobody (it reopened Settings over photo mode)
+    page.userEscape();
+    openSettings(page);
+    page.activation.isActive = false;
+    page.input.setEnabled(true);
+    page.input.requestLock({ fromUi: true, onRefused: (retryInMs) => refusals.push(retryInMs) });
+    assert.equal(page.stats.attempts, 3, 'a relock with no activation asks at once');
+    page.input.releaseLock('photo-mode');
+    await flush();
+    await flush();
+    assert.equal(page.stats.refused, 1, 'the browser refused it');
+    assert.deepEqual(refusals, [], 'and the release that withdrew it kept the refusal from its caller');
+    page.activation.isActive = true;
+    await passWindow();
+    page.input.requestLock();
+    await flush();
+    assert.equal(page.input.isLocked(), true);
+
+    // the page's own unlock (photo mode's, from the locked battle) starts no wait: its relock asks at once and locks
+    page.input.releaseLock('photo-mode');
+    await flush();
+    clock += 100;
+    page.input.requestLock({ fromUi: true });
+    assert.equal(page.stats.attempts, 5, "no wait after the page's own unlock");
+    await flush();
+    assert.equal(page.input.isLocked(), true);
+  } finally {
+    page.restore();
+  }
+}
+{
+  const fromUi = { fromUi: true };
+  assert.equal(relockWaitMs(fromUi, 1000, 1500, 1200, true), 1300, 'the rest of the window');
+  assert.equal(relockWaitMs(fromUi, 1000, 1500, 2600, true), 0, 'past the window');
+  assert.equal(relockWaitMs(fromUi, 1000, 1500, 1200, false), 0, 'no activation: ask at once');
+  assert.equal(relockWaitMs({}, 1000, 1500, 1200, true), 0, "a battle click is the player's own ask");
+  assert.equal(relockWaitMs(fromUi, -Infinity, 1500, 1200, true), 0, 'no Esc yet');
 }
 
 console.log('inputPointerLockFocus selftest: OK');

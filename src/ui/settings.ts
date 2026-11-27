@@ -785,11 +785,16 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   }
 
   // aim-focus 243: a relock the browser refused keeps the pause up instead of a dead mouse (the refusal never latches
-  // cursor aim: input.ts). Chrome refuses every relock for 1250 ms after the player's Esc; a close in that window still
-  // carries user activation (5 s), so the panel closes (and asks once more) as the window closes. Outside it the panel
+  // cursor aim: input.ts). Chrome refuses every relock for 1250 ms after the player's Esc. (photo-from-pause-279) A
+  // Resume in that window no longer asks inside it: the panel closes and the battle runs at once, and the input layer
+  // asks as the window closes (input.ts relockWaitMs). A refusal that still lands here inside the window (a browser
+  // with no userActivation to read) closes the panel and asks once more as the window closes; outside it the panel
   // waits for Resume.
   function relockRefused(retryInMs: number): void {
     if (open || !isBattleActive()) return;
+    // photo-from-pause-279: a mode that owns the free pointer now (photo mode, opened before the refusal landed) keeps it
+    const owner = input.pointerUnlockOwner();
+    if (owner !== null && owner !== 'settings') return;
     pauseToSettings('relock');
     if (!open || retryInMs <= 0 || relockRetry !== null) return;
     if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.isActive) return;
@@ -1993,11 +1998,18 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // shell hotkeys or the garage's Enter-to-battle handler behind it.
     e.stopPropagation();
     containModalTab(e, root, requiredElement<HTMLButtonElement>(root, '.cot-set-close'));
+    if (!conflict && isPhotoKey(e) && openPhotoFromPanel()) { e.preventDefault(); return; }
     if (e.code === 'Escape') {
       e.preventDefault();
       if (conflict) clearConflict();
       else api.close();
     }
+  }
+
+  /** The photo key as the battle binds it (either slot), pressed alone. */
+  function isPhotoKey(e: KeyboardEvent): boolean {
+    if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return false;
+    return e.code === input.getBinding('photoMode', 0) || e.code === input.getBinding('photoMode', 1);
   }
 
   function onPanelKeyUp(e: KeyboardEvent): void {
@@ -2151,12 +2163,16 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     closePanel();
     onLeaveBattle();
   });
-  photoBtn.addEventListener('click', () => {
-    if (!opts.photo?.available()) return;
-    // photo mode takes the stage and holds the battle paused; it gives the pointer back to the battle when it closes
+  /** Photo mode from the paused Settings, by its button or the photo key (photo-from-pause-279, Kevin 2026-11-26: P in
+   *  the pause opens photo mode): it takes the stage and holds the battle paused, owns the free pointer while it is open,
+   *  and its Exit or Esc returns here (main.ts openBattlePhoto). */
+  function openPhotoFromPanel(): boolean {
+    if (!opts.photo?.available()) return false;
     closePanel({ noRelock: true });
     opts.photo.open();
-  });
+    return true;
+  }
+  photoBtn.addEventListener('click', () => { openPhotoFromPanel(); });
   resetBtn.addEventListener('click', () => {
     if (!RESETTABLE_TABS.has(activeTab)) return;
     cancelCapture();

@@ -218,6 +218,14 @@ interface LockRequest {
    *  (0 once it has passed: only a fresh click can lock). */
   onRefused?: (retryInMs: number) => void;
 }
+/** photo-from-pause-279: how long a relock asked inside the browser's post-Esc refusal window waits it out. Only a UI
+ *  relock waits, and only on a press the browser counts as the player's (navigator.userActivation, which outlasts the
+ *  window); one asked with none (an Esc that closes Settings) is refused however late it asks, so it asks at once. */
+export function relockWaitMs(request: LockRequest, userExitMs: number, windowMs: number, nowMs: number,
+  activated: boolean): number {
+  if (!request.fromUi || !activated) return 0;
+  return Math.max(0, Math.ceil(userExitMs + windowMs - nowMs));
+}
 type VolumeSettingKey =
   | 'volMaster'
   | 'volEngine'
@@ -904,6 +912,12 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   let lockEngagedAttempt = 0; // attempt id whose lock last engaged
   let lockWithdrawnAttempt = -1;
   let lockExitMs = -Infinity; // when the canvas last lost the lock
+  // photo-from-pause-279: when the browser took the lock unasked (the player's Esc, a lost page; no release of ours),
+  // the start of Chrome's refusal window, and a UI relock waiting it out (relockWaitMs): Resume closes Settings and runs
+  // the battle at once, and the lock lands as the window closes. Any release withdraws the wait.
+  let userExitMs = -Infinity;
+  let lockWait: ReturnType<typeof setTimeout> | null = null;
+  const withdrawLockWait = () => { if (lockWait !== null) { clearTimeout(lockWait); lockWait = null; } };
   // (settings-unify-278 fix-back) who freed the pointer that is free now (null: the browser, an Esc or a lost page), and
   // the owner of a release asked for, until its unlock lands; the next lock clears both. Holding claims beside them.
   let releaseOwner: PointerUnlockOwner | null = null;
@@ -951,7 +965,19 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     lockAttemptRefused = null;
     if (refused) refused(Math.max(0, Math.ceil(lockExitMs + LOCK_REFUSAL_WINDOW_MS - nowMillis())));
   }
+  /** One pointer-lock attempt (requestLock decides whether it waits first). */
+  function askLock(request: LockRequest) {
+    if (!lockElement || document.pointerLockElement === lockElement || lockHardDenied) return;
+    lockAttemptSeq += 1; // denial reports below count once per attempt
+    lockAttemptCounts = !request.fromUi && nowMillis() - lockExitMs >= LOCK_REFUSAL_WINDOW_MS;
+    lockAttemptRefused = request.onRefused ?? null;
+    try {
+      const p = lockElement.requestPointerLock();
+      if (p && typeof p.catch === 'function') p.catch(() => noteLockDenied(false));
+    } catch (_) { noteLockDenied(true); /* hard — cursor-aim takes over */ }
+  }
   function noteLockEngaged() {
+    withdrawLockWait();
     lockEngagedAttempt = lockAttemptSeq;
     lockAttemptRefused = null;
     lockDenyStreak = 0;
@@ -1238,6 +1264,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     if (held) noteLockEngaged();
     else if (lockHeld) {
       lockExitMs = nowMillis();
+      if (pendingReleaseOwner === null) userExitMs = lockExitMs;
       // the unlock lands: its release's owner owns the free pointer (none asked: the browser's Esc or a lost page)
       releaseOwner = pendingReleaseOwner;
       pendingReleaseOwner = null;
@@ -1676,13 +1703,16 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       if (!lockElement || api.isLocked()) return;
       if (lockHardDenied) return; // structurally unavailable — never re-churn
       if (api.isTouchLayout()) return;
-      lockAttemptSeq += 1; // denial reports below count once per attempt
-      lockAttemptCounts = !request.fromUi && nowMillis() - lockExitMs >= LOCK_REFUSAL_WINDOW_MS;
-      lockAttemptRefused = request.onRefused ?? null;
-      try {
-        const p = lockElement.requestPointerLock();
-        if (p && typeof p.catch === 'function') p.catch(() => noteLockDenied(false));
-      } catch (_) { noteLockDenied(true); /* hard — cursor-aim takes over */ }
+      // photo-from-pause-279: a UI relock inside the post-Esc window would only be refused, and a refused one reopens
+      // Settings (settings.ts relockRefused): it waits the window out instead and asks once as it closes
+      const activated = typeof navigator === 'undefined' || !navigator.userActivation || navigator.userActivation.isActive;
+      const waitMs = relockWaitMs(request, userExitMs, LOCK_REFUSAL_WINDOW_MS, nowMillis(), activated);
+      if (waitMs > 0) {
+        withdrawLockWait();
+        lockWait = setTimeout(() => { lockWait = null; askLock(request); }, waitMs);
+        return;
+      }
+      askLock(request);
     },
 
     /** @returns {boolean} pointer lock is DURABLY unavailable here (3
@@ -1744,12 +1774,16 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
      *  is withdrawn: its lock is released as it lands, so a caller that gives the cursor back right after asking (a
      *  battle start refused after a Garage return's wait, a Settings panel opening) never finds the lock over it. */
     releaseLock(owner) {
+      withdrawLockWait(); // a relock still waiting out the post-Esc window never lands on its owner's free pointer
       if (api.isLocked()) {
         pendingReleaseOwner = owner;
         if (document.exitPointerLock) document.exitPointerLock();
       } else if (lockAttemptSeq !== lockEngagedAttempt && lockAttemptSeq !== lockDeniedAttempt) {
         pendingReleaseOwner = owner;
         lockWithdrawnAttempt = lockAttemptSeq;
+        // photo-from-pause-279: nor does its refusal reach the caller that asked (a Resume's refusal reopened Settings
+        // over the photo mode P opened while it was in flight)
+        lockAttemptRefused = null;
       }
     },
 
