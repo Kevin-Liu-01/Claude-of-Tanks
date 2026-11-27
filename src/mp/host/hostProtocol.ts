@@ -73,13 +73,13 @@ export interface MigrationEntityExtras {
   auxiliary?: { lights: -1 | 0 | 1; gunOn: boolean; smokeCharges: number; smokeReadyIn: number; shots: number; nextShotIn: number; stations?: [shots: number, nextShotIn: number][] };
   /** Turbo's cooldown left (s; turbo-spin-275); absent when ready or the mode has none. */
   turboReadyIn?: number;
-  /** The air spin's cooldown left (s; flip-boost-276); absent when ready or the mode has none. */
+  /** The gap left before the next boost press (s; flip-boost-276); absent when ready or the mode has none. */
   airSpinReadyIn?: number;
   /**
    * A live hull exact (276; migrationState.ts packHull): what its row rounds (the pose, the hp) or does not carry (the
    * movement prediction checkpoint: movementPredictionState.ts, the one owner of the integrator state a pose cannot
-   * rebuild: the spool, the turn rate, the gun's bloom and limit flags, the spring, the ride, the support, the rock, a flip
-   * or roll still turning and the flight's spent dodge (turbo-spin-275, flip-boost-276); what
+   * rebuild: the spool, the turn rate, the gun's bloom and limit flags, the spring (a boosted flight's spin and drift among
+   * it), the ride, the support, the rock, the boost still burning and the flight's boosts spent (thrust-boosts-279); what
    * the last step left beside it: the rollover's countdown, the contact and slope block a bot's brain reads, the fall
    * ledger and a landing's bounces; the roof guns' slew, the special action's toggle and the held input). base64url: the
    * layout, the checkpoint's version and flags, the flags, the further roof stations' count, a mask of the non-zero

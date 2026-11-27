@@ -7,7 +7,7 @@
 import type { EventBus } from './stateCore.ts';
 import { battleScoped } from './battleScope.ts';
 import { onLifeStart } from './lifeScope.ts';
-import { canTankAirSpin, type HullFlightState } from '../sim/hullFlight.ts';
+import { canTankBoost, type HullFlightState } from '../sim/hullFlight.ts';
 
 interface TurboCooldown {
   /** Seconds left at `nowS` (0: ready). */
@@ -51,12 +51,13 @@ export function createTurboCooldown(
   };
 }
 
-/** A jump mode's moves the phone greys this moment (turbo-spin-275): the air spin when the sim's own test refuses it
- *  (sim/hullFlight.ts: its flight's dodge spent, a turn under way, on its roof) or while it cools (flip-boost-276), Turbo
- *  while it cools. */
-export function modeMovesUnavailable(state: HullFlightState | null | undefined, turboWaitS: number, airSpinWaitS = 0): string[] {
+/** A jump mode's moves the phone greys this moment (turbo-spin-275): the boost when the sim's own test refuses it
+ *  (sim/hullFlight.ts canTankBoost: the flight's `charges` spent, a burn under way, on its roof) or between presses
+ *  (flip-boost-276), Turbo while it cools. */
+export function modeMovesUnavailable(state: HullFlightState | null | undefined, turboWaitS: number, airSpinWaitS = 0,
+  charges = 0): string[] {
   const out: string[] = [];
-  if (!canTankAirSpin(state) || airSpinWaitS > 0) out.push('airSpin');
+  if (!canTankBoost(state, charges) || airSpinWaitS > 0) out.push('airSpin');
   if (turboWaitS > 0) out.push('turbo');
   return out;
 }

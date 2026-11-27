@@ -53,7 +53,7 @@ export interface CouchRuntimePorts<E extends CouchEntity & SeatTank> {
     readonly phase: string;
     readonly couch?: CouchSession<E> | null;
     readonly ruleset: { readonly couch?: CouchRules; readonly consumables?: boolean; readonly jumpMps?: number | null;
-      readonly turbo?: object | null; readonly airSpin?: object | null };
+      readonly turbo?: object | null; readonly airSpin?: { readonly charges?: number } | null };
     /** The battle's clock (s): a seat's Turbo cooldown counts on it (turbo-spin-275). */
     readonly timeS?: number;
   };
@@ -200,7 +200,8 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
       facts: { couch: true, consumables: ports.game.ruleset.consumables !== false, jump: ports.game.ruleset.jumpMps != null,
         turbo: !!ports.game.ruleset.turbo, airSpin: !!ports.game.ruleset.airSpin },
       unavailable: modeMovesUnavailable(entity?.state as HullFlightState | null | undefined, Math.max(0, ((entity as { turboReadyS?: number } | null)?.turboReadyS ?? -Infinity) - (ports.game.timeS ?? 0)),
-        Math.max(0, ((entity as { airSpinReadyS?: number } | null)?.airSpinReadyS ?? -Infinity) - (ports.game.timeS ?? 0))) };
+        Math.max(0, ((entity as { airSpinReadyS?: number } | null)?.airSpinReadyS ?? -Infinity) - (ports.game.timeS ?? 0)),
+        ports.game.ruleset.airSpin?.charges ?? 0) };
   };
 
   /** A new couch battle: each seat's sight starts along its own gun, and the camera along seat 1's side's facing. */

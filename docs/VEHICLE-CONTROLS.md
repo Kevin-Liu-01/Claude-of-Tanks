@@ -6,7 +6,8 @@ ammunition and equipment tray. Desktop buttons are 74×32 pixels; touch keeps
 strip scrolls horizontally on narrow screens. Controls are limited to equipment fitted
 on the current procedural model. Desktop defaults are E for the primary special
 system, G for smoke, N for lights, B for an automatic roof weapon, and F for the
-Gravity Mode / Turbo Ball jump. Settings can rebind these actions; the row shows
+Gravity Mode / Turbo Ball jump (in flight, a boost: W or nothing up, S back, A/D sideways,
+five a jump, the tile showing the charges left; Z in flight fires the rear thruster). Settings can rebind these actions; the row shows
 the active primary or secondary binding. A secondary ATGM channel uses its
 ammunition-slot binding when another special system owns E.
 

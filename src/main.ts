@@ -2558,7 +2558,8 @@ function phoneSource() {
   return { battle: battlePhase.isBattle(), paused: settings.isOpen(), sniper: rig.mode === 'SNIPER', player: game.player,
     shellCode: shellTypeCode, lockable: true, mode: phoneMode(),
     // turbo-spin-275: a jump mode's Turbo and air spin, greyed while unavailable (game/turboCooldown.ts)
-    unavailable: ruleset?.turbo || ruleset?.airSpin ? modeMovesUnavailable(game.player?.state, phoneTurbo.readyIn(game.timeS), phoneAirSpin.readyIn(game.timeS)) : undefined,
+    unavailable: ruleset?.turbo || ruleset?.airSpin ? modeMovesUnavailable(game.player?.state, phoneTurbo.readyIn(game.timeS), phoneAirSpin.readyIn(game.timeS),
+      ruleset?.airSpin?.charges ?? 0) : undefined,
     facts: { jump: ruleset?.jumpMps != null, turbo: !!ruleset?.turbo, airSpin: !!ruleset?.airSpin, drone: game.player?.aerial?.kind === 'drone', airSupport: !!ruleset?.airSupport,
       consumables: ruleset?.consumables !== false, range: !!ruleset?.provingGround,
       watchRiding: watch?.active === true && watch.view === 'ride',
@@ -2772,9 +2773,9 @@ const playerFrameInput = createPlayerFrameInput({
   hasAmmo: playerBattleActions.hasAmmo,
   forceFire: () => !!debugFlags.forceFire,
 });
-// The air spin's thruster plumes (thrust-flips-277; fx/hullThrusterPlumes.ts): each burn's ignition is heard
+// The boost's thruster plumes (thrust-flips-277; fx/hullThrusterPlumes.ts): each burn's ignition is heard
 // (tank:thrust, audioEngine.ts), and a hull whose state has no live burn (a network peer's, a replay's) draws a ghost of it
-// from its tank:airSpin event. `thrustArrows=1` draws each nozzle's force and the centre of mass (the proof captures).
+// from its tank:airSpin or tank:turbo event's nozzle. `thrustArrows=1` draws each nozzle's force and the centre of mass (the proof captures).
 // (integ/278, owed from 277) battle-only FX, so its own chunk: loaded when a battle begins (the plumes draw only in the
 // battle phase), never in the entry chunk.
 const thrusterPlumes = createLazyRuntimeOwner(() => import('./fx/hullThrusterPlumes.ts'), ({ createHullThrusterPlumes }) => {
@@ -2787,9 +2788,10 @@ const thrusterPlumes = createLazyRuntimeOwner(() => import('./fx/hullThrusterPlu
 bus.on('phase:change', (payload) => {
   if (Reflect.get(Object(payload), 'phase') === 'battle') void thrusterPlumes.preload().catch(() => {});
 });
-bus.on('tank:airSpin', (payload) => {
-  const event = payload as { id?: string; axis?: number } | undefined;
-  if (event?.id && typeof event.axis === 'number') thrusterPlumes.current?.noteAirSpin(event.id, event.axis);
+// (thrust-boosts-279) a boost's nozzle, or Turbo's in flight (the butt's)
+for (const kind of ['tank:airSpin', 'tank:turbo'] as const) bus.on(kind, (payload) => {
+  const event = payload as { id?: string; nozzle?: number } | undefined;
+  if (event?.id && typeof event.nozzle === 'number' && event.nozzle) thrusterPlumes.current?.noteBoost(event.id, event.nozzle);
 });
 const battlePresentation = createBattlePresentationRuntime({
   game,

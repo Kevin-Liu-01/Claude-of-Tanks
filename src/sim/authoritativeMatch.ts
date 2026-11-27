@@ -170,6 +170,7 @@ import type { BotCamo } from './camoPaint.ts';
 
 import * as detMath from './detMath.ts';
 import { OBSTACLE_FALL_NONE, encodeObstacleFall } from './obstacleFall.ts';
+import { turboNozzle } from './hullFlight.ts';
 type Team = typeof TEAM_ALPHA | typeof TEAM_BRAVO;
 type LobbyTeam = Team | typeof TEAM_SPECTATOR;
 type MatchPhase = 'loading' | 'countdown' | 'playing';
@@ -1810,9 +1811,10 @@ export function createAuthoritativeMatch({
       emit('tank_destroyed', { id: entity.id, killerId: killer?.id ?? entity.id, cause: 'scuttle' });
     },
     // turbo-spin-275: the seat's HUD starts Turbo's cooldown from its event (readyS: the cooldown it starts)
-    turboed: (entity) => { emit('tank_turbo', { id: entity.id, readyS: entity.modeTurbo?.cooldownS ?? 0 }); },
-    // flip-boost-276: and the air spin's (a dodge now, with a cooldown of its own)
-    airSpun: (entity) => { emit('tank_air_spin', { id: entity.id, axis: entity.state._airSpinAxis, readyS: entity.modeAirSpin?.cooldownS ?? 0 }); },
+    // (thrust-boosts-279: with the nozzle a burn fires, Turbo's in flight the butt's, for a viewer's plumes)
+    turboed: (entity) => { emit('tank_turbo', { id: entity.id, readyS: entity.modeTurbo?.cooldownS ?? 0, nozzle: turboNozzle(entity.state) }); },
+    // flip-boost-276: and the boost's (its gap between presses), with the nozzle it fires
+    airSpun: (entity) => { emit('tank_air_spin', { id: entity.id, nozzle: entity.state._boostNozzle, readyS: entity.modeAirSpin?.cooldownS ?? 0 }); },
     consumable: (entity, slot, use) => {
       if (!use) { emit('consumable_denied', { id: entity.id, slot, reason: 'RULESET' }); return; }
       if (!use.ok) {

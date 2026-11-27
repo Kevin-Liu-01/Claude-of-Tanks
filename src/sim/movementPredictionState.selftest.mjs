@@ -4,7 +4,7 @@ import { Vector3 } from 'three';
 import { getSpec } from '../vehicles/specs.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { createTankState, resetTankVerticalState, SIM_DT, updateTank } from '../sim/movement.ts';
-import { captureMovementPredictionState, applyMovementPredictionState, decodeAirSpin, encodeAirSpin } from './movementPredictionState.ts';
+import { captureMovementPredictionState, applyMovementPredictionState, decodeBoost, encodeBoost } from './movementPredictionState.ts';
 
 await ensureTankBuilder('udes03');
 
@@ -36,7 +36,7 @@ test('fixed checkpoint is detached, JSON safe, and restores every admitted scala
   // appended, round 5): + _hold and _holdSeat (pitch, roll and their rates), the posture held over the tracks on a grade
   // and its share seated with them off a whole-track seat; (version 8, appended, round 8): + _susp.c / cv, the share of
   // the dive the bump stops took when the travel ran out under it; (version 10, appended, turbo-spin-275): + the air spin
-  // in progress, one value
+  // in progress, one value (version 12, thrust-boosts-279: the boost)
   assert.equal(checkpoint.values.length, 64);
   assert.deepEqual(JSON.parse(JSON.stringify(checkpoint)), checkpoint);
   const target = entity().state;
@@ -139,7 +139,7 @@ test('a version-8 checkpoint still decodes, resting on no body contact', () => {
   for (let tick = 0; tick < 60; tick++) updateTank(source, field, SIM_DT);
   source.state._body.bodyRest = 3;
   const v10 = captureMovementPredictionState(source.state);
-  assert.equal(v10.version, 11, 'flip-boost-276: version 11 (the flight\'s dodge spent, flag bit 13)');
+  assert.equal(v10.version, 12, 'thrust-boosts-279: version 12 (the boost, flag bits 13-15 the boosts spent)');
   assert.equal(v10.flags >> 11 & 3, 3, 'version 9 on carries the ends a hull rests on a body contact at as flag bits 11 and 12');
   const full = entity().state;
   assert.equal(applyMovementPredictionState(full, v10), true);
@@ -151,47 +151,56 @@ test('a version-8 checkpoint still decodes, resting on no body contact', () => {
   assert.equal(target._body.bodyRest, 0);
 });
 
-test('a version-9 checkpoint still decodes, no air spin turning; version 10 carries one mid-flip', () => {
+test('version 12 carries a boosted flight as its 64th value (thrust-boosts-279); version 9 to 11 decode with none', () => {
   const source = entity();
   for (let tick = 0; tick < 60; tick++) updateTank(source, field, SIM_DT);
-  source.state._airSpinAxis = -2;
-  source.state._airSpinLeft = 2.5;
-  const v10 = captureMovementPredictionState(source.state);
-  assert.equal(v10.values.length, 64);
+  source.state._boostNozzle = 5;
+  source.state._boostBurnS = 0.15;
+  const v12 = captureMovementPredictionState(source.state);
+  assert.equal(v12.values.length, 64);
   const carried = entity().state;
-  assert.equal(applyMovementPredictionState(carried, v10), true);
-  assert.equal(carried._airSpinAxis, -2, 'the roll to the right rides the checkpoint');
-  assert.ok(Math.abs(carried._airSpinLeft - 2.5) < 1e-12, 'with the turn it still owes');
-  const older = entity().state;
-  older._airSpinAxis = 1;
-  older._airSpinLeft = 1;
-  assert.equal(applyMovementPredictionState(older, { version: 9, values: v10.values.slice(0, 63), flags: v10.flags }), true);
-  assert.equal(older._airSpinAxis, 0, 'a version-9 checkpoint has no spin turning');
-  assert.equal(older._airSpinLeft, 0);
-  for (const axis of [-2, -1, 1, 2]) for (const left of [1e-6, 1, Math.PI, 2 * Math.PI]) {
-    assert.deepEqual(decodeAirSpin(encodeAirSpin(axis, left)), { axis, left: decodeAirSpin(encodeAirSpin(axis, left)).left });
-    assert.ok(Math.abs(decodeAirSpin(encodeAirSpin(axis, left)).left - left) < 1e-9, `axis ${axis} owing ${left} round-trips`);
+  assert.equal(applyMovementPredictionState(carried, v12), true);
+  assert.equal(carried._boostNozzle, 5, 'the right push rides the checkpoint');
+  assert.ok(Math.abs(carried._boostBurnS - 0.15) < 1e-12, 'with the burn it has left');
+  for (const version of [9, 10, 11]) {
+    const older = entity().state;
+    older._boostNozzle = 1;
+    older._boostBurnS = 0.1;
+    const values = version === 9 ? v12.values.slice(0, 63) : v12.values;
+    assert.equal(applyMovementPredictionState(older, { version, values, flags: v12.flags & 8191 }), true);
+    assert.equal(older._boostNozzle, 0, `a version-${version} checkpoint has no boosted flight (its 64th value, if any, was an air spin)`);
+    assert.equal(older._boostBurnS, 0);
   }
-  assert.equal(encodeAirSpin(0, 3), 0, 'no axis is no spin');
-  assert.equal(decodeAirSpin(0), null);
-  for (const forged of [3 * 8 + 1, -3 * 8 + 1, 8 + 7, 0.5, NaN]) assert.equal(decodeAirSpin(forged), null, `${forged} names no spin a build writes`);
+  for (const nozzle of [1, 2, 3, 4, 5]) for (const burnS of [0, 1e-6, 0.1, 0.2]) {
+    const decoded = decodeBoost(encodeBoost(nozzle, burnS));
+    assert.equal(decoded.nozzle, nozzle);
+    assert.ok(Math.abs(decoded.burnS - burnS) < 1e-9, `nozzle ${nozzle} with ${burnS} s left round-trips`);
+  }
+  assert.equal(encodeBoost(0, 0.1), 0, 'no nozzle is no boosted flight');
+  assert.equal(decodeBoost(0), null);
+  for (const forged of [6 * 8 + 0.1, -1 * 8 + 0.1, 8 + 0.3, 0.5, NaN]) assert.equal(decodeBoost(forged), null, `${forged} names no boost a build writes`);
 });
 
-test('version 11 carries the flight\'s dodge spent (flip-boost-276); a version-10 checkpoint decodes it unspent', () => {
+test('version 12 carries the flight\'s boosts spent in flag bits 13-15; version 11\'s spent dodge decodes as one', () => {
   const source = entity();
   for (let tick = 0; tick < 60; tick++) updateTank(source, field, SIM_DT);
-  assert.equal(captureMovementPredictionState(source.state).flags & 8192, 0, 'an unspent dodge clears bit 13');
-  source.state._flipUsed = true;
-  const v11 = captureMovementPredictionState(source.state);
-  assert.equal(v11.flags & 8192, 8192, 'a spent dodge sets flag bit 13');
-  assert.equal(v11.values.length, 64, 'in the same 64 values');
-  const carried = entity().state;
-  assert.equal(applyMovementPredictionState(carried, v11), true);
-  assert.equal(carried._flipUsed, true, 'the spent dodge rides the checkpoint');
+  assert.equal(captureMovementPredictionState(source.state).flags >> 13, 0, 'none spent clears bits 13-15');
+  for (const used of [1, 3, 5, 7]) {
+    source.state._boostsUsed = used;
+    const v12 = captureMovementPredictionState(source.state);
+    assert.equal(v12.flags >> 13 & 7, used, `${used} spent rides bits 13-15`);
+    assert.equal(v12.values.length, 64, 'in the same 64 values');
+    const carried = entity().state;
+    assert.equal(applyMovementPredictionState(carried, v12), true);
+    assert.equal(carried._boostsUsed, used, 'the boosts spent ride the checkpoint');
+  }
+  const flipped = entity().state;
+  assert.equal(applyMovementPredictionState(flipped, { version: 11, values: captureMovementPredictionState(source.state).values, flags: 8192 | 2 }), true);
+  assert.equal(flipped._boostsUsed, 1, 'a version-11 spent dodge is one boost spent');
   const older = entity().state;
-  older._flipUsed = true;
-  assert.equal(applyMovementPredictionState(older, { version: 10, values: v11.values, flags: v11.flags & 8191 }), true);
-  assert.equal(older._flipUsed, false, 'a version-10 checkpoint has the dodge unspent');
+  older._boostsUsed = 4;
+  assert.equal(applyMovementPredictionState(older, { version: 10, values: captureMovementPredictionState(source.state).values, flags: 2 }), true);
+  assert.equal(older._boostsUsed, 0, 'a version-10 checkpoint has none spent');
 });
 
 test('malformed checkpoints are rejected atomically, including sparse or oversized numeric arrays', () => {
@@ -201,11 +210,11 @@ test('malformed checkpoints are rejected atomically, including sparse or oversiz
   delete sparse[8];
   const badNumbers = [NaN, Infinity, -Infinity, 1_000_001, '1', null, undefined];
   const bad = [null, [], 1, {}, { ...good, version: 3 }, { ...good, version: 4 }, { ...good, version: 5 }, { ...good, version: 6 },
-    { ...good, version: 7 }, { ...good, version: 12 }, { ...good, version: 9 },
+    { ...good, version: 7 }, { ...good, version: 13 }, { ...good, version: 9 },
     { ...good, values: [] }, { ...good, values: [...good.values, 0] },
-    { ...good, values: sparse }, ...[-1, 16384, 1.5, NaN].map(flags => ({ ...good, flags })),
-    // flag bit 13 (the dodge spent) is version 11's: a version-10 checkpoint naming it is forged
-    { ...good, version: 10, flags: good.flags | 8192 },
+    { ...good, values: sparse }, ...[-1, 65536, 1.5, NaN].map(flags => ({ ...good, flags })),
+    // flag bit 13 (the dodge spent) is version 11's and bits 14-15 version 12's: an older checkpoint naming them is forged
+    { ...good, version: 10, flags: good.flags | 8192 }, { ...good, version: 11, flags: good.flags | 16384 },
     ...badNumbers.map(value => ({ ...good, values: good.values.map((old, i) => i === 5 ? value : old) }))];
   for (const value of bad) {
     const target = entity().state;

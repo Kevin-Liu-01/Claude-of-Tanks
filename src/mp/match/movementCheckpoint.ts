@@ -45,7 +45,12 @@
  * Version 11 (flip-boost-276) adds the flight's dodge spent (movement.ts `_flipUsed`, flag bit 13; the values are version
  * 10's): one air spin a flight, so a replay after a flip refuses a second as the authority does and the HUD greys it. A
  * version-10 checkpoint still decodes, the dodge unspent.
- * The wire carries at most 64 values (`MAX_MOVEMENT_VALUES`; the codec rejects more): versions 10 and 11 use all 64, so
+ * Version 12 (thrust-boosts-279) gives the 64th value and the flag bits to the boosts: the value is the boosted flight
+ * (movement.ts `_boostNozzle`, `_boostBurnS`; movementPredictionState.ts encodeBoost: the nozzle last fired and the burn
+ * it has left), flag bits 13-15 the flight's boosts spent (`_boostsUsed`), so a replay pushes and turns the hull as the
+ * authority's burn does and refuses a boost past the flight's charges. A version-10 or -11 checkpoint still decodes with
+ * no boosted flight, its spent dodge as one boost spent.
+ * The wire carries at most 64 values (`MAX_MOVEMENT_VALUES`; the codec rejects more): versions 10 to 12 use all 64, so
  * the next version that adds a value widens that limit first.
  */
 import type { MovementContactGeometry, TankState } from '../../sim/movement.ts';

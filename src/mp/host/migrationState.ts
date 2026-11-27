@@ -33,8 +33,8 @@ import { createAuxiliaryState } from '../../sim/auxiliarySystems.ts';
 import { spoolFromRest } from '../../sim/movement.ts';
 import { encodeAimIntent } from '../../sim/aimIntent.ts';
 import type { TankState } from '../../sim/movement.ts';
-import { applyMovementPredictionState, captureMovementPredictionState, checkpointAirSpin, MOVEMENT_PREDICTION_SCALARS,
-  MOVEMENT_PREDICTION_STATE_VALUES, restoreAirSpin } from '../../sim/movementPredictionState.ts';
+import { applyMovementPredictionState, captureMovementPredictionState, checkpointBoost, MOVEMENT_PREDICTION_SCALARS,
+  MOVEMENT_PREDICTION_STATE_VALUES } from '../../sim/movementPredictionState.ts';
 import { bindSpecialActionState } from '../../sim/specialActions.ts';
 import { magazineIndicator } from '../../sim/magazineIndicator.ts';
 import type { AuxiliaryState } from '../../sim/auxiliarySystems.ts';
@@ -1059,7 +1059,7 @@ function restoreFrom(actor: MatchActor, state: HostResumeState): ResumeApplied {
     // its next life from the construction's positions, 55 m off the old host's raider within 25 s)
     if (extras) {
       const lifeGoesOn = !revived.has(entity.id) && !combat.destroyed;
-      // Turbo's cooldown and the air spin's run on through the gap to the resume frame (turbo-spin-275, flip-boost-276):
+      // Turbo's cooldown and the boost gap run on through the gap to the resume frame (turbo-spin-275, flip-boost-276):
       // a new host refuses a press as the old did
       if (lifeGoesOn && Number.isFinite(extras.turboReadyIn)) {
         entity.turboReadyS = actor.authority.timeS + Math.max(0, extras.turboReadyIn! - gapS - tailS);
@@ -1067,9 +1067,9 @@ function restoreFrom(actor: MatchActor, state: HostResumeState): ResumeApplied {
       if (lifeGoesOn && Number.isFinite(extras.airSpinReadyIn)) {
         entity.airSpinReadyS = actor.authority.timeS + Math.max(0, extras.airSpinReadyIn! - gapS - tailS);
       }
-      // the hull exact (276; restoreHull): from its own row rounded, the old host's hull to the bit (a flip or roll mid-turn,
-      // the rate it turns at and a spent dodge among it); from a newer row, its drive (the turn rate, the slew, the bloom,
-      // the spool), the spin aged by the gap, and held input
+      // the hull exact (276; restoreHull): from its own row rounded, the old host's hull to the bit (a boost mid-burn, the
+      // spin and drift it gave and the boosts spent among it); from a newer row, its drive (the turn rate, the slew, the
+      // bloom, the spool), the boosted flight with its burn aged by the gap, and held input
       const hull = lifeGoesOn && extras.hull ? unpackHull(extras.hull) : null;
       if (hull) restoreHull(entity as unknown as HullHolder, row, hull, gapS);
       // a hull the old host stood up after the keyframe and drives (its newer row moving): its engine spooled up from the
@@ -1604,12 +1604,17 @@ function restoreHull(entity: HullHolder, row: EntityRow, reading: HullReading, g
     if (Math.round(n('hp')) === row.hp) entity.combat.hp = n('hp');
   } else if (reading.checkpoint.values.length === MOVEMENT_PREDICTION_STATE_VALUES) {
     for (const [key, index] of HULL_DRIVE_SCALARS) (state as unknown as Record<string, number>)[key] = reading.checkpoint.values[index]!;
-    // a flip or roll mid-turn at the keyframe turns on, less the turn it made to the row at the rate it turned (turbo-spin-275,
-    // thrust-flips-277: a migration mid-spin finished the turn the old host owed), and a spent dodge stays spent
-    // (flip-boost-276): no row carries either
-    const spin = checkpointAirSpin(reading.checkpoint);
-    if (spin.code) restoreAirSpin(state, spin.code, gapS, spin.rate);
-    if (spin.flipUsed) state._flipUsed = true;
+    // a boosted flight at the keyframe flies on (thrust-boosts-279): the nozzle it last fired and the burn it has left, less
+    // the row's age, and the spin and drift the nozzles gave it, which nothing in the air takes off; and the flight's boosts
+    // spent stay spent, so a new host refuses the press the old would: no row carries any of it
+    const flight = checkpointBoost(reading.checkpoint);
+    if (flight.boost) {
+      state._boostNozzle = flight.boost.nozzle;
+      state._boostBurnS = Math.max(0, flight.boost.burnS - Math.max(0, Number.isFinite(gapS) ? gapS : 0));
+      state._spring.pitchV = flight.pitchV; state._spring.rollV = flight.rollV;
+      state._spring.recoilVX = flight.driftX; state._spring.recoilVZ = flight.driftZ;
+    }
+    state._boostsUsed = flight.boostsUsed;
   }
   const aux = entity.combat.auxiliary;
   if (aux) {
@@ -1685,8 +1690,8 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
     // a live hull exact (276: its pose, hp, integrator and held input) and a bot's way; a down bot's brain streams alone
     // (fix-up r2: down or benched, it drives a next life on from them on the old host)
     if (!combat.destroyed) {
-      // Turbo's cooldown and the air spin's (turbo-spin-275, flip-boost-276): a fresh host has both ready; a flip or roll
-      // still turning, its rate and a spent dodge ride the hull exact's checkpoint (276)
+      // Turbo's cooldown and the boost gap (turbo-spin-275, flip-boost-276): a fresh host has both ready; a boosted
+      // flight's burn, the spin and drift it gave and the boosts spent ride the hull exact's checkpoint (276, thrust-boosts-279)
       const turboReadyIn = leftOf(entity.turboReadyS ?? -Infinity, timeS);
       if (turboReadyIn > 0) extras.turboReadyIn = turboReadyIn;
       const airSpinReadyIn = leftOf(entity.airSpinReadyS ?? -Infinity, timeS);

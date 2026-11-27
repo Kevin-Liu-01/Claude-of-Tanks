@@ -24,8 +24,7 @@ import { applyResumeState, captureEntityExtras, decodeMigrationKeyframe, encodeM
 import { quantizePosition } from '../wire/quantize.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
-import { AIR_SPIN_AXES } from '../../sim/movement.ts';
-import { airSpinSense } from '../../sim/hullThrusters.ts';
+import { BOOST_NOZZLES } from '../../sim/hullFlight.ts';
 
 let failures = 0;
 const ok = (cond, label) => { if (cond) console.log(`  ok  ${label}`); else { failures++; console.error(`FAIL  ${label}`); } };
@@ -46,20 +45,18 @@ const NOT_CARRIED = new Map([
   ['suspensionAim', 'a hydropneumatic hull\'s mirror of its special action\'s toggle (specialActions.ts bindSpecialActionState writes it from the toggle, which rides: [4])'],
   ['roofGunYaw', 'a mirror of the roof kit\'s slew (combat.auxiliary.gunYaw, which rides): the restore and each step\'s roof gun write it'],
   ['roofGunPitch', 'the same (combat.auxiliary.gunPitch)'],
-  ['_airSpinLeft', 'rides within an ulp: the checkpoint packs the turn owed beside its axis in one double (movementPredictionState.ts encodeAirSpin, the wire\'s own layout); a flip carried so ends on the old host\'s tick (turboSpinMigration)'],
-  // (thrust-flips-277) the plumes' reading: movement.ts clearThrust zeroes it and the spin's step writes it on every step
-  ['_thrust.axis', 'the burn the renderer draws (hullThrusterPlumes.ts): every step clears and writes it, and no step reads it'],
-  ['_thrust.main', 'the same'],
-  ['_thrust.trim', 'the same'],
-  ['_thrust.counter', 'the same'],
+  ['_boostBurnS', 'rides within an ulp: the checkpoint packs the burn left beside its nozzle in one double (movementPredictionState.ts encodeBoost, the wire\'s own layout); a burn carried so ends on the old host\'s tick (turboSpinMigration)'],
+  // (thrust-boosts-279) the plumes' reading: movement.ts clearThrust zeroes it and the boost's step writes it on every step
+  ['_thrust.nozzle', 'the burn the renderer draws (hullThrusterPlumes.ts): every step clears and writes it, and no step reads it'],
+  ['_thrust.level', 'the same'],
   ['_thrust.lift', 'the same'],
   ['_thrust.shove', 'the same'],
 ]);
-/** Numbers that ride as one code with a partner (movementPredictionState.ts encodeAirSpin: a spin is an axis and the turn it
- *  owes, 0 alone): the census moves the partner to a real spin beside the number it checks. */
+/** Numbers that ride as one code with a partner (movementPredictionState.ts encodeBoost: a boost is the nozzle last fired and
+ *  the burn it has left, 0 with no nozzle): the census moves the partner to a real boost beside the number it checks. */
 const PARTNERS = new Map([
-  ['_airSpinAxis', ['_airSpinLeft', 2.5]],
-  ['_airSpinLeft', ['_airSpinAxis', AIR_SPIN_AXES.FRONT_FLIP]],
+  ['_boostNozzle', ['_boostBurnS', 0.1]],
+  ['_boostBurnS', ['_boostNozzle', BOOST_NOZZLES.UP]],
 ]);
 
 const old = make(null), sim = old.authority;
@@ -101,7 +98,7 @@ console.log('[1] the census: every number and flag of a hull rides, or is named'
   }
   const at = (root, path) => path.reduce((o, k) => o?.[k], root);
   const put = (root, path, value) => { path.slice(0, -1).reduce((o, k) => o[k], root)[path.at(-1)] = value; };
-  const INTEGERS = new Set(['bodyRest', 'bounces', 'impactSource', 'shellSlot', 'actionBits', 'auxiliaryBits', 'previousShellSlot', 'fireIntentSeq', '_airSpinAxis']);
+  const INTEGERS = new Set(['bodyRest', 'bounces', 'impactSource', 'shellSlot', 'actionBits', 'auxiliaryBits', 'previousShellSlot', 'fireIntentSeq', '_boostNozzle', '_boostsUsed']);
   // (the hp moved by a fraction: its row rounds back to the old host's, so the hull's own reading stands)
   const carried = [], left = [], stale = [];
   for (const path of paths) {
@@ -150,11 +147,13 @@ console.log('[2] from a newer row: the drive alone');
   const st = hull.state;
   st.bloomF = 2.5; st.turretYawRate = 0.27; st._spool = 0.83; st.yawRate = 0.19; st._prevSpeed = 3.1; st._spring.pitch = 0.01;
   hull.combat.auxiliary.gunYaw = 0.6; hull.combat.auxiliary.stations[0].gunYaw = -0.4; hull.input.throttle = 0.75;
-  // a front flip mid-turn and the flight's dodge spent (turbo-spin-275, thrust-flips-277, flip-boost-276): no row carries them
-  const sense = airSpinSense(AIR_SPIN_AXES.FRONT_FLIP), flipRate = 4 * sense, pitchV = st._spring.pitchV;
-  st._airSpinAxis = AIR_SPIN_AXES.FRONT_FLIP; st._airSpinLeft = 5; st._spring.pitchV = flipRate; st._flipUsed = true;
+  // a boosted flight (thrust-boosts-279): the left nozzle mid-burn, the spin and drift it gave and three boosts spent; no row
+  // carries them
+  const spring = st._spring, motion = { pitchV: 0.6, rollV: 1.7, recoilVX: 0.9, recoilVZ: -0.4 };
+  const springBefore = { pitchV: spring.pitchV, rollV: spring.rollV, recoilVX: spring.recoilVX, recoilVZ: spring.recoilVZ };
+  st._boostNozzle = BOOST_NOZZLES.LEFT; st._boostBurnS = 0.15; Object.assign(spring, motion); st._boostsUsed = 3;
   const { keyframe } = migrate();
-  st._airSpinAxis = 0; st._airSpinLeft = 0; st._spring.pitchV = pitchV; st._flipUsed = false;
+  st._boostNozzle = 0; st._boostBurnS = 0; Object.assign(spring, springBefore); st._boostsUsed = 0;
   const sealed = { bloomF: st.bloomF, turretYawRate: st.turretYawRate, _spool: st._spool, yawRate: st.yawRate };
   for (let k = 0; k < 30; k++) { sim.step({ dt: 1 / 60, inputs: new Map() }); sim.afterEventBroadcast(); tick++; }
   const latest = { tick, serverTimeMs: 0, ackedInputTick: 0xffffffff, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 127,
@@ -173,9 +172,12 @@ console.log('[2] from a newer row: the drive alone');
   `the keyframe's drive (${JSON.stringify(sealed)}), the roof guns' slew and the held input`);
   ok(quantizePosition(taken.state.pos.x) === row.x && taken.state._prevSpeed === taken.state.speed && taken.state._prevSpeed !== 3.1,
     `and the row's pose, the speed and the spring as the row seats them (_prevSpeed ${taken.state._prevSpeed.toFixed(3)} = its speed, not the keyframe's 3.1)`);
-  // the flip turns on less the half second's turn at its rate (5 - 4 x 0.5 rad), at that rate, its dodge still spent
-  ok(taken.state._airSpinAxis === AIR_SPIN_AXES.FRONT_FLIP && Math.abs(taken.state._airSpinLeft - 3) < 1e-9 && taken.state._spring.pitchV === flipRate
-    && taken.state._flipUsed === true, `and the keyframe's flip aged to the row: ${taken.state._airSpinLeft.toFixed(6)} rad still owed (3), at ${taken.state._spring.pitchV} rad/s, the dodge spent`);
+  // the boosted flight flies on: its nozzle, its burn less the half second (0.15 s left: spent), the spin and drift it gave,
+  // its three boosts still spent
+  const flown = taken.state;
+  ok(flown._boostNozzle === BOOST_NOZZLES.LEFT && flown._boostBurnS === 0 && Object.entries(motion).every(([key, value]) => flown._spring[key] === value)
+    && flown._boostsUsed === 3, `and the keyframe's boosted flight aged to the row: the left nozzle, ${flown._boostBurnS} s of burn left (0.15 less 0.5), `
+    + `the spin and drift ${JSON.stringify(motion)}, three boosts spent`);
   fresh.stop();
 }
 

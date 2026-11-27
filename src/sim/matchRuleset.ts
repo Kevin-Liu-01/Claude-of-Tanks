@@ -1308,26 +1308,40 @@ export interface TurboRules {
 const TURBO_BALL_TURBO: TurboRules = Object.freeze({ forwardMps: 12, liftMps: 2.5, cooldownS: 3 });
 const MARS_TURBO: TurboRules = Object.freeze({ forwardMps: 9, liftMps: 2.2, cooldownS: 3 });
 /**
- * A mode's air spin as a dodge (flip-boost-276; owner 2026-11-24: "make the flip work a lot better as an actual boost",
- * "doing a and d and s should do barrel rolls and a reverse flip too"): the move a press picks from the drive it is
- * pressed with (movement.ts airSpinAxisFor) takes this shove, since thrust-flips-277 from its thrusters' main burn over the
- * turn's first 0.15 s (sim/hullThrusters.ts: the nozzles are sized to deliver it). W or no drive: the front flip adds `forwardMps` to
- * the run speed; S: the back flip takes `backMps` off it; A or D: the barrel roll shoves the hull `sideMps` to that side,
- * held while it rolls. In flight it also stops the fall; on the ground it lifts the hull at `hopMps`, the mode's own jump:
- * the turn waits until the hull is clear of what it sweeps (movement.ts AIR_SPIN_CLEAR_SCALE), and a lower hop left a
- * 50 t hull too little air to finish a turn it could begin (it landed on its roof). One a flight (a ground dodge's flight
- * included), then `cooldownS`. Measured in sim/flipBoost.selftest.mjs on the turbo fixture (65 km/h, 50 t) from a
- * full-throttle run: within 0.6 s the front flip is metres ahead of the run and the roll metres to its side.
+ * A mode's boosts (thrust-boosts-279; owner 2026-11-27: "for the rocket modes (gravity turbo) i think we should be able to
+ * elevate/boost up multiple times into the sky", and the side and rear boosts "just like a additional force vector added
+ * from that side"). A press fires the nozzle its drive picks (sim/hullFlight.ts boostNozzleFor) for a burn
+ * (BOOST_BURN_S) that delivers its shove along its push (sim/hullThrusters.ts sizes the pair): W or no drive the belly,
+ * `upMps` up the hull's own up; S the nose, `backMps` back; A or D a side, `sideMps` toward the side the steer turns to;
+ * Turbo in flight the butt, `forwardMps` forward. Each comes with its own r x F turn and nothing else. No nozzle lifts the
+ * climb past `climbCapMps` (a cap on vertical speed alone, Main's ruling 1: mashing the belly from the jump would fly a
+ * Moon hull a kilometre up; pressed at an apex each climb is a step). `charges` presses a flight (Turbo's own aside), the
+ * ground refilling them, `cooldownS` apart. On the ground a press hops the hull at `hopMps`, then fires. The belly's push
+ * and the cap follow the mode's jump (UP_JUMP_SHARE, CLIMB_CAP_JUMPS; boostRulesForJump), so a Gravity world's jump
+ * carries them.
  */
 export interface AirSpinRules {
+  readonly upMps: number;
+  readonly climbCapMps: number;
   readonly forwardMps: number;
   readonly backMps: number;
   readonly sideMps: number;
   readonly hopMps: number;
+  readonly charges: number;
   readonly cooldownS: number;
 }
-const TURBO_BALL_AIR_SPIN: AirSpinRules = Object.freeze({ forwardMps: 10, backMps: 9, sideMps: 11, hopMps: 13, cooldownS: 1.2 });
-const MARS_AIR_SPIN: AirSpinRules = Object.freeze({ forwardMps: 8, backMps: 7, sideMps: 9, hopMps: 9.5, cooldownS: 1.2 });
+/** The belly's push as a share of the mode's jump, and the climb cap in jumps (Main's ruling 1). */
+const UP_JUMP_SHARE = 0.75;
+const CLIMB_CAP_JUMPS = 1.25;
+/** A mode's boosts with the belly's push and the climb cap of its jump. */
+export function boostRulesForJump(rules: Omit<AirSpinRules, 'upMps' | 'climbCapMps'>, jumpMps: number): AirSpinRules {
+  return Object.freeze({ ...rules, upMps: UP_JUMP_SHARE * jumpMps, climbCapMps: CLIMB_CAP_JUMPS * jumpMps });
+}
+const TURBO_BALL_JUMP_MPS = 13;
+const TURBO_BALL_AIR_SPIN: AirSpinRules = boostRulesForJump(
+  { forwardMps: 10, backMps: 9, sideMps: 11, hopMps: 13, charges: 5, cooldownS: 0.35 }, TURBO_BALL_JUMP_MPS);
+const MARS_AIR_SPIN: AirSpinRules = boostRulesForJump(
+  { forwardMps: 8, backMps: 7, sideMps: 9, hopMps: 9.5, charges: 5, cooldownS: 0.35 }, MARS_GRAVITY_OPTIONS.mars.jumpMps);
 
 /** Turbo Ball: arcade rebounds at 0.6 g, a single 13 m/s jump lands free, walls at 1.85× speed cost less per kJ. */
 const TURBO_PHYSICS: RulesetPhysics = Object.freeze({
@@ -1829,7 +1843,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   turbo_ball: Object.freeze({
     ...STANDARD, mode: 'turbo_ball', gravityScale: 0.6, physics: TURBO_PHYSICS, speedMultiplier: 1.85, hpScale: 1.5,
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
-    criticalDamage: false, jumpMps: 13, turbo: TURBO_BALL_TURBO, airSpin: TURBO_BALL_AIR_SPIN, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
+    criticalDamage: false, jumpMps: TURBO_BALL_JUMP_MPS, turbo: TURBO_BALL_TURBO, airSpin: TURBO_BALL_AIR_SPIN, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
     destruction: DESTRUCTION_OFF,
     // the goals and the kick-off spot stand inside the arena
     objectiveFootprint: Object.freeze({ radiusM: 18, arena: true }),
@@ -2326,6 +2340,8 @@ export function matchRulesetFor(
     ruleset = {
       ...ruleset, gravityScale: world.gravityScale, jumpMps: world.jumpMps, recoilLaunchScale: world.recoilLaunchScale,
       physics: gravityPhysics(ruleset.physics, gravity),
+      // the belly's push and the climb cap follow the world's jump (thrust-boosts-279)
+      airSpin: ruleset.airSpin ? boostRulesForJump(ruleset.airSpin, world.jumpMps) : ruleset.airSpin,
       mars: marsRulesFor(gravity, caches),
     };
   }

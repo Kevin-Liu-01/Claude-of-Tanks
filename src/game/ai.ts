@@ -6757,10 +6757,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   /** How far Turbo's leap carries the hull before it lands: its run speed plus the leap's, over the flight the lift gives. */
   function turboTravelM(turbo: TurboRules): number {
     const st = entity.state;
+    // the ground leap's (bots never Turbo in flight: botAbilities.ts BOT_TURBO)
     const speed = Math.min(45, Math.max(0, st.speed) + turbo.forwardMps);
-    const airborne = tankAirborne(st);
-    const climb = airborne ? Math.max(st.verticalSpeed || 0, turbo.liftMps) : Math.max(0, st.verticalSpeed || 0) + turbo.liftMps;
-    const flight = airborne ? flightLeftS(climb) : 2 * climb / (9.81 * Math.max(0.1, entity.modeGravityScale ?? 1));
+    const climb = Math.max(0, st.verticalSpeed || 0) + turbo.liftMps;
+    const flight = 2 * climb / (9.81 * Math.max(0.1, entity.modeGravityScale ?? 1));
     return speed * flight;
   }
 
@@ -7316,12 +7316,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const travel = st.speed * 2 * entity.modeJumpMps! / (9.81 * Math.max(0.1, entity.modeGravityScale ?? 1));
       abilityContext.safeJump = leapLandingClear(travel);
     }
-    // Turbo and the air spin (bot-turbo-276): only where the mode stamped them, through the same action bits as a player
+    // Turbo and the belly boost (bot-turbo-276; thrust-boosts-279): only where the mode stamped them, through the same action bits as a player
     abilityContext.safeTurbo = false;
     abilityContext.chaseM = entity.modeTurbo ? turboChaseM(abilityContext.retreating) : Infinity;
     abilityContext.flightS = entity.modeAirSpin ? flightLeftS() : 0;
     if (entity.modeTurbo && abilities.turboEligible(entity, timeS, abilityContext)
-        && (tankAirborne(entity.state) || (input.throttle > 0.5 && !input.brake))) {
+        && input.throttle > 0.5 && !input.brake) {
       const travel = turboTravelM(entity.modeTurbo);
       // a leap at a tank comes down short of it: the ram is not the bot's to take
       abilityContext.safeTurbo = (!turboChasesTank || travel + BOT_TURBO.targetStandoffM <= (abilityContext.chaseM ?? 0))
