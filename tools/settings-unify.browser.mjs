@@ -420,34 +420,63 @@ try {
       if (!escState.settingsOpen || !esc.controls.resume?.hit) problem('plain esc: an unclaimed unlock does not open the paused Settings');
       if (esc.controls.resume) { await page.mouse.click(esc.controls.resume.x, esc.controls.resume.y); await wait(1500); }
       if (!(await page.evaluate(() => !!document.pointerLockElement))) { await page.mouse.click(size.w / 2, size.h / 2); await wait(400); }
-      // the kill-cam: the nearest enemy parked 120 m ahead fires at the player held on its last hit points (death-flow-shots)
-      const staged = await page.evaluate(() => {
-        const D = window.__DEBUG, g = D.game, p = g.player, hf = D.world.heightField;
+      // the kill-cam: the nearest enemy parked 60 m off, on the first bearing (ahead, then +-45, +-90 deg, behind) whose
+      // line from its gun to the player is clear, fires HE at the player held on its last hit points (death-flow-shots).
+      // (integ-279: parked blind 120 m ahead it killed 3 runs in 5 on both 278 and 279, the rest ending with no death;
+      // a bearing that does not kill in 20 s is staged again on the next clear one, up to three, each logged)
+      const stageKill = (attempt) => page.evaluate((attempt) => {
+        const D = window.__DEBUG, g = D.game, p = g.player, hf = D.world.heightField, V = D.camera.position.constructor;
         const foe = g.tanks.find((t) => t.team !== p.team && !t.combat.destroyed && t.visual);
-        if (!foe) return null;
+        if (!foe) return { foeId: null, why: 'no live enemy with a visual' };
         for (const t of g.tanks) { if (t === p) continue; t.aiCtl = null; t.input.fire = false; t.input.throttle = 0; t.state.speed = 0; }
-        const x = p.state.pos.x + Math.sin(p.state.yaw) * 120, z = p.state.pos.z + Math.cos(p.state.yaw) * 120;
-        foe.state.pos.set(x, hf.getHeightAt(x, z), z);
-        foe.state.yaw = Math.atan2(p.state.pos.x - x, p.state.pos.z - z);
-        foe.state.turretYaw = 0; foe.input.aimLocked = false;
+        const target = new V(p.state.pos.x, p.state.pos.y + 1.3, p.state.pos.z), tried = [];
+        let pick = null;
+        for (const deg of [0, 45, -45, 90, -90, 180]) {
+          const a = p.state.yaw + deg * Math.PI / 180, x = p.state.pos.x + Math.sin(a) * 60, z = p.state.pos.z + Math.cos(a) * 60;
+          const gun = new V(x, hf.getHeightAt(x, z) + 2.2, z), dir = target.clone().sub(gun), len = dir.length();
+          const hit = D.world.raycast?.(gun, dir.normalize(), len);
+          const clear = !hit || hit.dist >= len - 2.5;
+          tried.push({ deg, clear, hitM: hit ? +hit.dist.toFixed(1) : null });
+          if (clear && tried.filter((t) => t.clear).length > attempt) { pick = { deg, x, z }; break; }
+        }
+        if (!pick) return { foeId: null, why: 'no clear bearing', tried };
+        foe.state.pos.set(pick.x, hf.getHeightAt(pick.x, pick.z), pick.z);
+        foe.state.yaw = Math.atan2(p.state.pos.x - pick.x, p.state.pos.z - pick.z);
+        foe.state.turretYaw = 0; foe.state.speed = 0; foe.input.aimLocked = false;
         const he = foe.spec.gun.shells.findIndex((shell) => /HE/.test(shell.type) && !shell.guided);
         foe.input.shellSlot = he >= 0 ? he : 0;
         for (const other of g.tanks) if (other !== foe && other.team !== p.team && !other.combat.destroyed) other.state.pos.x += 900;
         p.input.throttle = 0; p.state.speed = 0;
-        return foe.id;
-      });
-      let dead = false;
-      for (let i = 0; staged && i < 80 && !dead; i++) {
-        dead = await page.evaluate((foeId) => {
-          const g = window.__DEBUG.game, p = g.player, foe = g.tankById.get(foeId);
-          if (p.combat.destroyed) return true;
-          p.combat.hp = Math.min(p.combat.hp, Math.max(1, p.combat.maxHp * 0.12));
-          if (!foe.combat.destroyed) foe.combat.hp = foe.combat.maxHp;
-          foe.input.aimPoint.set(p.state.pos.x, p.state.pos.y + 1.3, p.state.pos.z);
-          foe.input.fire = true;
-          return false;
-        }, staged);
-        if (!dead) await wait(250);
+        const log = { fired: 0, hitsOnPlayer: 0, hitsElsewhere: 0 };
+        window.__suKill = log;
+        if (!window.__suKillHooked) {
+          window.__suKillHooked = true;
+          D.bus.on('shell:fired', (e) => { const l = window.__suKill; if (l && e.shooterId === l.foeId) l.fired++; });
+          D.bus.on('shell:hit', (e) => { const l = window.__suKill; if (!l) return;
+            if (e.targetId === g.player.id) l.hitsOnPlayer++; else if (e.attackerId === l.foeId) l.hitsElsewhere++; });
+        }
+        log.foeId = foe.id;
+        return { foeId: foe.id, deg: pick.deg, tried };
+      }, attempt);
+      const attempts = [];
+      let staged = null, dead = false;
+      for (let attempt = 0; attempt < 3 && !dead; attempt++) {
+        const stage = await stageKill(attempt);
+        if (!stage.foeId) { attempts.push(stage); break; }
+        staged = stage.foeId;
+        for (let i = 0; i < 80 && !dead; i++) {
+          dead = await page.evaluate((foeId) => {
+            const g = window.__DEBUG.game, p = g.player, foe = g.tankById.get(foeId);
+            if (p.combat.destroyed) return true;
+            p.combat.hp = Math.min(p.combat.hp, Math.max(1, p.combat.maxHp * 0.12));
+            if (!foe.combat.destroyed) foe.combat.hp = foe.combat.maxHp;
+            foe.input.aimPoint.set(p.state.pos.x, p.state.pos.y + 1.3, p.state.pos.z);
+            foe.input.fire = true;
+            return false;
+          }, staged);
+          if (!dead) await wait(250);
+        }
+        attempts.push({ ...stage, dead, shots: await page.evaluate(() => ({ ...window.__suKill })) });
       }
       const live = await page.waitForFunction(() => !!window.__DEBUG.killcam?.isActive?.() || !!window.__DEBUG.killcam?.phase,
         { timeout: 15_000, polling: 100 }).then(() => true, () => false);
@@ -459,7 +488,7 @@ try {
       await wait(900);
       const after = await page.evaluate(() => ({ phase: window.__DEBUG.killcam?.phase ?? null,
         settingsOpen: !!window.__DEBUG?.settings?.isOpen?.(), settingsDrawn: !!document.querySelector('.cot-settings.open') }));
-      entry.steps.killcam = { staged: !!staged, dead, live, during, unlockedByPage, after };
+      entry.steps.killcam = { staged: !!staged, dead, live, during, unlockedByPage, after, attempts };
       await still('9-killcam-esc');
       if (!dead || !live) problem(`killcam: no kill-cam replay to test (dead ${dead}, live ${live})`);
       if (after.settingsOpen || after.settingsDrawn) problem('killcam: an Esc in the kill-cam replay opened Settings');
