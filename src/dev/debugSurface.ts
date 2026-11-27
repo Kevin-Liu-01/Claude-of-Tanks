@@ -54,6 +54,9 @@ export interface DebugSurfaceDependencies {
   getWorldCacheIds(): readonly string[];
   getResidentLimits(): Readonly<Record<string, number>>;
   getBattleVisualPoolStats(): RuntimeValue;
+  /** (battle-retention-279) Whether a material holds a vehicle registration (vehicles/materials.ts
+   *  isVehicleMaterialRegistered): the Garage-return probe's registry ledger counts those apart from world entries. */
+  isVehicleMaterial?(material: unknown): boolean;
   getGarageFramePacerStats(): RuntimeValue;
   getFrameLoopSchedulerStats(): RuntimeValue;
   observeFrameLoopScheduler(observer: FrameLoopDecisionObserver): FrameLoopObservation;
@@ -169,6 +172,7 @@ export function installDebugSurface(
     get worldCacheIds() { return [...deps.getWorldCacheIds()]; },
     get residentLimits() { return { ...deps.getResidentLimits() }; },
     get battleVisualPool() { return deps.getBattleVisualPoolStats(); },
+    isVehicleMaterial: (material: unknown): boolean | null => deps.isVehicleMaterial?.(material) ?? null,
     get garageFramePacer() { return deps.getGarageFramePacerStats(); },
     get frameLoopScheduler() { return deps.getFrameLoopSchedulerStats(); },
     observeFrameLoopScheduler: deps.observeFrameLoopScheduler,

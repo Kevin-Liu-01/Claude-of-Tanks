@@ -157,7 +157,7 @@ import {
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
   setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked, paintCamoTryOn,
   clearCamoOverrides, warmWreckTextures,
-  prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
+  prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures, isVehicleMaterialRegistered,
 } from './vehicles/materials.ts';
 import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
@@ -5262,6 +5262,7 @@ if (diagnosticsRequested) {
       getWorldCacheIds: () => worldRuntime.residentIds(), // (round 2 U26) build ids, a retired world's under its own
       getResidentLimits: () => ({ ...residentLimits }),
       getBattleVisualPoolStats: () => battleVisualPool.stats(),
+      isVehicleMaterial: (material) => material instanceof THREE.Material && isVehicleMaterialRegistered(material),
       getGarageFramePacerStats: () => ({ ...garageFramePacer.stats }),
       getFrameLoopSchedulerStats: () => ({ ...frameLoop.stats }),
       observeFrameLoopScheduler: (observer) => frameLoop.observeAnimationDecisions(observer),

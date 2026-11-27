@@ -48,25 +48,34 @@ assert.equal(ruinFireRule(fire(1000)).pass, false, 'ruin control: a +1 GB GPU st
 // material (tagged) and the impostor material (untagged, the 278 holder); at the Garage after battle 2 (desert resident)
 // neither is drawn: the impostor is stale, the pool's is counted per pool only. Control: the same entry untagged is stale.
 const material = (name, pool) => ({ type: 'MeshStandardMaterial', name, userData: pool ? { cotPagePool: pool } : {} });
-const ledger = (impostorTagged) => {
+const ledger = (impostorTagged, vehicleCheck = true) => {
   const pool = material('fx-rubble-body', 'fx-rubble-body');
   const impostor = material('horizon-forest-impostor-v2', impostorTagged ? 'fx-rubble-body' : null);
+  const track = material('cot:track-steel');
   const shaders = new Map([[material('cot:gunmetal'), {}]]);
   const scene = { traverse() {} };
-  globalThis.window = { __DEBUG: { lighting: { csm: { shaders } }, scene, world: { mapId: 'verdant', group: scene } } };
+  const isVehicleMaterial = vehicleCheck ? (m) => m === track : undefined;
+  globalThis.window = { __DEBUG: { lighting: { csm: { shaders } }, scene, world: { mapId: 'verdant', group: scene }, isVehicleMaterial } };
   registryLedger('garage-boot-gc', 0);
-  shaders.set(pool, {}); shaders.set(impostor, {});
+  shaders.set(pool, {}); shaders.set(impostor, {}); shaders.set(track, {});
   registryLedger('start', 1);
   window.__DEBUG.world = { mapId: 'desert', group: scene };
   registryLedger('start', 2);
   const reading = registryLedger('garage-after-gc', 2);
   delete globalThis.window;
-  return { reading, keep: [pool, impostor] };
+  return { reading, keep: [pool, impostor, track] };
 };
 const v3 = ledger(false).reading;
 assert.equal(v3.staleTotal, 1, 'ledger: the untagged undrawn impostor of the released world is stale');
 assert.deepEqual(v3.pooled, { 'fx-rubble-body': 1 }, 'ledger: the pool-tagged material is counted per pool, not stale');
 assert.equal(ledger(true).reading.staleTotal, 0, 'ledger: tagged, the same entry is pooled');
+// the v3 scope (Main 2026-11-27): a vehicle-registered entry is listed apart in full, never judged; control: a page
+// without the vehicle check counts it as a world entry
+assert.deepEqual(v3.vehicle, { 'b1:verdant': { count: 1, kinds: { 'MeshStandardMaterial:cot:track-steel': 1 } } }, 'ledger: the vehicle entry is listed by kind');
+assert.equal(v3.vehicleTotal, 1, 'ledger: the vehicle count');
+const unscoped = ledger(true, false).reading;
+assert.equal(unscoped.staleTotal, 1, 'ledger control: without the page\'s vehicle check the vehicle entry is stale');
+assert.match(registryV3([{ point: 'garage-after-gc', battle: 2, registry: unscoped }]).note, /counted as world/, 'v3: an unscoped page is said');
 const v3Sample = (r) => ({ point: 'garage-after-gc', battle: 2, registry: r });
 assert.equal(registryV3([v3Sample(v3)]).pass, false, 'v3: an untagged stale entry fails');
 assert.equal(registryV3([v3Sample({ staleTotal: 0, stale: {}, pooledTotal: 3, pooled: { 'fx-rubble-body': 3 } })]).pass, true, 'v3: pool-tagged entries alone pass');

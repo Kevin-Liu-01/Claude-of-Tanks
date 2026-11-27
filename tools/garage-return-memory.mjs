@@ -14,7 +14,8 @@
 //   - each battle's world held weakly (collected, current or alive), and the CSM shader registry: its size, its undrawn
 //     entries, and (the registry ledger, Main 2026-11-27) the entries each battle's entry added that outlive that
 //     battle's released world (registry staleTotal: 0 when no registration outlives its world). A page-lifetime pool's
-//     materials (userData.cotPagePool) are counted per pool, never as stale; the "registry v3" line judges it.
+//     materials (userData.cotPagePool) are counted per pool and a vehicle registration's (__DEBUG isVehicleMaterial)
+//     listed apart in full, neither as stale; the "registry v3" line judges the world-owned rest.
 // Opt-in censuses: --part-census (each battle's world group, ground occlusion, terrain and crater mesh held weakly; the
 // property paths from window to an alive one), --buffer-census (ArrayBuffers >= 256 KB and canvases by creation site and
 // battle), --entry-trace (footprint and resident worlds through each entry).
@@ -311,10 +312,16 @@ export function registryLedger(point, battle) {
   collect(D?.scene);
   collect(D?.world?.group);
   const current = D?.world?.mapId ?? null;
+  // (v3 scope, Main 2026-11-27) world-owned entries only: a material holding a vehicle registration (__DEBUG
+  // isVehicleMaterial, vehicles/materials.ts) is listed apart, every kind, never cut (the roster-growth card's lead)
+  const isVehicle = typeof D?.isVehicleMaterial === 'function' ? D.isVehicleMaterial : null;
+  const kindOf = (m) => `${m.type}:${m.name || (typeof m.customProgramCacheKey === 'function' ? String(m.customProgramCacheKey()).slice(0, 40) : '')}`;
   const stale = {};
   const pooled = {};
+  const vehicle = {};
   let staleTotal = 0;
   let pooledTotal = 0;
+  let vehicleTotal = 0;
   for (const entry of L.entries) {
     if (entry.battle >= battle || entry.map === current) continue;
     const kinds = {};
@@ -326,14 +333,21 @@ export function registryLedger(point, battle) {
       // apart: not stale, but printed per pool so a pool that grows with the maps seen still shows
       const pool = m.userData?.cotPagePool;
       if (pool) { pooled[pool] = (pooled[pool] ?? 0) + 1; pooledTotal++; continue; }
+      if (isVehicle?.(m)) {
+        const key = `b${entry.battle}:${entry.map}`;
+        const v = (vehicle[key] ??= { count: 0, kinds: {} });
+        v.count++; vehicleTotal++;
+        v.kinds[kindOf(m)] = (v.kinds[kindOf(m)] ?? 0) + 1;
+        continue;
+      }
       n++;
-      const k = `${m.type}:${m.name || (typeof m.customProgramCacheKey === 'function' ? String(m.customProgramCacheKey()).slice(0, 40) : '')}`;
+      const k = kindOf(m);
       kinds[k] = (kinds[k] ?? 0) + 1;
     }
-    stale[`b${entry.battle}:${entry.map}`] = { count: n, kinds: Object.fromEntries(Object.entries(kinds).sort((a, b) => b[1] - a[1]).slice(0, 6)) };
+    stale[`b${entry.battle}:${entry.map}`] = { count: n, kinds: Object.fromEntries(Object.entries(kinds).sort((a, b) => b[1] - a[1])) };
     staleTotal += n;
   }
-  return { staleTotal, stale, pooledTotal, pooled };
+  return { staleTotal, stale, pooledTotal, pooled, vehicleScope: Boolean(isVehicle), vehicleTotal, vehicle };
 }
 
 /**
@@ -342,8 +356,10 @@ export function registryLedger(point, battle) {
  */
 export function registryV3(samples) {
   const rows = samples.filter((s) => s.point === 'garage-after-gc' && s.registry)
-    .map((s) => ({ battle: s.battle, staleTotal: s.registry.staleTotal, pooled: s.registry.pooled ?? {}, stale: s.registry.stale }));
+    .map((s) => ({ battle: s.battle, staleTotal: s.registry.staleTotal, pooled: s.registry.pooled ?? {}, vehicleTotal: s.registry.vehicleTotal ?? null, stale: s.registry.stale }));
   if (!rows.length) return { pass: null, note: 'no registry readings', rows };
+  // a page without the vehicle check (a dist before it) counts vehicle entries as world ones: judged, but said
+  if (samples.some((s) => s.registry && s.registry.vehicleScope === false)) return { pass: rows.every((r) => r.staleTotal === 0), note: 'no isVehicleMaterial on the page: vehicle entries counted as world', rows };
   return { pass: rows.every((r) => r.staleTotal === 0), rows };
 }
 
@@ -647,7 +663,11 @@ export async function runGarageReturnMemory(o) {
         + `prog ${s.programs}; workers ${s.workerMb} MB (${s.workers.length}); canvas ${JSON.stringify(s.gl?.canvas)}; gl ${JSON.stringify(s.gl?.live)}; worlds ${s.worlds.map((w) => `${w.battle}:${w.state}`).join(' ')}; cache ${JSON.stringify(s.worldCacheIds)}; csm ${s.csmShaders} orphans ${s.csmOrphans} ${JSON.stringify(s.csmOrphanKinds ?? {})}`);
       if (infra) for (const [proc, rows] of Object.entries(infra)) log(`  infra ${proc}: ${JSON.stringify(rows).slice(0, 1200)}`);
       if (point !== 'start') log(`  workers ${JSON.stringify(workers)}`);
-      if (s.registry && point !== 'start') log(`  registry ${battle}: ${JSON.stringify(s.registry).slice(0, 1500)}`);
+      if (s.registry && point !== 'start') {
+        const { vehicle, ...world } = s.registry;
+        log(`  registry ${battle}: ${JSON.stringify(world)}`);
+        if (vehicle) log(`  registry ${battle} vehicle (not judged; every kind): ${JSON.stringify(vehicle)}`);
+      }
       if (s.registry && point === 'start') log(`  registry ${battle}: entry added ${s.registry.entryAdded}`);
       if (o.partCensus && point === 'garage-after-gc') {
         s.partCensus = await page.evaluate(partCensus).catch((e) => ({ error: String(e).slice(0, 200) }));
@@ -836,7 +856,7 @@ export async function runGarageReturnMemory(o) {
       if (o.snapshots.includes(battle)) report.snapshots = [...(report.snapshots ?? []), await snapshot(battle)];
     }
     report.registryV3 = registryV3(report.samples);
-    log(`registry v3 ${JSON.stringify({ pass: report.registryV3.pass, rows: report.registryV3.rows.map(({ battle, staleTotal, pooled }) => ({ battle, staleTotal, pooled })) })}`);
+    log(`registry v3 ${JSON.stringify({ pass: report.registryV3.pass, note: report.registryV3.note, rows: report.registryV3.rows.map(({ battle, staleTotal, pooled, vehicleTotal }) => ({ battle, staleTotal, pooled, vehicleTotal })) })}`);
     report.verdict = judgement(o, report.samples, report.ruinRule ?? null);
     if (report.verdict.diagnostic) { log(`verdict: ${report.verdict.note}`); return report; }
     const base0 = report.samples[0];
