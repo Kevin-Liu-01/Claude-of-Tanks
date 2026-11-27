@@ -449,7 +449,7 @@
       }
     ]
   },
-  "geometryHash": "3fd1619d",
+  "geometryHash": "486539ce",
   "metadataHash": "a857074d",
   "presentationAnchor": {
     "xM": 0.007,
@@ -506,39 +506,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26320,
-      "sha256": "da991721f46cc961caa41c41beb68a0f84f3dc8553c8f066fa1917078fc27ccf"
+      "bytes": 26352,
+      "sha256": "0dd40653dba0a2a2f787eae184e6b5d0ff9e6192816c1097f5734a91f05e04a5"
     },
     "modulesSide": {
       "file": "chieftain_mk10_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20090,
-      "sha256": "177d768354565e161ce82ce50aacb58b54e73593ef8d05b17129e504ba584b9e"
+      "bytes": 20114,
+      "sha256": "9f635201b604bbe12bb197bf08833d2153dba60cfecd23f112a0cf2d00cafcf6"
     },
     "crewSide": {
       "file": "chieftain_mk10_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17508,
-      "sha256": "a34179cf75c2848688ca0361392c9afbecd5f643b605979dea775d6f6e637563"
+      "bytes": 17486,
+      "sha256": "89bd4cb47359f2d01a05a1ff80384ab5cfbf17a21026d175864f64b6370b5484"
     },
     "angle": {
       "file": "chieftain_mk10_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23354,
-      "sha256": "0c10cd94c7705eba782907b2d8e4d42d0ea2ea5217693d886f2dae3261674eee",
+      "bytes": 23344,
+      "sha256": "daf4ee1c75bb9118ece535721354afe0794ca5211d1a585b27ca442396366f73",
       "thumbnail": {
         "file": "thumbs/chieftain_mk10_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 9920,
-        "sha256": "24e170cdd0b534e5ba2e61a0f0408126626e1caa057929ff889b14d8ebeb5898",
+        "sha256": "0606a1ef17ffce5ca559f8bb6aa59c6c69ffd2b6472632f650ffa7828a4b7feb",
         "frame": [16,104,225,250]
       }
     },
@@ -555,8 +555,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 7918,
-      "sha256": "7a1e26203cd57a916b2cf071e659d4ea9b25af815fba1e5e00dd6268a141cbbe"
+      "bytes": 7906,
+      "sha256": "38abc8ba5f4d22585e9a0c0595d39a4d5682527f67d57e9daf4267dd813f4b2d"
     },
     "topSilhouette": {
       "file": "chieftain_mk10_top_silhouette.png",
@@ -571,8 +571,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4222,
-      "sha256": "5346d89433b71bfd1b6f74a9f8b28db95560631cb33b5073064dc983f9b28c1c"
+      "bytes": 4220,
+      "sha256": "0fdbe816f990384b522802c4d1e4d752db3a5927c1379444ef12ed854e7abd28"
     },
     "markings": {
       "file": "chieftain_mk10_markings.png",
