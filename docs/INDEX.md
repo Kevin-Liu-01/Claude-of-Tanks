@@ -68,6 +68,7 @@ Update these when behavior changes. Paths are relative to `docs/`.
 | Document | Scope |
 | --- | --- |
 | [GAME-MODES.md](GAME-MODES.md) | Shared deterministic objectives, respawns, scores, waves, loot, bot targets and presentation |
+| [REPLAY.md](REPLAY.md) | Solo battle replays: the input recording, the store, the viewer, the timeline and the MP4 export |
 | [GUNNERY-CAMERA-SPEC.md](GUNNERY-CAMERA-SPEC.md) | Camera, requested aim point, gun solution, scope and reticle contract |
 | [VEHICLE-CONTROLS.md](VEHICLE-CONTROLS.md) | The battle HUD control row, shortcuts and fitted-equipment controls |
 | [BOT-TACTICS.md](BOT-TACTICS.md) | Current bot capabilities and the scope of their tests |

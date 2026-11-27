@@ -491,6 +491,19 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
   .docs-reels .battle-reel-grid .cot-c-picker__grid{grid-template-columns:minmax(0,1fr);padding-bottom:var(--s5);
     mask-image:linear-gradient(180deg,var(--ink-1) calc(100% - var(--s5)),transparent)}
 }
+/* the feature videos (featureVideos.ts): the reels' stage, one card a clip, as many across as fit at 340 px; each film
+   shows its poster in its own 16:9 box until it is played (docs.ts mountFeatureVideos) */
+.docs-videos{display:grid;gap:var(--s4)}
+.docs-videos-head{display:grid;gap:var(--s2)}
+.docs-videos-head h2{margin:0;font:600 var(--fs-28)/1.1 var(--font-display);color:var(--ink-1)}
+.docs-videos-head p{margin:0;max-width:64ch;color:var(--ink-3)}
+.docs-video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:var(--s4)}
+.docs-video{display:grid;grid-template-rows:auto 1fr;margin:0;background:var(--surface-raised);box-shadow:var(--e2-flush)}
+.docs-video video{display:block;width:100%;height:auto;aspect-ratio:16/9;background:var(--surface-scene);object-fit:cover;object-position:50% 50%}
+.docs-video figcaption{display:grid;align-content:start;gap:6px;padding:var(--s3);border-top:1px solid var(--line)}
+.docs-video figcaption strong{color:var(--ink-1);font-size:max(var(--fs-floor-12),var(--fs-15))}
+.docs-video figcaption>span{color:var(--ink-2);font-size:max(var(--fs-floor-12),var(--fs-14));line-height:1.45}
+.docs-video figcaption small{color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11))/1.4 var(--mono);letter-spacing:normal}
 .docs-more{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:var(--s3)}
 .docs-more>.aside-card{margin:0}
 /* (gauntlet 250) a short landscape screen keeps the chapter title clear of the picture's caption; a zh label breaks between

@@ -1,0 +1,65 @@
+{
+  "host": "public.blob.vercel-storage.com",
+  "items": {
+    "feature-fleet": {
+      "file": "V1-fleet-45s-720p.mp4",
+      "pathname": "media/feature-fleet-4adb8cfb3eacdd46.mp4",
+      "url": null,
+      "bytes": 3091921,
+      "sha256": "4adb8cfb3eacdd46b8eeacf9477d54bca84236f061fe56e6dcb3fef4f7b3476b",
+      "type": "video/mp4",
+      "poster": "/media/feature-videos-r1/feature-fleet.webp",
+      "width": 1280,
+      "height": 720,
+      "durationS": 44.6
+    },
+    "feature-performance": {
+      "file": "V2-perf-39s-720p.mp4",
+      "pathname": "media/feature-performance-57dd97879c5e47c1.mp4",
+      "url": null,
+      "bytes": 10952978,
+      "sha256": "57dd97879c5e47c167bb8a57439cb3b3d0462c58197a621cce94eef43d155600",
+      "type": "video/mp4",
+      "poster": "/media/feature-videos-r1/feature-performance.webp",
+      "width": 1280,
+      "height": 720,
+      "durationS": 38.6
+    },
+    "feature-armour": {
+      "file": "V3-armor-40s-720p.mp4",
+      "pathname": "media/feature-armour-a9e164641aef9ce1.mp4",
+      "url": null,
+      "bytes": 7946961,
+      "sha256": "a9e164641aef9ce1e8ae63e492a7c6578d7958857ef297abf8ff683607bd22e5",
+      "type": "video/mp4",
+      "poster": "/media/feature-videos-r1/feature-armour.webp",
+      "width": 1280,
+      "height": 720,
+      "durationS": 40.4
+    },
+    "feature-release-277": {
+      "file": "V5-release-35s-720p.mp4",
+      "pathname": "media/feature-release-277-6c24b50fb8e34175.mp4",
+      "url": null,
+      "bytes": 5648790,
+      "sha256": "6c24b50fb8e341750d7cca789ff06707251bcb26bfcd5c3709cbaf89edb17491",
+      "type": "video/mp4",
+      "poster": "/media/feature-videos-r1/feature-release-277.webp",
+      "width": 1280,
+      "height": 720,
+      "durationS": 33.7
+    },
+    "feature-host-migration": {
+      "file": "V6-hostmig-27s-720p.mp4",
+      "pathname": "media/feature-host-migration-0b43ca90c26c8c98.mp4",
+      "url": null,
+      "bytes": 4196515,
+      "sha256": "0b43ca90c26c8c98abc755008267de82ba4dda705175af0429086f82cf9a0fae",
+      "type": "video/mp4",
+      "poster": "/media/feature-videos-r1/feature-host-migration.webp",
+      "width": 1280,
+      "height": 720,
+      "durationS": 26.6
+    }
+  }
+}

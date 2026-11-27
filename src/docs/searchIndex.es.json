@@ -39,13 +39,13 @@
   "href": "/docs/start#next",
   "title": "Siguiente",
   "chapter": "Tu primera batalla",
-  "text": "Repetir el tutorial en el juego La visita guiada al garaje y los pasos de la primera batalla, desde el principio. Controles y modo espectador Todas las teclas, la distribución de los controles táctiles y las tres vistas del modo espectador. Modos de juego El objetivo, el tiempo y las reglas de cada modo, representados en el mapa."
+  "text": "Repetir el tutorial en el juego La visita guiada al garaje y los pasos de la primera batalla, desde el principio. Controles y modo espectador Todas las teclas, la distribución de los controles táctiles, tu móvil como mando, el modo espectador, las repeticiones y el modo foto. Modos de juego El objetivo, el tiempo y las reglas de cada modo, representados en el mapa, y cómo solicitar apoyo aéreo."
  },
  {
   "href": "/docs/controls",
   "title": "Cada tecla, cada vista",
   "chapter": "Controles y modo espectador",
-  "text": "Teclado, ratón, mando y controles táctiles; después, cómo usar el dron, seguir tanques y tomar el control en el modo espectador."
+  "text": "Teclado, ratón, mando, controles táctiles y tu móvil; después, el modo espectador, las repeticiones y el modo foto."
  },
  {
   "href": "/docs/controls#keys",
@@ -66,10 +66,28 @@
   "text": "En teléfonos y tabletas, la batalla muestra controles específicos. Conduce con la palanca usando el pulgar izquierdo. Desliza el dedo por cualquier otra zona para apuntar. Toca Disparar para disparar. Mantén pulsado y arrastra para apuntar; suelta para disparar o mantén pulsado más tiempo para seguir disparando. Arrastra hasta la zona de cancelación para no disparar. El botón Mira activa la mira del artillero. Pellizca para cambiar el nivel de aumento de la mira. Puntería automática fija como blanco al enemigo más cercano a la retícula. Cohete hace saltar el tanque o lo endereza en los modos que permiten saltar."
  },
  {
+  "href": "/docs/controls#phone",
+  "title": "Tu móvil como mando",
+  "chapter": "Controles y modo espectador",
+  "text": "Un móvil puede manejar tu tanque como un mando. La batalla sigue ejecutándose en el ordenador; el móvil solo envía tus controles. 1 En el ordenador, abre Ajustes › Controles, busca Mando con el móvil y pulsa Conectar móvil. 2 Escanea el código QR con la cámara del móvil o escribe en él el código de 6 caracteres. Cada código sirve durante 2 minutos. 3 Sujeta el móvil en horizontal. Bajo el pulgar izquierdo aparece una palanca allí donde toques, y con ella conduces el tanque. El lado derecho sirve para apuntar y disparar, con Mira y Zoom al lado. La munición está en el centro y los demás botones del tanque, en los bordes. El móvil y el ordenador se conectan directamente. Si no pueden, una retransmisión más lenta envía tus controles durante un tiempo limitado. Conecta ambos a la misma red wifi para evitarlo. Si el móvil deja de responder un momento, el tanque suelta todos los controles, así que nunca se va solo. Una vinculación dura hasta 6 horas."
+ },
+ {
   "href": "/docs/controls#watch",
   "title": "Modo espectador",
   "chapter": "Controles y modo espectador",
   "text": "Observa una batalla entre bots desde el garaje: Espectador está junto a Desplegar. Todos los tanques están controlados por bots, todos son visibles y no se graba nada. Está disponible en 14 modos. Dron Vuela libremente sobre la batalla. Empiezas a 70 m de altura y a 14 m/s; la rueda cambia entre los niveles de velocidad (4 / 8 / 14 / 24 / 40 / 64 m/s) y Mayús aplica un multiplicador de ×2.5. W A S D Volar ESPACIO C Ascender y descender L-SHIFT Acelerar WHEEL ↑ WHEEL ↓ Cambiar el nivel de velocidad Seguir un tanque Sigue cualquier tanque desde atrás o usa su mira del artillero con ×2 / ×4 / ×8. F Seguir el tanque situado en el centro de la vista Q E Tanque siguiente y anterior L-SHIFT Mira del artillero V Volver al dron Tomar el control Toma el control del tanque que sigues y combate tú mismo. Si lo destruyen, volverás al dron tras 3.5 s. ENTER Tomar o devolver el control"
+ },
+ {
+  "href": "/docs/controls#replays",
+  "title": "Repeticiones",
+  "chapter": "Controles y modo espectador",
+  "text": "Cada batalla en solitario se graba mientras juegas. Cuando termina, pulsa Ver repetición o Descargar repetición en la pantalla final. Más tarde, la encontrarás en la pestaña Grabar › Repeticiones del garaje. Este navegador guarda tus últimas 20 batallas; descarga una para conservarla más tiempo. Una repetición guarda tus controles, y el juego vuelve a reproducir la batalla a partir de ellos. Así el archivo es pequeño, pero una repetición solo se abre en la versión del juego que la grabó. Las batallas en línea, en modo espectador y de juego local no se graban. Para abrir un archivo de repetición, usa Abrir archivo de repetición en la pestaña Repeticiones o suelta el archivo sobre el garaje. ESPACIO Reproducir o pausar Retroceder o avanzar 5 s , . Retroceder o avanzar un fotograma [ ] Evento anterior o siguiente 1 – 5 Velocidad: ×0.25 / ×0.5 / ×1 / ×2 / ×4 ESC Salir de la repetición Las cámaras son las del modo espectador: pilota el dron o sigue cualquier tanque y usa su mira. Arrastra la línea de tiempo para desplazarte por ella. Haz clic en una marca para saltar a 3 s antes de ese momento, siguiendo al tanque que lo provocó. En una pantalla táctil, arrastra la línea de tiempo y toca un tanque para seguirlo. Exportar vídeo convierte una repetición en un archivo MP4 a 720p o 1080p y 30 o 60 fotogramas por segundo. Exporta la batalla completa o empieza desde el momento que elijas, con o sin el HUD. El vídeo no tiene sonido, y el botón solo funciona en navegadores que pueden crear archivos MP4, como Chrome y Edge."
+ },
+ {
+  "href": "/docs/controls#photo",
+  "title": "Modo foto",
+  "chapter": "Controles y modo espectador",
+  "text": "En una batalla en solitario, pulsa P o toca Foto en los ajustes de la batalla para pausar y encuadrar tu tanque. Elige un encuadre (Protagonista, Frontal, Lateral, Trasero, Superior), un objetivo (18 / 24 / 35 / 50 / 85 mm) y una inclinación, y luego pulsa Guardar PNG. La imagen se guarda al doble del tamaño de tu pantalla. W A S D Girar alrededor del tanque R F Acercar o alejar Q E Girar la cámara sobre su eje ESC Salir del modo foto (P también funciona) ESC te devuelve a donde abriste el modo foto: a la batalla en marcha si usaste P , o a los ajustes en pausa si tocaste Foto. Con un ratón, arrastra para girar alrededor, arrastra con Mayús o con el botón derecho para desplazar la vista y usa la rueda para hacer zoom. En una pantalla táctil, pellizca para hacer zoom y arrastra con dos dedos para desplazar la vista. El modo foto funciona en batallas en solitario y repeticiones, no en batallas en línea ni de juego local."
  },
  {
   "href": "/docs/controls#hud",
@@ -81,7 +99,7 @@
   "href": "/docs/modes",
   "title": "Todas las formas de combatir",
   "chapter": "Modos de juego",
-  "text": "Todos los modos y sus reglas, extraídos del propio juego. Elige uno en Desplegar."
+  "text": "Todos los modos y sus reglas, extraídos del propio juego, y cómo funciona el apoyo aéreo. Elige un modo en Desplegar."
  },
  {
   "href": "/docs/modes#glance",
@@ -112,6 +130,36 @@
   "title": "Práctica",
   "chapter": "Modos de juego",
   "text": "Proving Ground Lleva cualquier tanque a un campo de tiro con distancias medidas: los cascos dispuestos como blancos a distancias y ángulos fijos muestran todos los posibles resultados de penetración. Sin enemigos, sin límite de tiempo y sin que se registre nada. Tiempo – Bandos 5 carriles Reaparición 3 s Todos los tanques visibles proyectiles ilimitados no se registra nada"
+ },
+ {
+  "href": "/docs/modes#air",
+  "title": "Solicitar apoyo aéreo",
+  "chapter": "Modos de juego",
+  "text": "En Air Support y Combined Arms, cada tripulación gana puntos de apoyo en combate y los gasta en ataques aéreos. Los bots también los ganan y solicitan ataques. 1 Pulsa X para levantar los prismáticos, o toca Marcar en una pantalla táctil o en el mando con el móvil. Aparece una retícula en el suelo. 2 Elige un ataque con 1 – 6 o toca su casilla. Cada casilla muestra su precio y se oscurece mientras se recarga. 3 Coloca la retícula donde quieras el ataque, a un máximo de 700 m de tu tanque. El indicador muestra la distancia y el rumbo. 4 Pulsa BIR o toca SOLICITAR. Cuando el juego acepta el ataque, los prismáticos se bajan solos. Para bajarlos sin solicitar nada, pulsa BDR o ESC . El mando no tiene botón para Vista de ataque hasta que le asignes uno en Ajustes. El juego rechaza la solicitud y te indica el motivo si no tienes puntos suficientes, el ataque aún se está recargando, la marca está fuera de alcance, tu bando ya tiene 2 ataques en curso o su AC-130 ya está en vuelo."
+ },
+ {
+  "href": "/docs/modes#air-points",
+  "title": "Cómo ganar puntos de apoyo",
+  "chapter": "Modos de juego",
+  "text": "20 puntos por cada 100 puntos de vida de daño que tus armas causan al enemigo. 100 puntos por una baja, o 50 si la consigue tu ataque aéreo. 80 puntos para cada tripulación que esté dentro de un sector cuando tu bando lo toma. 15 puntos por detectar primero a un enemigo, como máximo una vez por enemigo cada 30 s. 120 puntos por derribar una aeronave enemiga. 1 punto cada 2 s mientras sigas con vida. Empiezas con 120 puntos y puedes acumular hasta 1000."
+ },
+ {
+  "href": "/docs/modes#air-strikes",
+  "title": "Los seis ataques",
+  "chapter": "Modos de juego",
+  "text": "Cada bando puede tener 2 ataques en curso a la vez, y 1 AC-130.\nAtaque · Coste · Recarga · Aviso · PV de la aeronave · Qué hace · 1 Pasada de reconocimiento · 120 pts · 40 s · 3 s · 400 · Un avión a reacción sobrevuela la marca siguiendo una línea de 600 m. Todos los enemigos a menos de 160 m de su trayectoria quedan detectados durante 12 s. · 2 Artillería · 300 pts · 60 s · 6 s · – · 10 proyectiles de 155 mm caen a menos de 35 m de la marca durante 5 s. Los cañones están fuera del mapa, así que nada puede detenerlo. · 3 Pasada de ametrallamiento · 400 pts · 75 s · 5 s · 600 · Un A-10 llega desde detrás de ti y dispara 60 proyectiles de 30 mm a lo largo de un corredor de 120 m hacia la marca, sobre el blindaje superior de los tanques enemigos que haya en él. · 4 Bomba de precisión · 450 pts · 90 s · 7 s · 600 · Un avión a reacción lanza una bomba guiada por láser. Cae a menos de 8 m de la marca, con una explosión de 22 m. · 5 Ataque con misiles · 550 pts · 100 s · 6 s · 500 · Un avión a reacción dispara 4 misiles Maverick, cada uno contra un enemigo detectado a menos de 45 m de la marca, o contra la marca si no hay ninguno. · 6 AC-130 en órbita · 800 pts · 150 s · 8 s · 1400 · Un AC-130 sobrevuela en círculos la marca durante 30 s y dispara su cañón y su obús contra todos los enemigos detectados a menos de 140 m."
+ },
+ {
+  "href": "/docs/modes#air-warning",
+  "title": "Cuando un ataque viene hacia ti",
+  "chapter": "Modos de juego",
+  "text": "El bando atacado recibe un aviso en cuanto se solicita un ataque. Aparece un aviso con una cuenta atrás, y la zona del ataque se muestra en el suelo y en el minimapa. No cae nada hasta que termina la cuenta atrás, que dura entre 3 y 8 s según el ataque. Aprovecha ese tiempo para salir de la zona."
+ },
+ {
+  "href": "/docs/modes#air-down",
+  "title": "Derribar aeronaves",
+  "chapter": "Modos de juego",
+  "text": "Todos los ataques salvo la artillería los realiza una aeronave, y cualquier aeronave puede ser derribada. Un proyectil que alcanza el fuselaje la impacta, sin importar quién lo haya disparado. Las ametralladoras de techo que disparan a los drones también disparan a las aeronaves enemigas, hasta 1.5 veces su alcance contra drones. Un dron FPV que choca contra una aeronave causa 700 de daño. Eso derriba cualquier avión a reacción; el AC-130 necesita 2. Una aeronave derribada termina su ataque y cae. Donde cae, explota con una onda de 34 a 40 m y deja un cráter. Sus restos permanecen 75 s como cobertura que detiene tanques y proyectiles."
  },
  {
   "href": "/docs/tanks",
@@ -189,7 +237,7 @@
   "href": "/docs/combat#modules",
   "title": "Módulos y tripulación",
   "chapter": "Blindaje, angulación y detección",
-  "text": "Un impacto que atraviesa la plancha puede dañar lo que hay detrás. Los módulos averiados se reparan solos tras 10 s. Un compartimento de munición dañado aumenta el tiempo de recarga a ×1.5; si se destruye, el tanque explota. Un motor dañado se incendia el 15 % de las veces; el incendio dura 10 ciclos y daña un 0.5 % del casco en cada uno. Puede apagarse solo, con una probabilidad del 12 % por ciclo. Un proyectil que penetra alcanza a un tripulante el 33 % de las veces (10 % en el caso del daño de área de la munición HE); perder a toda la tripulación supone perder el tanque. Las ópticas dañadas reducen el alcance de visión un 50 %. Una radio operativa comparte lo que ves en un radio de 600 m; una dañada, en un radio de 300 m. La cámara de muerte Cuando tu tanque queda destruido, la cámara de muerte lo muestra transparente y reproduce el último disparo: la trayectoria del proyectil, cada módulo y tripulante alcanzado, el daño y quién disparó.\nLeclerc XLR: módulos y tripulación\nMódulo · Puntos de vida · Probabilidad de recibir un impacto · Cañón · 150 · 33 % · Anillo de la torreta · 120 · 45 % · Afuste del cañón · 120 · 45 % · Cargador automático · 125 · 36 % · Alimentación del arma · 110 · 38 % · Ametralladora de techo · 80 · 65 % · Bastidor de misiles · 120 · 30 % · Motor · 160 · 45 % · Transmisión · 140 · 45 % · Depósito de combustible · 120 · 45 % · Compartimento de munición · 150 · 27 % · Radio · 90 · 45 % · Ópticas · 80 · 45 % · Oruga izq. · 100 · 100 % · Oruga der. · 100 · 100 %"
+  "text": "Un impacto que atraviesa la plancha puede dañar lo que hay detrás. Los módulos averiados se reparan solos tras 10 s. Un compartimento de munición dañado aumenta el tiempo de recarga a ×1.5; si se destruye, el tanque explota. Una detonación de la munición arranca la torreta del casco. La torreta da vueltas y cae donde la lleve la física, y los proyectiles siguen impactando en sus planchas. Un motor dañado se incendia el 15 % de las veces; el incendio dura 10 ciclos y daña un 0.5 % del casco en cada uno. Puede apagarse solo, con una probabilidad del 12 % por ciclo. Un proyectil que penetra alcanza a un tripulante el 33 % de las veces (10 % en el caso del daño de área de la munición HE); perder a toda la tripulación supone perder el tanque. Las ópticas dañadas reducen el alcance de visión un 50 %. Una radio operativa comparte lo que ves en un radio de 600 m; una dañada, en un radio de 300 m. La cámara de muerte Cuando tu tanque queda destruido, la cámara de muerte lo muestra transparente y reproduce el último disparo: la trayectoria del proyectil, cada módulo y tripulante alcanzado, el daño y quién disparó.\nLeclerc XLR: módulos y tripulación\nMódulo · Puntos de vida · Probabilidad de recibir un impacto · Cañón · 150 · 33 % · Anillo de la torreta · 120 · 45 % · Afuste del cañón · 120 · 45 % · Cargador automático · 125 · 36 % · Alimentación del arma · 110 · 38 % · Ametralladora de techo · 80 · 65 % · Bastidor de misiles · 120 · 30 % · Motor · 160 · 45 % · Transmisión · 140 · 45 % · Depósito de combustible · 120 · 45 % · Compartimento de munición · 150 · 27 % · Radio · 90 · 45 % · Ópticas · 80 · 45 % · Oruga izq. · 100 · 100 % · Oruga der. · 100 · 100 %"
  },
  {
   "href": "/docs/combat#spotting",
@@ -237,7 +285,7 @@
   "href": "/docs/multiplayer",
   "title": "Juega en compañía",
   "chapter": "Multijugador",
-  "text": "Crea una sala, envía el código y combate junto a tus amigos o contra ellos."
+  "text": "Crea una sala, envía el código y combate junto a tus amigos o contra ellos, o comparte una pantalla usando los teléfonos como mandos."
  },
  {
   "href": "/docs/multiplayer#rooms",
@@ -274,6 +322,12 @@
   "title": "Juego limpio",
   "chapter": "Multijugador",
   "text": "El anfitrión determina cada impacto, recarga y resultado; los demás solo envían sus acciones de control. Solo recibes datos de los enemigos que tu equipo ha detectado: la posición de un tanque oculto nunca llega a tu navegador."
+ },
+ {
+  "href": "/docs/multiplayer#couch",
+  "title": "Juego local",
+  "chapter": "Multijugador",
+  "text": "Hasta 8 personas pueden jugar en una sola pantalla, cada una conduciendo un tanque desde su propio teléfono. El ordenador ejecuta la batalla, así que no hace falta sala ni enlace de invitación. 1 En el garaje, pulsa Juego local junto a Desplegar. La sala de espera muestra un código QR y un código. 2 Cada jugador escanea el código QR con su teléfono, o escribe el código, y ocupa una plaza numerada. 3 Elige Juntos (todos en un bando) o Equipos (las plazas se alternan entre los bandos), y Dividida (experimental) o Compartida para la pantalla. Después pulsa Iniciar. El juego local admite Batalla estándar, Capture the Flag, Zone Control y Endless Horde. En Endless Horde, todos juegan siempre en el mismo bando. La pantalla dividida da a cada plaza su propia vista y su propio HUD. La pantalla compartida mantiene todos los tanques vivos en una sola cámara. Cuando la pantalla no puede dividirse para todas las plazas con el HUD a tamaño completo, la sala de espera elige Compartida e indica cuántas plazas caben. En una batalla de juego local, solo los teléfonos controlan los tanques, no el teclado ni un mando. Las batallas de juego local no suman nada a tu Service Record y no se guardan como repeticiones."
  },
  {
   "href": "/docs/audio",

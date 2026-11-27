@@ -994,6 +994,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/films/restore.selftest.mjs',
     'tools/media-r5/fleet-media.selftest.mjs',
     'tools/media-r5/site-video-budget.selftest.mjs',
+    // docs-refresh-279: the site's large media lives on Vercel Blob: the manifest, no media bytes in the repository, the
+    // posters, the CSP, and the index's feature videos loading nothing before play
+    'tools/blob-media.selftest.mjs',
     // 2026-11-02 audit S5: site-loops writes each format whole or not at all, and resumes only from whole takes
     'tools/media-r5/site-loops-resume.selftest.mjs',
     // 2026-11-02 audit S4: the media lane's payback to the normal band, one rule for the lab and the finals
@@ -1516,6 +1519,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/gt-enforcement.selftest.mjs',
     'src/docs/docsIcons.selftest.mjs',
     'src/docs/docsSearch.selftest.mjs',
+    // docs-refresh-279: the index's feature videos, from the Blob manifest, loading nothing before play
+    'src/docs/featureVideos.selftest.mjs',
     'src/docs/topics.selftest.mjs',
     // 261: the Field Manual printed: one print block in the overrides layer, paper inks at 4.5:1, chrome off, page breaks
     'src/docs/docsPrint.selftest.mjs',

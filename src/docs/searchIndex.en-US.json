@@ -39,13 +39,13 @@
   "href": "/docs/start#next",
   "title": "Next",
   "chapter": "Your first battle",
-  "text": "Replay the tutorial in the game The Garage tour and the first-battle steps, from the start. Controls and Watch Every key, the touch layout and Watch mode's three views. Game modes Every mode's goal, clock and rules, drawn on the map."
+  "text": "Replay the tutorial in the game The Garage tour and the first-battle steps, from the start. Controls and Watch Every key, the touch layout, your phone as a controller, Watch mode, replays and photo mode. Game modes Every mode's goal, clock and rules, drawn on the map, and how to call in air support."
  },
  {
   "href": "/docs/controls",
   "title": "Every key, every view",
   "chapter": "Controls and Watch",
-  "text": "Keyboard, mouse, gamepad and touch, then Watch mode's drone, ride along and take control."
+  "text": "Keyboard, mouse, gamepad, touch and your phone, then Watch mode, replays and photo mode."
  },
  {
   "href": "/docs/controls#keys",
@@ -66,10 +66,28 @@
   "text": "On a phone or tablet the battle shows its own controls. Left thumb: the joystick drives. Swipe anywhere else to aim. Tap Fire to shoot. Hold and drag to aim, release to fire; hold longer to keep firing. Drag into the cancel zone to hold the shot. Scope enters the gunner's sight. Pinch to step the sight's zoom. Auto Aim locks onto the enemy nearest the reticle. Rocket jumps or rights the tank, in modes that have a jump."
  },
  {
+  "href": "/docs/controls#phone",
+  "title": "Your phone as a controller",
+  "chapter": "Controls and Watch",
+  "text": "A phone can drive your tank like a gamepad. The battle still runs on the computer; the phone only sends your controls. 1 On the computer, open Settings › Controls, find Phone Controller and press Connect Phone. 2 Scan the QR code with the phone's camera, or type the 6-character code on the phone. A code works for 2 minutes. 3 Hold the phone sideways. Under your left thumb, a stick appears wherever you touch and drives the tank. The right side aims and fires, with Scope and Zoom beside it. Shells sit in the middle, and the tank's other buttons line the edges. The phone and the computer connect directly. If they can't, a slower relay carries your controls for a limited time. Put both on the same Wi-Fi to avoid it. If the phone goes quiet for a moment, the tank lets go of every control, so it never drives off on its own. A pairing lasts up to 6 hours."
+ },
+ {
   "href": "/docs/controls#watch",
   "title": "Watch mode",
   "chapter": "Controls and Watch",
   "text": "Watch a bots' battle from the Garage: Watch sits beside Deploy. Every seat is a bot's, every tank is visible and nothing is recorded. It works in 14 modes. Drone Fly anywhere over the battle. You open 70 m up at 14 m/s; the wheel steps the speed (4 / 8 / 14 / 24 / 40 / 64 m/s) and Shift boosts ×2.5. W A S D Fly SPACE C Climb and descend L-SHIFT Boost WHEEL ↑ WHEEL ↓ Step the speed Ride along Follow any tank from behind, or look through its gunner's sight at ×2 / ×4 / ×8. F Ride the tank in the middle of the view Q E Next and previous tank L-SHIFT Gunner's sight V Back to the drone Take control Take over the tank you ride and fight it yourself. If it dies, the drone takes you back after 3.5 s. ENTER Take control, or hand it back"
+ },
+ {
+  "href": "/docs/controls#replays",
+  "title": "Replays",
+  "chapter": "Controls and Watch",
+  "text": "Every solo battle is recorded while you play. When it ends, press Watch replay or Download replay on the end screen. Later, find it under the Garage's Record › Replays tab. This browser keeps your last 20 battles; download one to keep it longer. A replay stores your controls, and the game plays the battle again from them. That keeps the file small, but a replay opens only in the version of the game that recorded it. Online, Watch and couch battles are not recorded. To open a replay file, use Open replay file in the Replays tab, or drop the file on the Garage. SPACE Play or pause Back or forward 5 s , . One frame back or forward [ ] Previous or next event 1 – 5 Speed: ×0.25 / ×0.5 / ×1 / ×2 / ×4 ESC Leave the replay The cameras are Watch mode's: fly the drone, or ride any tank and look through its sight. Drag the timeline to scrub. Click a mark on it to jump 3 s before that moment, riding the tank that caused it. On a touch screen, drag the timeline and tap a tank to ride it. Export video turns a replay into an MP4 file at 720p or 1080p and 30 or 60 frames a second. Export the whole battle or start from a moment you pick, with or without the HUD. The video has no sound, and the button works only in browsers that can make MP4 files, such as Chrome and Edge."
+ },
+ {
+  "href": "/docs/controls#photo",
+  "title": "Photo mode",
+  "chapter": "Controls and Watch",
+  "text": "In a solo battle, press P , or tap Photo in the battle's settings, to pause and frame your tank. Pick a framing (Hero, Front, Side, Rear, Top), a lens (18 / 24 / 35 / 50 / 85 mm) and a tilt, then Save PNG. The picture is saved at twice your screen's size. W A S D Orbit the tank R F Move in or out Q E Roll the camera ESC Leave photo mode (P works too) ESC takes you back to where you came from: the running battle if you pressed P , or the paused settings if you tapped Photo. With a mouse, drag to orbit, Shift-drag or right-drag to pan, and scroll to zoom. On a touch screen, pinch to zoom and drag two fingers to pan. Photo mode works in solo battles and replays, not in online or couch battles."
  },
  {
   "href": "/docs/controls#hud",
@@ -81,7 +99,7 @@
   "href": "/docs/modes",
   "title": "Every way to fight",
   "chapter": "Game modes",
-  "text": "Every mode and its rules, read from the game itself. Pick one in Deploy."
+  "text": "Every mode and its rules, read from the game itself, then how air support works. Pick a mode in Deploy."
  },
  {
   "href": "/docs/modes#glance",
@@ -112,6 +130,36 @@
   "title": "Practice",
   "chapter": "Game modes",
   "text": "Proving Ground Take any tank onto a measured range: target hulls at set ranges and angles show every penetration outcome. No enemies, no clock, nothing recorded. Clock – Sides 5 lanes Respawn 3 s All tanks visible unlimited rounds nothing recorded"
+ },
+ {
+  "href": "/docs/modes#air",
+  "title": "Calling air support",
+  "chapter": "Game modes",
+  "text": "In Air Support and Combined Arms, every crew earns support points in combat and spends them on strikes from the air. Bots earn and call them too. 1 Press X to raise the binoculars, or tap Spot on a touch screen or the phone controller. A reticle appears on the ground. 2 Pick a strike with 1 – 6 , or tap its slot. Each slot shows its price, and a shade covers it while it reloads. 3 Put the reticle where you want the strike, up to 700 m from your tank. The readout shows the range and bearing. 4 Press LMB or tap CALL. Once the game accepts the strike, the binoculars come down on their own. To lower them without calling, press RMB or ESC . A gamepad has no button for Strike view until you give it one in Settings. The game refuses a call and shows you why if you don't have the points, the strike is still reloading, the mark is out of range, your side already has 2 strikes under way, or its AC-130 is already up."
+ },
+ {
+  "href": "/docs/modes#air-points",
+  "title": "Earning support points",
+  "chapter": "Game modes",
+  "text": "20 points for every 100 hit points of damage your guns deal to the enemy. 100 points for a kill, or 50 when your strike makes the kill. 80 points to every crew inside a sector when your side takes it. 15 points for spotting an enemy first, at most once per enemy every 30 s. 120 points for shooting down an enemy aircraft. 1 point every 2 s while you are alive. You start with 120 points and can hold up to 1000."
+ },
+ {
+  "href": "/docs/modes#air-strikes",
+  "title": "The six strikes",
+  "chapter": "Game modes",
+  "text": "Each side can have 2 strikes under way at once, and 1 AC-130.\nStrike · Cost · Reload · Warning · Aircraft HP · What it does · 1 Recon pass · 120 pts · 40 s · 3 s · 400 · A jet flies a 600 m line over the mark. Every enemy within 160 m of its path is spotted for 12 s. · 2 Artillery · 300 pts · 60 s · 6 s · – · 10 rounds of 155 mm land within 35 m of the mark over 5 s. The guns are off the map, so nothing can stop it. · 3 Strafing run · 400 pts · 75 s · 5 s · 600 · An A-10 comes in from behind you and fires 60 rounds of 30 mm down a 120 m lane toward the mark, onto the decks of the enemy tanks in it. · 4 Precision bomb · 450 pts · 90 s · 7 s · 600 · A jet drops one laser-guided bomb. It lands within 8 m of the mark, with a 22 m blast. · 5 Missile run · 550 pts · 100 s · 6 s · 500 · A jet fires 4 Maverick missiles, each at a spotted enemy within 45 m of the mark, or at the mark if there is none. · 6 AC-130 orbit · 800 pts · 150 s · 8 s · 1400 · An AC-130 circles the mark for 30 s, firing its cannon and howitzer at every spotted enemy within 140 m."
+ },
+ {
+  "href": "/docs/modes#air-warning",
+  "title": "When a strike is coming at you",
+  "chapter": "Game modes",
+  "text": "The side under attack is warned the moment a strike is called. A warning with a countdown appears, and the strike's footprint shows on the ground and on the minimap. Nothing lands before the countdown ends, which takes 3 to 8 s depending on the strike. Use that time to drive out of the footprint."
+ },
+ {
+  "href": "/docs/modes#air-down",
+  "title": "Shooting aircraft down",
+  "chapter": "Game modes",
+  "text": "Every strike except artillery is flown by an aircraft, and any aircraft can be shot down. A shell that meets the airframe hits it, whoever fired it. Roof guns that fire at drones also fire at enemy aircraft, out to 1.5 times their range against drones. An FPV drone flown into an aircraft deals 700 damage. That downs any jet; the AC-130 takes 2. A downed aircraft ends its strike and falls. Where it lands it explodes with a 34 to 40 m blast and leaves a crater. Its wreck stays for 75 s as cover that stops tanks and shells."
  },
  {
   "href": "/docs/tanks",
@@ -189,7 +237,7 @@
   "href": "/docs/combat#modules",
   "title": "Modules and crew",
   "chapter": "Armor, angling and spotting",
-  "text": "A hit that goes through can break what is behind the plate. Broken modules repair themselves after 10 s. A damaged ammo rack slows the reload ×1.5; a destroyed one blows the tank up. A damaged engine catches fire 15 % of the time; a fire burns 10 ticks of 0.5 % hull and may go out by itself (12 % a tick). A shell that goes through hits a crew member 33 % of the time (10 % for HE splash); losing every crew member loses the tank. Damaged optics cut the view range by 50 %. A working radio shares what you see within 600 m; a damaged one within 300 m. The kill cam When you are knocked out, the kill cam replays the last shot through your tank, made see-through: the shell's path, each module and crew member it hit, the damage, and who fired.\nLeclerc XLR: modules and crew\nModule · Hit points · Chance to be hit · Gun · 150 · 33 % · Turret ring · 120 · 45 % · Gun mount · 120 · 45 % · Autoloader · 125 · 36 % · Weapon feed · 110 · 38 % · Roof gun · 80 · 65 % · Missile rack · 120 · 30 % · Engine · 160 · 45 % · Transmission · 140 · 45 % · Fuel tank · 120 · 45 % · Ammo rack · 150 · 27 % · Radio · 90 · 45 % · Optics · 80 · 45 % · Track L · 100 · 100 % · Track R · 100 · 100 %"
+  "text": "A hit that goes through can break what is behind the plate. Broken modules repair themselves after 10 s. A damaged ammo rack slows the reload ×1.5; a destroyed one blows the tank up. An ammunition cook-off throws the turret off the hull. It tumbles and lands where the physics takes it, and shells still hit its plates. A damaged engine catches fire 15 % of the time; a fire burns 10 ticks of 0.5 % hull and may go out by itself (12 % a tick). A shell that goes through hits a crew member 33 % of the time (10 % for HE splash); losing every crew member loses the tank. Damaged optics cut the view range by 50 %. A working radio shares what you see within 600 m; a damaged one within 300 m. The kill cam When you are knocked out, the kill cam replays the last shot through your tank, made see-through: the shell's path, each module and crew member it hit, the damage, and who fired.\nLeclerc XLR: modules and crew\nModule · Hit points · Chance to be hit · Gun · 150 · 33 % · Turret ring · 120 · 45 % · Gun mount · 120 · 45 % · Autoloader · 125 · 36 % · Weapon feed · 110 · 38 % · Roof gun · 80 · 65 % · Missile rack · 120 · 30 % · Engine · 160 · 45 % · Transmission · 140 · 45 % · Fuel tank · 120 · 45 % · Ammo rack · 150 · 27 % · Radio · 90 · 45 % · Optics · 80 · 45 % · Track L · 100 · 100 % · Track R · 100 · 100 %"
  },
  {
   "href": "/docs/combat#spotting",
@@ -237,7 +285,7 @@
   "href": "/docs/multiplayer",
   "title": "Play together",
   "chapter": "Multiplayer",
-  "text": "Start a room, send the code, and fight beside your friends or against them."
+  "text": "Start a room, send the code, and fight beside your friends or against them, or share one screen with phones as controllers."
  },
  {
   "href": "/docs/multiplayer#rooms",
@@ -274,6 +322,12 @@
   "title": "Fair play",
   "chapter": "Multiplayer",
   "text": "The host decides every hit, reload and result; the others send only their controls. You receive only the enemies your team has spotted: a hidden tank's position never reaches your browser."
+ },
+ {
+  "href": "/docs/multiplayer#couch",
+  "title": "Couch play",
+  "chapter": "Multiplayer",
+  "text": "Up to 8 people can play on one screen, each driving a tank from their own phone. The computer runs the battle, so no room or invite link is needed. 1 In the Garage, press Couch beside Deploy. The lobby shows a QR code and a code. 2 Each player scans the QR code with their phone, or types the code, and takes a numbered seat. 3 Pick Together (everyone on one side) or Teams (seats alternate between the sides), and Split (Experimental) or Shared for the screen. Then press Start. Couch play runs Standard Battle, Capture the Flag, Zone Control, and Endless Horde. Endless Horde is played together only. A split screen gives each seat its own view and HUD. A shared screen keeps every living tank in one camera. When the screen can't split for every seat at full HUD size, the lobby picks Shared and says how many seats fit. In a couch battle only the phones drive tanks, not the keyboard or a gamepad. Couch battles add nothing to your service record and aren't saved as replays."
  },
  {
   "href": "/docs/audio",
