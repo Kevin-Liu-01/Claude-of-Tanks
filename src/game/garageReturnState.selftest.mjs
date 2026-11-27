@@ -1088,14 +1088,19 @@ const battleStands = { pointerLock: true, playSurfaceHidden: true, loadingHold: 
 // keeps it through the restore; a press before the Retry's showGarageScreen loses it to that screen's exitPointerLock,
 // the page's own unlock, after which the announcement's request needs no activation. (f60d0aa200: refused after the
 // wait in both windows.)
+// (photo-from-pause-279) On a clock with Chrome's post-Esc window: the press comes after it, as a return's notice and
+// Retry do (a press inside it waits the window out: input.ts relockWaitMs, inputPointerLockFocus case 7).
 for (const during of ['restore', 'placement']) {
-  const page = createChromePointerLockPage();
+  const realNow = performance.now.bind(performance);
+  let skipMs = 0;
+  const page = createChromePointerLockPage({ now: () => realNow() + skipMs });
   const effects = battleStartEffects(page);
   try {
     page.input.requestLock(); // the battle the player left held the lock; their Esc dropped it (a user unlock)
     await tick();
     assert.equal(page.locked(), true);
     page.userEscape();
+    skipMs += 2000;
     let failRestore = true;
     let hold = null;
     let held = false;

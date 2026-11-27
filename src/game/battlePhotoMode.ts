@@ -17,6 +17,9 @@ interface BattlePhotoInput {
   setEnabled(enabled: boolean): void;
   releaseLock(owner: 'photo-mode'): void;
   requestLock(request?: { fromUi?: boolean }): void;
+  /** photo-from-pause-279: photo mode owns the free pointer while it is open, however it opened (from a locked battle
+   *  its release frees it; from the paused Settings, Settings' release already had). */
+  claimPointerUnlock(owner: 'photo-mode', holds: () => boolean): () => void;
 }
 
 export interface BattlePhotoDeps {
@@ -66,6 +69,7 @@ export function createBattlePhotoMode(deps: BattlePhotoDeps): BattlePhotoMode {
   const held = new Set<HeldKey>();
   let close: (() => void) | null = null;
   let opening = false;
+  deps.input.claimPointerUnlock('photo-mode', () => close !== null || opening);
 
   // the stage's gestures: one pointer orbits (with Shift or the right button it pans), two pinch and pan together
   const pointers = new Map<number, { x: number; y: number; button: number; shift: boolean }>();

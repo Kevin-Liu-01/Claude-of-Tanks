@@ -25,6 +25,14 @@
 // over another checkout's dist, never written: the fix-back's pre-fix control).
 // Desktop also runs the fix-back's steps (3b: P from a locked battle; 6: a plain Esc and a kill-cam's Esc, in a second
 // battle).
+// photo-from-pause-279 (Kevin 2026-11-26), at every size: 3c, P in the paused Settings draws photo mode alone (Settings
+// closed, the battle still) and its Esc draws the paused Settings again; 3d, Resume pressed at once after the pause (on a
+// desktop 300 ms after a fresh Esc, inside Chrome's 1250 ms relock refusal) closes Settings for good and runs the battle,
+// sampled every 100 ms for 2 s, and the pointer locks within 1.3 s of the Resume (Main 2026-11-27). The control is the build before it
+// (b6c100411f): P draws nothing over the paused Settings, and on a desktop the Resume's refused relock reopens it.
+// A desktop's Esc in 3c and 3d is the browser's (tools/chrome-esc-model.mjs): headless Chrome hands the key to the page
+// and refuses no relock, so a pressed Escape would pass the control too.
+import { browserEsc, chromeEscTimes, installChromeEscModel } from './chrome-esc-model.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
@@ -239,6 +247,102 @@ try {
       if (e1.settingsOpen || back.inside > 0) problem('photo key: one Esc leaves Settings drawn (not the running battle)');
       if (!(e1.timeS > e0.timeS)) problem(`photo key: the battle clock does not run after one Esc (${e0.timeS} -> ${e1.timeS})`);
       if (!relocked) problem('photo key: the pointer is not relocked after one Esc');
+    }
+
+    // 3c. (photo-from-pause-279) P in the paused Settings: photo mode alone, Settings closed and the battle still, photo
+    //     mode owning the free pointer; its Esc returns to the paused Settings, drawn again. Before, P did nothing there.
+    /** A fresh pause: on a desktop the browser's Esc on a locked battle (tools/chrome-esc-model.mjs: an unclaimed unlock,
+     *  no key event, and Chrome's 1250 ms relock refusal after it, which headless Chrome does neither of); on touch the
+     *  page shown again. */
+    const pauseByEsc = async () => {
+      if (size.touch) return (await page.evaluate(pauseAsPlayer, true)).how;
+      await installChromeEscModel(page);
+      if (!(await page.evaluate(() => !!document.pointerLockElement))) { await page.mouse.click(size.w / 2, size.h / 2); await wait(400); }
+      return browserEsc(page);
+    };
+    const settingsDrawn = () => page.evaluate(() => {
+      const panel = document.querySelector('.cot-settings.open .cot-set-panel');
+      if (!panel?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return false;
+      const r = panel.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !!hit && panel.contains(hit);
+    });
+    {
+      const how = await pauseByEsc();
+      await wait(700);
+      const paused = await page.evaluate(drawn, [SETTINGS, CONTROLS]);
+      const p0 = await page.evaluate(clock);
+      await page.keyboard.press('KeyP');
+      const shown = await page.waitForFunction(() => !!document.querySelector('.cot-photo-bar')?.checkVisibility(), { timeout: 20_000, polling: 100 })
+        .then(() => true, () => false);
+      await wait(1500);
+      const shot = await page.evaluate(drawn, [['#app canvas', '.cot-photo-bar', '.cot-photo-notices'], CONTROLS]);
+      const p1 = await page.evaluate(clock);
+      const owner = await page.evaluate(() => window.__DEBUG?.input?.pointerUnlockOwner?.() ?? null);
+      entry.steps.photoFromPause = { how, pausedResume: paused.controls.resume, shown, bar: shot.controls.photoBar,
+        resume: shot.controls.resume, settingsOpen: p1.settingsOpen, clock: [p0.timeS, p1.timeS], owner, outside: shot.outside.slice(0, 6) };
+      await still('4d-photo-from-pause');
+      if (!paused.controls.resume?.hit) problem('photo from pause: the paused Settings is not drawn before P');
+      if (!shot.controls.photoBar?.hit) problem('photo from pause: P in the paused Settings does not draw the photo bar');
+      if (shot.controls.resume || p1.settingsOpen) problem('photo from pause: Settings is still drawn under photo mode');
+      if (shot.outside.length) problem(`photo from pause: ${shot.outside.length} grid points drawn over the picture: ${[...new Set(shot.outside.map((o) => o.split(' ')[1]))].slice(0, 4).join(', ')}`);
+      if (p1.timeS !== p0.timeS) problem(`photo from pause: the battle clock ran (${p0.timeS} -> ${p1.timeS})`);
+      if (shown && owner !== 'photo-mode') problem(`photo from pause: photo mode does not own the free pointer (${owner})`);
+      await page.keyboard.press('Escape');
+      await wait(900);
+      const b0 = await page.evaluate(clock);
+      await wait(1000);
+      const b1 = await page.evaluate(clock);
+      const back = await page.evaluate(drawn, [SETTINGS, CONTROLS]);
+      entry.steps.photoFromPauseEsc = { resume: back.controls.resume, paused: back.controls.paused, bar: back.controls.photoBar,
+        clock: [b0.timeS, b1.timeS], outside: back.outside.length };
+      await still('4e-photo-from-pause-esc');
+      if (back.controls.photoBar) problem('photo from pause: Esc does not leave photo mode');
+      if (!back.controls.resume?.hit || !back.controls.paused?.hit) problem('photo from pause: Esc does not return to the paused Settings');
+      if (b1.timeS !== b0.timeS) problem(`photo from pause: the battle clock runs after Esc (${b0.timeS} -> ${b1.timeS})`);
+      // and Resume, past any relock window, runs the battle
+      if (back.controls.resume) { await click(back.controls.resume); await wait(1500); }
+    }
+
+    // 3d. (photo-from-pause-279) Resume at once: pressed 300 ms after a fresh pause (a desktop's Esc: inside Chrome's
+    //     1250 ms relock refusal), Settings closes for good and the battle runs; on a desktop the lock lands after the
+    //     window. Before, the refused relock reopened the paused Settings until the window closed.
+    {
+      const how = await pauseByEsc();
+      await wait(300);
+      const at = (await page.evaluate(drawn, [SETTINGS, CONTROLS])).controls.resume;
+      const samples = [];
+      let r0 = null, r1 = null;
+      if (at?.hit) {
+        await click(at);
+        const start = Date.now();
+        for (let i = 0; i < 20; i++) {
+          await wait(100);
+          samples.push({ ms: Date.now() - start, settings: await settingsDrawn(),
+            locked: await page.evaluate(() => !!document.pointerLockElement) });
+          if (i === 1) r0 = await page.evaluate(clock);
+          if (i === 11) r1 = await page.evaluate(clock);
+        }
+      }
+      await wait(300);
+      const locked = await page.evaluate(() => !!document.pointerLockElement);
+      const after = await page.evaluate(drawn, [SETTINGS, CONTROLS]);
+      const reopened = samples.filter((sample) => sample.settings).map((sample) => sample.ms);
+      // the lock's landing after the Resume press, on the page's clock (not the 100 ms samples')
+      const esc = size.touch ? null : await chromeEscTimes(page);
+      const lockedAtMs = esc?.lockedAfterClickMs ?? null;
+      entry.steps.resumeAtOnce = { how, resume: at, reopened, lockedAtMs, refused: esc?.refused ?? null, sampledLockMs: samples.find((sample) => sample.locked)?.ms ?? null,
+        clock: [r0?.timeS, r1?.timeS], locked, inside: after.inside };
+      await still('4f-resume-at-once');
+      if (!at?.hit) problem('resume at once: the paused Settings is not drawn after the pause');
+      else {
+        if (reopened.length) problem(`resume at once: Settings is drawn ${reopened.length} times in the 2 s after Resume (at ${reopened.slice(0, 4).join(', ')} ms)`);
+        if (!(r1?.timeS > r0?.timeS)) problem(`resume at once: the battle clock does not run in the second after Resume (${r0?.timeS} -> ${r1?.timeS})`);
+        if (after.inside > 0) problem('resume at once: Settings is drawn 2.3 s after Resume');
+        if (!size.touch && !locked) problem('resume at once: the pointer is not locked once the relock window has passed');
+        // Main 2026-11-27: the lock lands within 1.3 s of the Resume, Settings closed the whole way
+        if (!size.touch && (lockedAtMs === null || lockedAtMs > 1300)) problem(`resume at once: the pointer is not locked within 1.3 s of Resume (${lockedAtMs} ms)`);
+      }
     }
 
     // 4. Photo mode and back
