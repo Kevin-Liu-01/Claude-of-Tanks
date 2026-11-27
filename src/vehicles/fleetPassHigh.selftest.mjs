@@ -17,6 +17,7 @@ import { createSurfaceMarkupFleetAudit } from '../gallery/surfaceMarkupFleetAudi
 import { createDrawnGeometryShapeAudit } from '../world/geometryStreams.test-support.mjs';
 import { createTrackContactDerivationAudit } from './trackContactDerivationAudit.test-support.mjs';
 import { createRunningGearRegistrationAudit } from './runningGearRegistrationAudit.test-support.mjs';
+import { createSlabMirrorDiagonalAudit } from './slabMirrorDiagonalAudit.test-support.mjs';
 
 const BUILD = { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true, batchStatic: false };
 
@@ -53,6 +54,8 @@ await runFleetPass({
     // 2026-10-04: the development hulls too register exactly the running-gear units they draw
     { name: 'runningGearRegistration', create: createRunningGearRegistrationAudit },
     { name: 'circularCapOverlap', create: () => createCircularCapAudit({ quality: 'high' }) },
+    // 279 (slab-mirror): no twisted slab quad drawn along the other diagonal from its mirror twin (slabDiagonalSettle.ts)
+    { name: 'slabMirrorDiagonal', create: createSlabMirrorDiagonalAudit },
     // the mount inspection keeps its authored camo seed; camo seeds do not move the running gear
     { name: 'machineGunAttachment', ids: DEVELOPMENT_TANK_IDS, create: machineGunMounts },
     { name: 'trackEndWrap', ids: ALL_TANK_IDS, create: trackEndWraps },

@@ -60,6 +60,7 @@ import { loadTurretRingModule, turretRingModule } from './turretRingLoader.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills, closedInteriorFillGeometry } from './interiorFills.ts';
 import { applyTurretSeatRace, seatTurretOverDeck, staleSeatSpans, turretFootFitFor, turretSeatSplitBuilt, type TurretFootFit } from './turretSeatRace.ts';
+import { settleSlabDiagonals } from './slabDiagonalSettle.ts';
 import { ringZonePart, ringZoneViolations, type RingZonePart } from './ringZoneGuard.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
 import { measureNearShadowCasterWork } from './shadowCasterWork.ts';
@@ -1325,6 +1326,8 @@ export interface TankFactoryOptions {
   solveMarkingSeats?: boolean;
   /** Default-on anatomy metadata; static wreck baking discards this receipt. */
   eraVisualBindingReceipt?: boolean;
+  /** 279: the end-of-build slab settle (slabDiagonalSettle.ts), default on; off only as its receipts' control. */
+  slabDiagonalSettle?: boolean;
   /** A stepped build's decoration plans here (a driver that awaits the yielded waits passes it); createTank and the
    *  Node tools plan in-line. */
   decorPlanner?: DecorPlanner;
@@ -8797,6 +8800,7 @@ function* buildTankCoreSteps(
     geometryReceipt = false,
     solveMarkingSeats = false,
     eraVisualBindingReceipt = true,
+    slabDiagonalSettle = true,
     batchStatic = false,
     deferStaticBatch = false,
     battleDetailLod = false,
@@ -10245,6 +10249,20 @@ function* buildTankCoreSteps(
           weaponModules: [...new Set(splitCopies.flatMap((geometry) => weaponDamage.modulesOf(geometry)))],
         };
       }
+    }
+    // 279 (slab-mirror; Main's ruling): the last per-vertex warp is done, so each twisted slab quad whose mirror twin is
+    // drawn along the other diagonal takes the convex split with it (slabDiagonalSettle.ts), before the ring-zone check
+    // and the ERA binding below read the drawn skin (the Challenger 2E's cheek cassettes stood 7-14 mm deeper on the L).
+    // A settled mesh draws its own copy, as a seated one does: the camo re-projects what moved (`sourceOf` maps each copied
+    // vertex to the built one it came from) and the spans follow the copy. A foot-split copy keeps no slab table (its
+    // vertex count grew: slabQuadTable), so the settle never turns a quad the split cut.
+    if (slabDiagonalSettle) {
+      const census = settleSlabDiagonals(root, disposables, (built, settled, sourceOf) => {
+        const camoScale = built.userData.camoFaceProjection as number | undefined;
+        if (camoScale) reprojectMovedFaceBoxUV(built, settled, camoScale, (built.userData.camoUvRemap as CamoUvRemap | undefined) ?? null, sourceOf);
+        followSeat(built, settled);
+      });
+      if (census.pairs.length) root.userData.slabDiagonalSettle = Object.freeze({ pairs: census.pairs.length });
     }
     // 274: hull kit standing over the seated turret's foot, named for the turret-deck gate (ringZoneGuard.ts)
     if (ringZoneParts.length) {

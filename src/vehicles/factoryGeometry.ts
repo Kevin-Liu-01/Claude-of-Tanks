@@ -179,7 +179,28 @@ export function slab(
   quad(bottom3, bottom0, top0, top3);
   quad(top0, top1, top2, top3);
   quad(bottom3, bottom2, bottom1, bottom0);
-  return geometryFromTriangles(positions);
+  const geometry = geometryFromTriangles(positions);
+  geometry.userData.slabQuads = { vertexCount: SLAB_VERTICES, runs: [0, SLAB_VERTICES] } satisfies SlabQuadTable;
+  return geometry;
+}
+
+/** The vertices of one slab(): six quads, each the two triangles [a,b,c],[a,c,d] (six non-indexed vertices). */
+export const SLAB_VERTICES = 36;
+
+/**
+ * 279 (slab-mirror): which vertices of a geometry are slab()-authored quads, as a side-table on the geometry (not a
+ * vertex attribute, which mergeGeometries refuses beside untagged parts): `runs` lists [start, count] vertex runs of
+ * whole slabs (SLAB_VERTICES each) over `vertexCount` non-indexed vertices. slab() writes it, mergeAll() offsets and
+ * concatenates it, clone()/copy() share it (and the transforms keep it); every other merge drops it. The end-of-build
+ * settle (slabDiagonalSettle.ts) reads it to pick each twisted quad's diagonal on the drawn corners.
+ */
+export interface SlabQuadTable { readonly vertexCount: number; readonly runs: readonly number[] }
+
+/** The geometry's slab side-table, or null when it has none or no longer indexes this vertex layout. */
+export function slabQuadTable(geometry: THREE.BufferGeometry): SlabQuadTable | null {
+  const table = geometry.userData.slabQuads as SlabQuadTable | undefined;
+  const position = geometry.getAttribute('position');
+  return table && !geometry.index && position && position.count === table.vertexCount ? table : null;
 }
 
 export function frustum(
@@ -619,7 +640,7 @@ export function remapCamoUv(geometry: THREE.BufferGeometry, remap: CamoUvRemap):
  * surface with a camouflage split (`remap`, CamoUvRemap) compares and writes its projections through it.
  */
 export function reprojectMovedFaceBoxUV(before: THREE.BufferGeometry, after: THREE.BufferGeometry, scale: number,
-  remap: CamoUvRemap | null = null): number {
+  remap: CamoUvRemap | null = null, sourceOf: Int32Array | null = null): number {
   if (before.index || after.index) return 0;
   const was = before.getAttribute('position'), now = after.getAttribute('position'), uv = after.getAttribute('uv');
   if (!was || !now || !uv || was.count !== now.count) return 0;
@@ -640,18 +661,22 @@ export function reprojectMovedFaceBoxUV(before: THREE.BufferGeometry, after: THR
   for (let index = 0; index + 2 < now.count; index += 3) {
     let edited = false;
     for (let i = index; i < index + 3 && !edited; i++) {
-      edited = was.getX(i) !== now.getX(i) || was.getY(i) !== now.getY(i) || was.getZ(i) !== now.getZ(i);
+      const r = sourceOf ? sourceOf[i] : i;
+      edited = r !== i || was.getX(r) !== now.getX(i) || was.getY(r) !== now.getY(i) || was.getZ(r) !== now.getZ(i);
     }
     if (!edited) continue;
-    const oldAxis = axisOf(was, index), newAxis = axisOf(now, index);
+    const newAxis = axisOf(now, index);
     for (let i = index; i < index + 3; i++) {
+      // the copied vertex's stored UV came from its built vertex `r`, projected on r's own triangle
+      const r = sourceOf ? sourceOf[i] : i;
+      const oldAxis = axisOf(was, r - (r % 3));
       const stored: [number, number] = [uv.getX(i), uv.getY(i)];
       const same = (p: [number, number]): boolean => p[0] === stored[0] && p[1] === stored[1];
-      const face = project(was, i, oldAxis);
+      const face = project(was, r, oldAxis);
       let next: [number, number];
       if (same(face)) next = project(now, i, newAxis);
       else {
-        const part = [0, 1, 2].find((axis) => axis !== oldAxis && same(project(was, i, axis)));
+        const part = [0, 1, 2].find((axis) => axis !== oldAxis && same(project(was, r, axis)));
         if (part !== undefined) next = project(now, i, part);
         else {
           const p = project(now, i, newAxis);
@@ -709,5 +734,20 @@ export function mergeAll(geometries: readonly THREE.BufferGeometry[]): THREE.Buf
   const merged = mergeGeometries(flat, false);
   for (const geometry of flat) geometry.dispose();
   if (!merged) throw new Error('Unable to merge procedural vehicle geometry');
+  // the parts' slab side-tables (SlabQuadTable), offset to where each part lands in the merge
+  const runs: number[] = [];
+  let offset = 0;
+  for (const part of flat) {
+    const table = slabQuadTable(part);
+    if (table) {
+      for (let k = 0; k < table.runs.length; k += 2) {
+        const start = table.runs[k] + offset, count = table.runs[k + 1];
+        if (runs.length && runs[runs.length - 2] + runs[runs.length - 1] === start) runs[runs.length - 1] += count;
+        else runs.push(start, count);
+      }
+    }
+    offset += part.getAttribute('position')?.count ?? 0;
+  }
+  if (runs.length) merged.userData.slabQuads = { vertexCount: offset, runs } satisfies SlabQuadTable;
   return merged;
 }

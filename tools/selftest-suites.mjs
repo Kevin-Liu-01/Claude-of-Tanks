@@ -284,6 +284,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // keep off their rebuilt hulls at every yaw on their source travel and published curves
     'src/vehicles/japaneseGunHull.selftest.mjs',
     'src/vehicles/challengerXGunPort.selftest.mjs',
+    // 279 (slab-mirror): the end-of-build slab settle on the CR2 cheeks, an Abrams and a KIT orientedSlab, with its control
+    'src/vehicles/slabMirrorDiagonal.selftest.mjs',
     // release 262: the Christian II (a fresh Danish concept on the release's Leopard 2-pattern hull): its own spec and stock
     // (none of the Type 90 X's), its datums drawn, its gun clear of its hull at its published stops, its concept datums
     'src/vehicles/profiles/christian2.selftest.mjs',
