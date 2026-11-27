@@ -443,7 +443,9 @@ Worker built its height field from the map alone, while the battle stepped on it
 `assault-trenches`: trenches carved into the field). Every world a replay builds now takes its variant from the
 recording's mode (`replaySetup.ts recordedTerrainVariant`, the live battle's rule: `terrainVariantFor`), and every
 battle-world config is `world/worldBuildConfig.ts` (the Worker, `tools/replay-world.mjs`, the dedicated shards, the
-browser host, the authority's shared terrain, the capture and the wreck-bake plan). The recording, its format and the
+browser host and the authority, whose stub-field layout fallback now takes the mode's variant too). The shard capture
+(`tools/headlessWorldCollision.mjs`) and the wreck-bake plan build the same config inline, left as they are: editing
+them moves every map's world-step key for no change in what they build. The recording, its format and the
 wire are unchanged: only the viewer was wrong, so a 279 viewer plays 279 Frontline recordings. Receipt:
 `replayTerrainVariant.selftest.mjs` (MANUAL 'sims'): every mode with a variant replays headless and through the
 Worker's job, its track the battle's byte for byte; the Worker's old flat field drifts at step 600 (the control).

@@ -837,7 +837,11 @@ export function createAuthoritativeMatch({
   const heightField = preparedGround?.heightField ?? createDeformedHeightField(baseHeightField, ground);
   // the world's shells, sight lines and drones march this match's ground (a crater's bowl, a heap), as the solo world's do
   worldCollision?.bindGroundOverlay?.(ground);
-  const layout = heightField._layout || shared?.layout || createLayout(getMapConfig(mapId));
+  // the layout is the field's own (a field built by createHeightField carries it; the deformed field inherits it). A field
+  // without one (a receipt's stub) gets its map's in this mode's battlefield variant (replay-receipts-279: one config rule,
+  // world/worldBuildConfig.ts; the map id alone would be the base map's in a Frontline Assault match)
+  const layout = heightField._layout || shared?.layout
+    || createLayout(worldBuildConfig(String(mapId || 'verdant'), terrainVariantFor(normalizedGameMode)));
   const rng = mulberry32(seed);
   const entities: AuthoritativeEntity[] = [];
   const entityById = new Map<string, AuthoritativeEntity>();
