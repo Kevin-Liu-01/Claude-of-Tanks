@@ -17,6 +17,7 @@ import { hintSeenKey } from './firstUseHintRecord.ts';
 import type { ActionId } from '../game/input.ts';
 import { battleNotices, NOTICE_PRIORITY } from './battleNotices.ts';
 import { currentBattleScope } from '../game/battleScope.ts';
+import { onLifeStart } from '../game/lifeScope.ts';
 import { createHintPolicy, START_DELAY_MS, type HintPolicy } from './firstUseHintPolicy.ts';
 import { formatKeyLine, inputDevice, promptRevision, promptTiles, type PromptInput } from './keyPrompt.ts';
 import { t } from './i18n.ts';
@@ -238,6 +239,9 @@ export function createFirstUseHints(host: FirstUseHintsHost) {
       // battle:ended nor battle:presented, and the tick ran on in the Garage (game/battleScope.ts)
       const scope = currentBattleScope();
       scope?.defer(() => { if (scope === battle) end(); });
+      // (life-reset-279) a death holds the hints for that life only: the revived hull is taught again (game/lifeScope.ts;
+      // before, the first death in a respawn mode held every hint for the rest of the battle)
+      scope?.defer(onLifeStart((life) => { if (life.entityId === player()) dead = false; }));
       battle = scope;
       policy.battleStart(now());
       capabilityCheck = setTimeout(() => { capabilityCheck = null; offerCapabilities(); }, START_DELAY_MS - 1_000);

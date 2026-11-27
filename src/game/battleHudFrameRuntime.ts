@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { fieldHulls } from '../sim/hullField.ts';
 import { strikeView } from './strikeViewState.ts';
+import { lifeScopeFrame } from './lifeScope.ts';
 import { Object3D, PerspectiveCamera, Vector3 } from 'three';
 
 import type { AimController, AimFrame } from './aimController.ts';
@@ -344,7 +345,15 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     });
   };
 
+  /** The hull this frame owner last reported to the life scope (its seat's life ends when the seat leaves it). */
+  let lifeSeat: string | null = null;
   const update = (inBattle: boolean, killcamActive: boolean): void => {
+    // the seat's life edge first (lifeScope.ts), killcam or not: a death seen under the killcam still ends the life
+    if (inBattle) {
+      const seat = player();
+      lifeScopeFrame(seat, lifeSeat);
+      lifeSeat = seat?.id ?? null;
+    }
     const observer = observerFocus();
     const watched = watch?.focus() ?? null;
     const focus = player() || watched || observer;

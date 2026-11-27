@@ -65,7 +65,8 @@ const caf = (handle: number): void => {
   else clearTimeout(handle as unknown as TimerHandle);
 };
 
-function createScope(id: number, reason: string): BattleScope & { end(): void } {
+/** A lifetime's holdings and its end (the battle's here, a life's in lifeScope.ts: one implementation of both). */
+export function createScope(id: number, reason: string): BattleScope & { end(): void } {
   const abort = new AbortController();
   const timers = new Set<TimerHandle>();
   const intervals = new Set<TimerHandle>();
@@ -140,7 +141,7 @@ function createScope(id: number, reason: string): BattleScope & { end(): void } 
       frames.clear();
       // newest first (a later producer may lean on an earlier one); one failing never keeps the rest
       for (let dispose = deferred.pop(); dispose; dispose = deferred.pop()) {
-        try { dispose(); } catch (error) { console.error('[battle scope] a disposer failed', error); }
+        try { dispose(); } catch (error) { console.error(`[scope ${reason}] a disposer failed`, error); }
       }
     },
   };

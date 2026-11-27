@@ -115,6 +115,7 @@ import {
 import { applyBotInput, applyPlayerInput } from './playerInputStage.ts';
 import { pushModeRoutes } from './modeRoutePush.ts';
 import { applyHullActions, tickHullConsumables } from './hullActions.ts';
+import { resetHullModeMoves } from './modeMoves.ts';
 import type { HullActionsHost } from './hullActions.ts';
 import { pushFromHulls } from './tankPairContact.ts';
 import type { AuthoritativePlayerInput } from './playerInputStage.ts';
@@ -1266,6 +1267,8 @@ export function createAuthoritativeMatch({
     // nor its fire's starter or its last attacker (death-flow-275 R7, R8: a revived hull forgets them; the solo revive too)
     fireCredit.clear(tank.id);
     recentDamage.clear(tank.id);
+    // Turbo and the air spin ready (life-reset-279; Kevin 2026-11-26: Turbo starts READY on revive), the solo step's too
+    resetHullModeMoves(tank);
     if (!isGunship(tank)) for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
     // the same brain drives the new life: what it measures between ticks restarts from the hull at its spawn
     // (game/ai.ts resume, on the battle's clock; round 2 U18), so the wreck-to-spawn move is no tick of progress

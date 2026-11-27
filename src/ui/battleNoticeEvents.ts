@@ -29,7 +29,7 @@ import { NoticeQueue, noticeContentHtml, type QueuedToast } from './components/n
 import { markDatum } from './dom.ts';
 import type { IconId } from './icons/icon.ts';
 import type { NoticeArtId } from './components/noticeArt.ts';
-import { shownInView, VIEW_HOLD_MS, type NoticeKind, type NoticeView } from './noticeKinds.ts';
+import { noticeKind, shownInView, VIEW_HOLD_MS, type NoticeKind, type NoticeView } from './noticeKinds.ts';
 
 type EventSeverity = 'info' | 'success' | 'warning' | 'error';
 
@@ -83,6 +83,8 @@ export function createBattleEventLane(host: EventLaneHost) {
   el.setAttribute('aria-live', 'polite');
   el.dataset.severity = 'warning';
   host.root.append(el);
+  /** The seat's role while nothing shows (blank() puts it back after an alert). */
+  const idleRole = el.getAttribute('role') ?? '';
 
   const events = new Map<string, BattleEvent>();
   const born = new Map<string, number>();
@@ -126,6 +128,22 @@ export function createBattleEventLane(host: EventLaneHost) {
       born.set(toast.id, now());
     },
   });
+
+  /** (life-reset-279) The seat as a fresh lane holds it when nothing shows: no words, tip, error severity or alert role
+   *  (an emptied lane kept the last event's, and a revived crew's seat read "AMMUNITION TYPE EMPTY" as its tip). */
+  function blank(): void {
+    if (queue.shown.length) return;
+    el.classList.remove('show');
+    el.innerHTML = '';
+    delete el.dataset.tip;
+    el.dataset.severity = 'warning';
+    el.setAttribute('role', idleRole);
+  }
+  /** The seat's own events (its tank's and its crew's), which end with its life; the battle's and the link's stay. */
+  const ownEvent = (event: BattleEvent | undefined): boolean => {
+    const subject = event ? noticeKind(event.kind).subject : null;
+    return subject === 'tank' || subject === 'crew';
+  };
 
   function forget(id: string): void {
     queue.remove(id);
@@ -244,7 +262,20 @@ export function createBattleEventLane(host: EventLaneHost) {
       leftAt.clear();
       deferred = null;
       held.clear();
-      el.classList.remove('show');
+      blank();
+    },
+    /** (life-reset-279) The seat's life ended (game/lifeScope.ts): its tank's and crew's events go with it, shown, waiting,
+     *  held behind a view or deferred behind the scope, and their repeat and cooldown memory; the battle's stay. The lane
+     *  looks through the tank again. */
+    endLife(): void {
+      for (const toast of [...queue.waiting, ...queue.shown]) if (ownEvent(events.get(toast.id))) forget(toast.id);
+      for (const [key, entry] of held) if (ownEvent(entry.event)) held.delete(key);
+      if (deferred && ownEvent(deferred.event)) deferred = null;
+      lastRaise.clear();
+      leftAt.clear();
+      view = 'tank';
+      blank();
+      schedule();
     },
   };
   return lane;

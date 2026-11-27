@@ -1,4 +1,5 @@
-import { strikeView, type AirStrikeKind } from './strikeViewState.ts';
+import { endStrikeView, strikeView, type AirStrikeKind } from './strikeViewState.ts';
+import { onLifeStart } from './lifeScope.ts';
 import type { AirSupportView, StrikeRefusal } from './strikeOrder.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { couchSeatsActive, type EventBus } from './stateCore.ts';
@@ -623,6 +624,13 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     }
   });
   listen('mode:pickup_collected', syncShellCards);
+  // (life-reset-279; game/lifeScope.ts) the player's new life: the cannon round Q returns to and the binoculars' pick and
+  // order are the last life's (a revive starts the gun on its first round, sim state.ts revive); a raise left up goes down
+  disposeCallbacks.push(onLifeStart((life) => {
+    if (life.entityId !== game.player?.id) return;
+    atgmReturnSlot = -1;
+    if (endStrikeView()) bus.emit('ui:strikeView', { open: false });
+  }));
 
   return {
     shellCards,

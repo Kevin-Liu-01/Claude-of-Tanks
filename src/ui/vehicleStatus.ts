@@ -150,5 +150,10 @@ export function createVehicleStatusStrip() {
     mount(panel:HTMLElement){panel.appendChild(root);room=panel;resize.observe(panel);},
     /** fire-visible-275: the sight's burning edge, on the HUD's own layer (full width, under the panels). */
     mountEdge(layer:HTMLElement){if(edge.parentNode!==layer)layer.prepend(edge);},
-    clear(){previousCount=-1;active=read(null);paint();paintEdge(false);},dispose(){resize.disconnect();tooltip.dispose();root.remove();edge.remove();}};
+    // (life-reset-279) a cleared strip holds no chip's words, tone or fill: a revived hull's hidden chips read the last
+    // life's "On fire" and "Tracks disabled" until a new status painted over them
+    clear(){previousCount=-1;active=read(null);paint();paintEdge(false);
+      for(const cell of cells){cell.key='';cell.text='';cell.tone='';cell.progress=-1;cell.button.removeAttribute('aria-label');
+        delete cell.button.dataset.status;delete cell.button.dataset.tone;cell.button.style.removeProperty('--repair-fill');
+        cell.icon.innerHTML='';cell.mark.textContent='';}},dispose(){resize.disconnect();tooltip.dispose();root.remove();edge.remove();}};
 }

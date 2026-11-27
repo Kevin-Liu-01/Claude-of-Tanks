@@ -216,6 +216,21 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
   });
 
   let lastTimeS = 0, glyphKind: AirStrikeKind | null = null, scopedFlag = false;
+  /** (life-reset-279) Lowered binoculars hold no reading: the last raise's call-in, range, bearing, readiness and key stayed
+   *  on the hidden group into the next life and the next battle, until a raise wrote over them. */
+  let readoutDrawn = false;
+  function blankReadout(): void {
+    if (!readoutDrawn) return;
+    readoutDrawn = false;
+    kindGlyph.innerHTML = '';
+    glyphKind = null;
+    setText(kindName, '');
+    setText(range, '');
+    setText(bearing, '');
+    setText(lowerKey, '');
+    delete binoculars.dataset.state;
+    setDisabled(call, false);
+  }
   // (battle-teardown-276; Kevin 2026-11-24) what the binoculars set outside their own boxes goes with the battle, however it
   // was left (the frames that would lower them stop with it): the page's strike-view flag, the order and the view itself,
   // whose close the main's phone layout and the raise hear
@@ -256,6 +271,7 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
     if (!air || !shown) {
       if (strikeView.open) bus.emit('ui:strikeViewClose', {});
       setHidden(binoculars, true);
+      blankReadout();
       plate(INCOMING_NOTICE, 'airIncoming', null, '', '', 'warning', NOTICE_PRIORITY.threat);
       plate(ORDER_NOTICE, 'airOrder', null, '', '', 'info', NOTICE_PRIORITY.answered);
       if (scopedFlag) { scopedFlag = false; document.documentElement.toggleAttribute('data-cot-strike-view', false); }
@@ -301,7 +317,9 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus, notices:
     setHidden(binoculars, !strikeView.open);
     // the controls card (settings.ts .cot-hints) stands down under the binoculars, as it does under the scope
     if (scopedFlag !== strikeView.open) { scopedFlag = strikeView.open; document.documentElement.toggleAttribute('data-cot-strike-view', scopedFlag); }
-    if (strikeView.open) {
+    if (!strikeView.open) blankReadout();
+    else {
+      readoutDrawn = true;
       const kind = strikeView.kind;
       if (glyphKind !== kind) { kindGlyph.innerHTML = icon(STRIKE_ICON[kind], { size: 20 }); glyphKind = kind; }
       setText(kindName, t(`airSupport.kind.${kind}`));

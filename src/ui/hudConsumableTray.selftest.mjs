@@ -14,6 +14,7 @@ import { createSpecialActionState } from '../sim/specialActionPolicy.ts';
 import { createConsumableState, DEFAULT_CONSUMABLE_LOADOUT } from '../sim/consumableRules.ts';
 import { consumableTiming } from '../sim/matchRuleset.ts';
 import { createBus } from '../game/stateCore.ts';
+import { attachLifeScopeEdges, lifeScopeFrame } from '../game/lifeScope.ts';
 import { initHud } from './hud.ts';
 
 await ensureAuthorityFleet(['m1a1_abrams_hc']);
@@ -31,8 +32,12 @@ const aim = { singleReticle: false, point: new THREE.Vector3(0, 0, 100), distM: 
   reload: { t: 0, totalS: 0 }, magazine: { rounds: 0, capacity: 0, launcher: false }, shellSlot: 0, shells: [], zoom: 1,
   gunDistM: 0, gunTargetId: null, gunMarker: new THREE.Vector3(), blockedDistM: null, blockedLabel: false, penRatio: null };
 let timeS = 20;
+// (life-reset-279) the page's life edges (game/lifeScope.ts): the frame runtime reports the seat each frame, the bus's
+// own respawn starts its next life; the tray's refill on a revive is the new life's (hud.ts resetLife)
+attachLifeScopeEdges(bus);
 const frame = () => {
   timeS += 1 / 60;
+  lifeScopeFrame(player, player.id);
   hud.update({ timeS, mode: 'battle', player, tanks: [player], spotting: { isSpotted: () => true }, aim, camera: null });
 };
 const tile = (slot) => created.filter((e) => e.classes.has('cot-con'))[slot];
@@ -71,7 +76,7 @@ frame();
 assert.equal(tile(1).classes.has('cooling'), true, 'a taken seat\'s running cooldown shows');
 assert.equal(count(1), '30');
 
-// a network client: the entity carries no kits; the own mode:respawn resets the tray as the authority's revive does
+// a network client: the entity carries no kits; the own mode:respawn (a new life) resets the tray as the authority's revive does
 player.consumables = undefined;
 bus.emit('ui:consumableReset', {});
 frame();

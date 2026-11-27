@@ -210,7 +210,8 @@ export function createCanvasText(parent: Element, className: string): CanvasText
     },
     clear() {
       last.length = 0;
-      for (const run of runs) if (run) { run.used = false; hide(run); }
+      // (life-reset-279) a cleared layer holds no words: a pooled run kept the last life's "-1390 CRIT" while hidden
+      for (const run of runs) if (run) { run.used = false; hide(run); run.text = ''; run.el.textContent = ''; run.epoch = -1; }
     },
     run: (slot) => runAt(slot).el,
     placed: () => last,

@@ -70,10 +70,20 @@ export function createRespawnDial(mount: HTMLElement): RespawnDial {
   let secondStartS = 0;
   let lastOffset = -1;
 
+  // (life-reset-279) hidden is empty: the last wait's words, seconds, kind and drained ring go with it, so a dial shown
+  // again (the next death, the next battle) starts from the fresh dial, never the last one's figures
   const hide = (): void => {
     if (!root.hidden) root.hidden = true;
+    if (shownKey !== '') {
+      kicker.textContent = '';
+      numeral.textContent = '';
+      numeral.hidden = false;
+      delete root.dataset.wait;
+      arc.removeAttribute('stroke-dashoffset');
+    }
     shownKey = '';
     lastSecond = null;
+    lastOffset = -1;
   };
 
   return {

@@ -314,6 +314,8 @@ export interface ShotInfoRuntime {
   setReplayProbe(recorded: () => boolean): void;
   hideStats(): void;
   reset(): void;
+  /** (life-reset-279) The seat's new life: the last life's hit cards and incoming rows go; the battle's report stays. */
+  endLife(): void;
 }
 
 function eventPayload<Payload>(payload: RuntimeValue): Payload {
@@ -2212,6 +2214,13 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
       endScreen.hide();
       statsRoot.classList.remove('show');
       document.body.classList.remove('cot-si-report');
+    },
+
+    endLife() {
+      while (cardHost.firstChild) cardHost.firstChild.remove();
+      clearCardTimers();
+      currentPrimary = null;
+      clearToasts();
     },
 
     /** Fresh battle: clear cards, toasts, logs and session stats. */

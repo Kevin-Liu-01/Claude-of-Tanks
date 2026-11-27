@@ -3407,6 +3407,14 @@ export const SELFTEST_SUITES = Object.freeze({
     // battle-teardown-276 (Kevin 2026-11-24: "notifications till here in garage - properly clear game state stuff after
     // leaving"): one battle scope, opened and ended by the phase writer; by every exit no notice, timer or listener outlives it
     'src/ui/battleTeardown.selftest.mjs',
+    // life-reset-279 (Kevin 2026-11-24: "if youve expended an ammo it doesnt clear the state once you die and respawn or even
+    // join another game. fix any kind of bugs like this with game state"): a seat's life scope (spawn to death, the battle's
+    // end), and a real solo battle's dirty life, death, revive and next battle compared structurally with a fresh spawn
+    'src/game/lifeScope.selftest.mjs',
+    'src/game/lifeReset.selftest.mjs',
+    // (Kevin 2026-11-26: Turbo starts READY on revive) a hull that dies mid-cooldown comes back with Turbo ready on its
+    // first frame on both drivers: the sim, the HUD tile, the phone's keys and a press
+    'src/game/turboRevive.selftest.mjs',
     // air-support-close-276 (Kevin 2026-11-23): the close is the Support slot, one control in one box; no standalone pop
     'tools/air-support-close-box.selftest.mjs',
     // air-support-seats-276: with the binoculars up, CALL, the call-ins, Support and its dock, the shells and the vehicle
