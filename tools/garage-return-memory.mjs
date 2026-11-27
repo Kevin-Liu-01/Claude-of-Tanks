@@ -13,7 +13,8 @@
 //   - three's own counts and the LIVE WebGL objects by kind (a create/delete hook installed before boot), live canvases;
 //   - each battle's world held weakly (collected, current or alive), and the CSM shader registry: its size, its undrawn
 //     entries, and (the registry ledger, Main 2026-11-27) the entries each battle's entry added that outlive that
-//     battle's released world (registry staleTotal: 0 when no registration outlives its world).
+//     battle's released world (registry staleTotal: 0 when no registration outlives its world). A page-lifetime pool's
+//     materials (userData.cotPagePool) are counted per pool, never as stale; the "registry v3" line judges it.
 // Opt-in censuses: --part-census (each battle's world group, ground occlusion, terrain and crater mesh held weakly; the
 // property paths from window to an alive one), --buffer-census (ArrayBuffers >= 256 KB and canvases by creation site and
 // battle), --entry-trace (footprint and resident worlds through each entry).
@@ -287,7 +288,7 @@ function installBufferCensus() {
  * released world (an earlier battle on another map) still registered while nothing in the scene or the resident world
  * draws them. The raw registry and its undrawn total also count the Garage's cached tank and fx materials, legitimately.
  */
-function registryLedger(point, battle) {
+export function registryLedger(point, battle) {
   const D = window.__DEBUG;
   const shaders = D?.lighting?.csm?.shaders;
   if (!shaders) return null;
@@ -311,7 +312,9 @@ function registryLedger(point, battle) {
   collect(D?.world?.group);
   const current = D?.world?.mapId ?? null;
   const stale = {};
+  const pooled = {};
   let staleTotal = 0;
+  let pooledTotal = 0;
   for (const entry of L.entries) {
     if (entry.battle >= battle || entry.map === current) continue;
     const kinds = {};
@@ -319,6 +322,10 @@ function registryLedger(point, battle) {
     for (const ref of entry.added) {
       const m = ref.deref();
       if (!m || !shaders.has(m) || drawn.has(m)) continue;
+      // (v3, Main 2026-11-27) a page-lifetime pool's material (userData.cotPagePool, fx/pagePoolMaterial.ts) is counted
+      // apart: not stale, but printed per pool so a pool that grows with the maps seen still shows
+      const pool = m.userData?.cotPagePool;
+      if (pool) { pooled[pool] = (pooled[pool] ?? 0) + 1; pooledTotal++; continue; }
       n++;
       const k = `${m.type}:${m.name || (typeof m.customProgramCacheKey === 'function' ? String(m.customProgramCacheKey()).slice(0, 40) : '')}`;
       kinds[k] = (kinds[k] ?? 0) + 1;
@@ -326,7 +333,18 @@ function registryLedger(point, battle) {
     stale[`b${entry.battle}:${entry.map}`] = { count: n, kinds: Object.fromEntries(Object.entries(kinds).sort((a, b) => b[1] - a[1]).slice(0, 6)) };
     staleTotal += n;
   }
-  return { staleTotal, stale };
+  return { staleTotal, stale, pooledTotal, pooled };
+}
+
+/**
+ * Registry assertion v3 (Main 2026-11-27, registered before its run): at every Garage-after-GC no ledger entry is stale
+ * unless a page-lifetime pool tagged it; the pool-tagged counts ride along per pool.
+ */
+export function registryV3(samples) {
+  const rows = samples.filter((s) => s.point === 'garage-after-gc' && s.registry)
+    .map((s) => ({ battle: s.battle, staleTotal: s.registry.staleTotal, pooled: s.registry.pooled ?? {}, stale: s.registry.stale }));
+  if (!rows.length) return { pass: null, note: 'no registry readings', rows };
+  return { pass: rows.every((r) => r.staleTotal === 0), rows };
 }
 
 /** In-page: the game's own counts and its residency. */
@@ -817,6 +835,8 @@ export async function runGarageReturnMemory(o) {
       await sample('garage-after-gc', battle);
       if (o.snapshots.includes(battle)) report.snapshots = [...(report.snapshots ?? []), await snapshot(battle)];
     }
+    report.registryV3 = registryV3(report.samples);
+    log(`registry v3 ${JSON.stringify({ pass: report.registryV3.pass, rows: report.registryV3.rows.map(({ battle, staleTotal, pooled }) => ({ battle, staleTotal, pooled })) })}`);
     report.verdict = judgement(o, report.samples, report.ruinRule ?? null);
     if (report.verdict.diagnostic) { log(`verdict: ${report.verdict.note}`); return report; }
     const base0 = report.samples[0];

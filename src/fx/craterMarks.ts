@@ -29,6 +29,7 @@
  */
 import * as THREE from 'three';
 import type { SurfaceKind } from './surfaceLooks.ts';
+import { tagPagePoolMaterial } from './pagePoolMaterial.ts';
 
 const CRATER_SLOTS = 160;
 const MARK_SLOTS = 96;
@@ -476,6 +477,7 @@ export function createCraterMarks(options: CraterMarksOptions = {}): CraterMarks
     side: THREE.DoubleSide,
   });
   material.name = 'fx-crater-marks';
+  tagPagePoolMaterial(material, 'fx-crater-marks'); // the fx runtime's, kept for the page
   // never in a depth map, lying on the receiver-only terrain: its shadows meet the ground's (RECEIVER_ONLY_SHADOW_NOTE)
   material.userData.cotShadowReceiverOnly = true;
   material.userData.uniforms = { uTime, uHeatView };

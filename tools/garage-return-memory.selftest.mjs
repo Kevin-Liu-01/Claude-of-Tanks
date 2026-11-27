@@ -2,9 +2,10 @@
 // synthetic Garage-after-GC readings (no browser). A run that took a heap snapshot is diagnostic and never judged (278:
 // two snapshots read as +1.7 GB retention steps); the slope rule (Main 2026-11-27: >= 6 battles, 5 % of battle 1 a
 // battle), the repeat-roster rule and the ruin-fire rule decide as pre-registered, each with a retaining series as its
-// control.
+// control. The registry ledger (v3): a page-lifetime pool's tagged materials are counted apart, an untagged undrawn
+// entry of a released world is stale.
 import assert from 'node:assert/strict';
-import { judgement, parseArgs, repeatRule, ruinFireRule, slopeRule } from './garage-return-memory.mjs';
+import { judgement, parseArgs, registryLedger, registryV3, repeatRule, ruinFireRule, slopeRule } from './garage-return-memory.mjs';
 
 const garage = (series) => series.map((r, i) => ({ point: 'garage-after-gc', battle: i + 1, ...r }));
 const flat = garage([2200, 2260, 2240, 2290, 2270, 2300].map((mb) => ({ rendererMb: mb, gpuMb: 2600, jsHeapUsedMb: 240 })));
@@ -43,4 +44,32 @@ const fire = (gpuStep) => [0, 5, 10, 15, 20, 25].map((driveS) => ({ point: 'fire
 assert.equal(ruinFireRule(fire(100)).pass, true, 'ruin: +100 MB passes');
 assert.equal(ruinFireRule(fire(1000)).pass, false, 'ruin control: a +1 GB GPU step fails');
 
-console.log('garage-return-memory.selftest: a snapshot run is diagnostic, never judged; slope, repeat and ruin rules decide as pre-registered (each with a retaining control)');
+// the registry ledger (v3, Main 2026-11-27): the in-page function on a stand-in page. Battle 1 on verdant adds a pool's
+// material (tagged) and the impostor material (untagged, the 278 holder); at the Garage after battle 2 (desert resident)
+// neither is drawn: the impostor is stale, the pool's is counted per pool only. Control: the same entry untagged is stale.
+const material = (name, pool) => ({ type: 'MeshStandardMaterial', name, userData: pool ? { cotPagePool: pool } : {} });
+const ledger = (impostorTagged) => {
+  const pool = material('fx-rubble-body', 'fx-rubble-body');
+  const impostor = material('horizon-forest-impostor-v2', impostorTagged ? 'fx-rubble-body' : null);
+  const shaders = new Map([[material('cot:gunmetal'), {}]]);
+  const scene = { traverse() {} };
+  globalThis.window = { __DEBUG: { lighting: { csm: { shaders } }, scene, world: { mapId: 'verdant', group: scene } } };
+  registryLedger('garage-boot-gc', 0);
+  shaders.set(pool, {}); shaders.set(impostor, {});
+  registryLedger('start', 1);
+  window.__DEBUG.world = { mapId: 'desert', group: scene };
+  registryLedger('start', 2);
+  const reading = registryLedger('garage-after-gc', 2);
+  delete globalThis.window;
+  return { reading, keep: [pool, impostor] };
+};
+const v3 = ledger(false).reading;
+assert.equal(v3.staleTotal, 1, 'ledger: the untagged undrawn impostor of the released world is stale');
+assert.deepEqual(v3.pooled, { 'fx-rubble-body': 1 }, 'ledger: the pool-tagged material is counted per pool, not stale');
+assert.equal(ledger(true).reading.staleTotal, 0, 'ledger: tagged, the same entry is pooled');
+const v3Sample = (r) => ({ point: 'garage-after-gc', battle: 2, registry: r });
+assert.equal(registryV3([v3Sample(v3)]).pass, false, 'v3: an untagged stale entry fails');
+assert.equal(registryV3([v3Sample({ staleTotal: 0, stale: {}, pooledTotal: 3, pooled: { 'fx-rubble-body': 3 } })]).pass, true, 'v3: pool-tagged entries alone pass');
+assert.equal(registryV3([]).pass, null, 'v3: no readings, no verdict');
+
+console.log('garage-return-memory.selftest: a snapshot run is diagnostic, never judged; slope, repeat and ruin rules decide as pre-registered (each with a retaining control); the registry ledger counts pool-tagged materials apart and v3 fails an untagged stale entry');

@@ -29,6 +29,7 @@ import { createRigidBox, type RigidEnvironment, type RigidShape } from '../sim/r
 import type { DebrisShape } from '../world/destructionKit.ts';
 import { emitDebrisLanding } from './clock.ts';
 import { createDebrisPhysics, type DebrisPhysics } from './debrisPhysics.ts';
+import { tagPagePoolMaterial } from './pagePoolMaterial.ts';
 import { paletteGeometry } from './structureDebris.ts';
 
 /** The shapes a body may take (the rest stay pieces: too thin or too small to be worth a body). */
@@ -154,6 +155,7 @@ export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
     if (!m) {
       const mat = new THREE.MeshStandardMaterial({ map, roughness: 0.95, metalness: 0 });
       mat.name = 'fx-rubble-body';
+      tagPagePoolMaterial(mat, 'fx-rubble-body'); // kept for the page, one per albedo map
       mat.onBeforeCompile = (shader) => {
         shader.vertexShader = shader.vertexShader.replace('#include <uv_vertex>', BODY_VERT_UV);
       };
