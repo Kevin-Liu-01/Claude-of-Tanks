@@ -1,8 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { MovementContactGeometry, TankState } from './movement.ts';
 import { restoreHullBodyMode, setHullGrounded } from './hullBodyMode.ts';
-import { AIR_SPIN_RATE } from './hullFlight.ts';
-import { airSpinPitches, airSpinSense } from './hullThrusters.ts';
+import { BOOST_BURN_S, BOOST_NOZZLES } from './hullFlight.ts';
 
 // Versioned, fixed-length viewer-only integrator checkpoint. Pose/combat stay
 // in their existing authority lanes; this restores the dynamic state that a
@@ -48,19 +47,21 @@ const STOP_V8 = ['c', 'cv'] as const;
 const VERSION_9_COUNT = VERSION_7_COUNT + STOP_V8.length;
 // version 9 (physics, 268): the ends at which the last support solve stood the hull on a body contact (`_body.bodyRest`,
 // flag bits 11 and 12; the values are version 8's), which keep resting on one within a band; a version-8 checkpoint rests on none
-// version 10 (turbo-spin-275), appended after the version-9 layout so an older checkpoint still decodes (no spin turning):
-// the air spin in progress as one value, its axis times AIR_SPIN_CODE plus the turn it still owes (movement.ts
-// requestTankAirSpin), so a replay mid-flip keeps flipping as the authority does. It is the wire's 64th value.
-const AIR_SPIN_CODE = 8;
+// version 10 (turbo-spin-275) appended the air spin in progress as one value, the wire's 64th; version 11 (flip-boost-276)
+// the flight's dodge spent, flag bit 13. Version 12 (thrust-boosts-279) gives both to the boosts: the 64th value is the
+// boost (movement.ts `_boostNozzle` times BOOST_CODE plus `_boostBurnS`: the nozzle the flight last fired and the burn it
+// has left), and flag bits 13-15 the flight's boosts spent (`_boostsUsed`, 0-7). The layout still fits the wire's 64
+// values and u16 flags. A version-10 or -11 checkpoint decodes with no boosted flight, its spent dodge as one boost spent.
+const BOOST_CODE = 8;
 const VALUE_COUNT = VERSION_9_COUNT + 1;
 const MAX_ABS_VALUE = 1_000_000;
-// version 11 (flip-boost-276): the flight's dodge spent (movement.ts `_flipUsed`), flag bit 13; the values are version
-// 10's, so the layout still fits the wire's 64. A version-10 checkpoint decodes with the dodge unspent.
 const FLIP_USED_FLAG = 1 << 13;
-const MAX_FLAGS = (1 << 14) - 1;
+const BOOSTS_USED_SHIFT = 13;
+const BOOSTS_USED_MAX = 7;
+const MAX_FLAGS = (1 << 16) - 1;
 
 /** The layout's current version and length (the wire names them, src/mp/match/movementCheckpoint.ts: one codec). */
-export const MOVEMENT_PREDICTION_STATE_VERSION = 11;
+export const MOVEMENT_PREDICTION_STATE_VERSION = 12;
 export const MOVEMENT_PREDICTION_STATE_VALUES = VALUE_COUNT;
 
 interface MovementPredictionState {
@@ -114,14 +115,14 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
   append(values, state._hold, ROCK);
   append(values, state._holdSeat, ROCK);
   append(values, state._susp, STOP_V8);
-  values.push(encodeAirSpin(state._airSpinAxis, state._airSpinLeft));
+  values.push(encodeBoost(state._boostNozzle, state._boostBurnS));
   if (!finiteValues(values)) return null;
   const flags = Number(supportInitialized) | Number(state._ride.grounded) << 1 |
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
     Number(state._body.autoRighting) << 4 | Number(state._rollover.expired) << 5 |
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
     Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10 |
-    (state._body.bodyRest & 3) << 11 | (state._flipUsed ? FLIP_USED_FLAG : 0);
+    (state._body.bodyRest & 3) << 11 | boostsUsedOf(state._boostsUsed) << BOOSTS_USED_SHIFT;
   return { version: MOVEMENT_PREDICTION_STATE_VERSION, values, flags };
 }
 
@@ -130,13 +131,14 @@ export function applyMovementPredictionState(
 ): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const record = value as Record<string, RuntimeValue>;
-  const count = record.version === 11 || record.version === 10 ? VALUE_COUNT : record.version === 9 || record.version === 8 ? VERSION_9_COUNT
+  const count = record.version === 12 || record.version === 11 || record.version === 10 ? VALUE_COUNT : record.version === 9 || record.version === 8 ? VERSION_9_COUNT
     : record.version === 7 ? VERSION_7_COUNT
     : record.version === 6 ? VERSION_6_COUNT : record.version === 5 ? VERSION_5_COUNT
       : record.version === 4 ? VERSION_4_COUNT : 0;
   if (!count || !finiteValues(record.values, count) ||
       typeof record.flags !== 'number' || !Number.isInteger(record.flags) ||
-      record.flags < 0 || record.flags > (record.version === 11 ? MAX_FLAGS : FLIP_USED_FLAG - 1)) return false;
+      record.flags < 0 || record.flags > (record.version === 12 ? MAX_FLAGS : record.version === 11 ? (FLIP_USED_FLAG << 1) - 1
+        : FLIP_USED_FLAG - 1)) return false;
   const values = record.values;
   const flags = record.flags;
   let offset = restore(state, SCALARS, values, 0);
@@ -167,9 +169,10 @@ export function applyMovementPredictionState(
   state._sup.rigid = !!(flags & 512);
   state._sup.cg = contact;
   state._body.restSupportY = flags & 1024 ? values[offset + 5] : NaN;
-  state._body.bodyRest = record.version === 9 || record.version === 10 || record.version === 11 ? (flags >> 11) & 3 : 0;
-  // a checkpoint before version 11 has the flight's dodge unspent
-  state._flipUsed = !!(flags & FLIP_USED_FLAG);
+  state._body.bodyRest = typeof record.version === 'number' && record.version >= 9 ? (flags >> 11) & 3 : 0;
+  // the flight's boosts spent (version 12); version 11's spent dodge was one, an older checkpoint's none
+  state._boostsUsed = record.version === 12 ? (flags >> BOOSTS_USED_SHIFT) & BOOSTS_USED_MAX
+    : flags & FLIP_USED_FLAG ? 1 : 0;
   if (count >= VERSION_5_COUNT) {
     offset = restore(state._ride, RIDE_V5, values, offset + 6);
     offset = restore(state._susp, DIVE_V5, values, offset);
@@ -201,56 +204,32 @@ export function applyMovementPredictionState(
     state._susp.c = 0;
     state._susp.cv = 0;
   }
-  // a checkpoint before version 10 has no spin turning
-  const spin = count === VALUE_COUNT ? decodeAirSpin(values[offset]!) : null;
-  state._airSpinAxis = spin ? spin.axis : 0;
-  state._airSpinLeft = spin ? spin.left : 0;
+  // the boost (version 12); an older checkpoint's 64th value was an air spin, which no build steps now: no boosted flight
+  const boost = count === VALUE_COUNT && record.version === 12 ? decodeBoost(values[offset]!) : null;
+  state._boostNozzle = boost ? boost.nozzle : 0;
+  state._boostBurnS = boost ? boost.burnS : 0;
   return true;
 }
 
-/** The air spin as one value (version 10): its axis (movement.ts AIR_SPIN_AXES, -2..2) times AIR_SPIN_CODE plus the turn
- *  it owes (0..2π, under AIR_SPIN_CODE); 0 is no spin. Shared with the migration extras (src/mp/host/hostProtocol.ts). */
-export function encodeAirSpin(axis: number, left: number): number {
-  const a = Math.trunc(axis) || 0;
-  if (!a || !(left > 0)) return 0;
-  return a * AIR_SPIN_CODE + Math.min(left, 2 * Math.PI);
+/** The flight's boosts spent, as the flags carry them (0-7). */
+function boostsUsedOf(used: number): number {
+  return Math.max(0, Math.min(BOOSTS_USED_MAX, Math.trunc(Number.isFinite(used) ? used : 0)));
 }
 
-/**
- * A migrated host's air spin (turbo-spin-275; MigrationEntityExtras.airSpin): the one the extras carried, less the turn the
- * row it restored from already shows (`ageS` of flight). Since thrust-flips-277 the turn rides the hull's angular momentum
- * (hullThrusters.ts), so the extras carry the spin's rate too (MigrationEntityExtras.airSpinRate, the attitude spring's
- * on the spin's axis): it is restored onto the spring, and the row's age is taken at it. Without it (an older host) the
- * age is taken at the burn's mean rate and the burn spins the hull up again from rest. The spin's step drives its axis
- * from here.
- */
-export function restoreAirSpin(state: Pick<TankState, '_airSpinAxis' | '_airSpinLeft' | '_spring'>, value: number, ageS: number,
-  rate: number | null = null): void {
-  const spin = decodeAirSpin(value);
-  const age = Math.max(0, Number.isFinite(ageS) ? ageS : 0);
-  const carried = spin && rate !== null && Number.isFinite(rate) ? rate : null;
-  const pace = carried !== null && spin ? Math.max(0, carried * airSpinSense(spin.axis)) : AIR_SPIN_RATE;
-  const left = spin ? spin.left - pace * age : 0;
-  state._airSpinAxis = spin && left > 1e-9 ? spin.axis : 0;
-  state._airSpinLeft = spin && left > 1e-9 ? left : 0;
-  if (spin && left > 1e-9 && carried !== null && state._spring) {
-    if (airSpinPitches(spin.axis)) state._spring.pitchV = carried;
-    else state._spring.rollV = carried;
-  }
+/** A boost as one value (version 12; thrust-boosts-279): the nozzle the flight last fired (BOOST_NOZZLES, 1-5) times
+ *  BOOST_CODE plus the burn it has left (0..BOOST_BURN_S s); 0 is no boosted flight. Shared with the migration extras
+ *  (src/mp/host/hostProtocol.ts MigrationEntityExtras.boost). */
+export function encodeBoost(nozzle: number, burnS: number): number {
+  const n = Math.trunc(nozzle) || 0;
+  if (n < BOOST_NOZZLES.UP || n > BOOST_NOZZLES.RIGHT) return 0;
+  return n * BOOST_CODE + Math.max(0, Math.min(BOOST_BURN_S, Number.isFinite(burnS) ? burnS : 0));
 }
 
-/** The rate a spin turns at on its axis (the attitude spring's), for the migration extras; 0 with none turning. */
-export function airSpinRateOf(state: Pick<TankState, '_airSpinAxis' | '_spring'>): number {
-  const axis = state._airSpinAxis;
-  if (!axis || !state._spring) return 0;
-  return airSpinPitches(axis) ? state._spring.pitchV : state._spring.rollV;
-}
-
-/** The air spin a value names, or null for none or a value no build writes. */
-export function decodeAirSpin(value: number): { axis: number; left: number } | null {
-  if (!Number.isFinite(value) || value === 0) return null;
-  const axis = Math.floor(value / AIR_SPIN_CODE);
-  const left = value - axis * AIR_SPIN_CODE;
-  if (axis === 0 || Math.abs(axis) > 2 || !(left > 0) || left > 2 * Math.PI + 1e-9) return null;
-  return { axis, left };
+/** The boost a value names, or null for none or a value no build writes. */
+export function decodeBoost(value: number): { nozzle: number; burnS: number } | null {
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const nozzle = Math.floor(value / BOOST_CODE);
+  const burnS = value - nozzle * BOOST_CODE;
+  if (nozzle < BOOST_NOZZLES.UP || nozzle > BOOST_NOZZLES.RIGHT || burnS > BOOST_BURN_S + 1e-9) return null;
+  return { nozzle, burnS };
 }

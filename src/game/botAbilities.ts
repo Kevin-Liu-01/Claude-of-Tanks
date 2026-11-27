@@ -3,13 +3,15 @@
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts'; // the shared action table (src/net left with v1)
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { SMOKE_COOLDOWN_S, type AuxiliaryState } from '../sim/auxiliarySystems.ts';
-import { AIR_SPIN_RATE, canTankAirSpin, tankAirborne, type HullFlightState } from '../sim/hullFlight.ts';
+import { BOOST_BURN_S, BOOST_NOZZLES, boostNozzleFor, canTankBoost, tankAirborne, type HullFlightState } from '../sim/hullFlight.ts';
 import { turboReadyIn, type TurboHull } from '../sim/modeMoves.ts';
 
 import * as detMath from '../sim/detMath.ts';
 interface AbilityEntity extends TurboHull {
   modeActive?: boolean;
   modeJumpMps?: number | null;
+  /** The drive the bot holds this tick, which picks the boost's nozzle (sim/hullFlight.ts boostNozzleFor). */
+  input?: { throttle?: number; steer?: number };
   state: HullFlightState & { yaw: number; turretYaw: number; speed: number; verticalSpeed?: number; grounded: boolean; overturned?: boolean };
   combat?: { hp: number; maxHp: number; destroyed: boolean; auxiliary?: AuxiliaryState };
 }
@@ -45,19 +47,18 @@ export interface BotAbilityContext {
 const AIR_THREAT_M = 450;
 
 /**
- * Bot Turbo and air spin (bot-turbo-276; owner 2026-11-22, turbo-spin-275 left bots out): Turbo is taken at a chase dead
- * ahead, on the ground at `groundMinM`-`groundMaxM` from it at `minSpeedMps` or faster and drive held, and in flight
- * (after a jump or a recoil launch) once the climb is spent (`apexMps` or less) at up to `airMaxM`, to reach farther;
- * the landing is probed first either way, and a leap at a tank comes down `targetStandoffM` short of it (no ram). The air
- * spin is one flip or roll a flight, pressed early in a real climb (ride airtime `spinAfterS`-`spinWindowS`, still rising
- * at `spinClimbMps`: a hop off a bump is no flight) and only with the whole turn and `spinMarginS` of flight still
- * ahead, so the hull lands on its tracks; its axis is the drive the bot holds (W a front flip, A/D a roll).
+ * Bot Turbo and boost (bot-turbo-276; owner 2026-11-22, turbo-spin-275 left bots out): Turbo is taken at a chase dead
+ * ahead on the ground, `groundMinM`-`groundMaxM` from it at `minSpeedMps` or faster and drive held, the landing probed
+ * first, and a leap at a tank comes down `targetStandoffM` short of it (no ram). Never in flight (thrust-boosts-279,
+ * Main's ruling 5: in flight Turbo fires the butt's nozzles, whose nose-down turn would plant a bot's nose). The boost is
+ * the belly's alone (no turn: the hull lands on its tracks), one a flight, pressed early in a real climb (ride airtime
+ * `spinAfterS`-`spinWindowS`, still rising at `spinClimbMps`: a hop off a bump is no flight) with the burn and
+ * `spinMarginS` of flight still ahead, and only while the drive the bot holds picks the belly (W or none, not A/D or S).
  */
 export const BOT_TURBO = Object.freeze({
-  groundMinM: 12, groundMaxM: 80, airMaxM: 140, minSpeedMps: 3, apexMps: 1.5, targetStandoffM: 20,
+  groundMinM: 12, groundMaxM: 80, minSpeedMps: 3, targetStandoffM: 20,
   spinAfterS: 0.15, spinWindowS: 0.6, spinClimbMps: 2, spinMarginS: 0.35,
 });
-const AIR_SPIN_TURN_S = 2 * Math.PI / AIR_SPIN_RATE;
 
 export function createBotAbilityPlanner(spec: { id: string }) {
   const kit = auxiliaryCapabilities(spec);
@@ -79,20 +80,20 @@ export function createBotAbilityPlanner(spec: { id: string }) {
     if (!entity.modeTurbo || !entity.combat || entity.combat.destroyed || entity.modeActive === false) return false;
     if (timeS < nextThinkS || turboReadyIn(entity, timeS) > 0 || entity.state._body?.autoRighting === true) return false;
     const chaseM = context.chaseM ?? Infinity;
-    if (context.retreating || !(chaseM >= BOT_TURBO.groundMinM)) return false;
-    if (tankAirborne(entity.state)) {
-      return chaseM <= BOT_TURBO.airMaxM && (entity.state.verticalSpeed ?? 0) <= BOT_TURBO.apexMps;
-    }
+    if (context.retreating || !(chaseM >= BOT_TURBO.groundMinM) || tankAirborne(entity.state)) return false;
     return !entity.state.overturned && chaseM <= BOT_TURBO.groundMaxM && entity.state.speed >= BOT_TURBO.minSpeedMps;
   }
 
-  /** One flip or roll a flight, early in it, with the whole turn still ahead of the landing. */
+  /** One belly boost a flight, early in it, with the burn still ahead of the landing. */
   function airSpinDue(entity: AbilityEntity, context: BotAbilityContext): boolean {
+    const rules = entity.modeAirSpin;
     const airTime = entity.state._ride?.airTime ?? 0;
-    return !!entity.modeAirSpin && canTankAirSpin(entity.state)
+    return !!rules && tankAirborne(entity.state) && canTankBoost(entity.state, rules.charges)
+      && (entity.state._boostsUsed ?? 0) === 0
+      && boostNozzleFor(entity.input?.throttle ?? 0, entity.input?.steer ?? 0) === BOOST_NOZZLES.UP
       && airTime >= BOT_TURBO.spinAfterS && airTime <= BOT_TURBO.spinWindowS
       && (entity.state.verticalSpeed ?? 0) >= BOT_TURBO.spinClimbMps
-      && (context.flightS ?? 0) >= AIR_SPIN_TURN_S + BOT_TURBO.spinMarginS;
+      && (context.flightS ?? 0) >= BOOST_BURN_S + BOT_TURBO.spinMarginS;
   }
 
   function update(entity: AbilityEntity, timeS: number, context: BotAbilityContext): number {

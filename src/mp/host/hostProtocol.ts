@@ -76,15 +76,17 @@ export interface MigrationEntityExtras {
   motion?: [spool: number, yawRate: number];
   /** Turbo's cooldown left (s; turbo-spin-275); absent when ready or the mode has none. */
   turboReadyIn?: number;
-  /** The air spin turning (turbo-spin-275; movementPredictionState.ts encodeAirSpin); absent when none. */
-  airSpin?: number;
-  /** The rate that spin turns at on its axis (rad/s, the attitude spring's; thrust-flips-277: the turn rides the hull's
-   *  angular momentum under its thrusters' burn); absent with no spin or at rest. */
-  airSpinRate?: number;
-  /** The air spin's cooldown left (s; flip-boost-276); absent when ready or the mode has none. */
+  /** A boosted flight (thrust-boosts-279; movementPredictionState.ts encodeBoost: the nozzle last fired and its burn
+   *  left); absent with none since the ground. */
+  boost?: number;
+  /** That flight's motion no row carries: the attitude spring's pitch and roll rates and the drift (movement.ts
+   *  `_spring.pitchV`, `rollV`, `recoilVX`, `recoilVZ`), which the nozzles gave the hull and nothing in the air takes off;
+   *  absent with no boosted flight. */
+  boostMotion?: [pitchV: number, rollV: number, driftX: number, driftZ: number];
+  /** The gap left before the next boost press (s; flip-boost-276); absent when ready or the mode has none. */
   airSpinReadyIn?: number;
-  /** The flight's dodge spent (flip-boost-276; movement.ts `_flipUsed`); absent when unspent. */
-  flipUsed?: true;
+  /** The flight's boosts spent (thrust-boosts-279; movement.ts `_boostsUsed`); absent when none. */
+  boostsUsed?: number;
   /** A live bot's way (game/ai.ts BotDrive; gaps 274, G3): its route, cursor, mission and progress watchdog. */
   way?: BotDrive;
   /** A bot down when the keyframe is sealed (gaps 274 fix-up r2): its brain's two seeded streams' positions alone (the

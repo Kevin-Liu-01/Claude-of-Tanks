@@ -25,9 +25,9 @@ function drive(ticks) {
   return state;
 }
 
-assert.equal(MOVEMENT_CHECKPOINT_VERSION, 11,
-  'bots lane (2026-10-02): the roof a hull rests on rides with the integrator; physics lane (2026-10-03): and its gravity tip, then the landing stroke and the dive, then the top track contact, then the side-to-side transfer, then the bump stops\' share of the dive; physics (268): then the body contact it rests on; turbo-spin-275: then the air spin in progress; flip-boost-276: then the flight\'s dodge spent (flag bit 13)');
-assert.equal(MOVEMENT_CHECKPOINT_VALUES, 64, 'version 4 (48 values) + rebound, stroke, dive, dive rate + top contact + the held posture and its seated share (pitch, roll, their rates) + the stops\' share and its rate + the air spin (the wire\'s 64th and last value)');
+assert.equal(MOVEMENT_CHECKPOINT_VERSION, 12,
+  'bots lane (2026-10-02): the roof a hull rests on rides with the integrator; physics lane (2026-10-03): and its gravity tip, then the landing stroke and the dive, then the top track contact, then the side-to-side transfer, then the bump stops\' share of the dive; physics (268): then the body contact it rests on; turbo-spin-275: then the air spin in progress; flip-boost-276: then the flight\'s dodge spent (flag bit 13); thrust-boosts-279: the boost in their place (the 64th value the nozzle and its burn, flag bits 13-15 the boosts spent)');
+assert.equal(MOVEMENT_CHECKPOINT_VALUES, 64, 'version 4 (48 values) + rebound, stroke, dive, dive rate + top contact + the held posture and its seated share (pitch, roll, their rates) + the stops\' share and its rate + the boost (the wire\'s 64th and last value)');
 
 // One codec: the wire's encoder and decoder are the sim's, so a layout change cannot reach one side only.
 assert.equal(captureMovementCheckpoint, captureMovementPredictionState, 'the wire capture is the sim codec');
@@ -163,10 +163,11 @@ assert.equal(applyMovementCheckpoint(untouched, { version: 5, values: ours.value
 assert.equal(applyMovementCheckpoint(untouched, { version: 6, values: ours.values, flags: ours.flags }), false, 'a version-6 tag on 64 values');
 assert.equal(applyMovementCheckpoint(untouched, { version: 7, values: ours.values, flags: ours.flags }), false, 'a version-7 tag on 64 values');
 assert.equal(applyMovementCheckpoint(untouched, { version: 9, values: ours.values, flags: ours.flags }), false, 'a version-9 tag on 64 values');
-assert.equal(applyMovementCheckpoint(untouched, { version: 12, values: ours.values, flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 11, values: ours.values.slice(1), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 11, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 11, values: ours.values, flags: 16384 }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 13, values: ours.values, flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 12, values: ours.values.slice(1), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 12, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 12, values: ours.values, flags: 65536 }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 11, values: ours.values, flags: 16384 }), false, 'bits 14-15 are version 12\'s');
 assert.equal(applyMovementCheckpoint(untouched, { version: 10, values: ours.values, flags: 8192 }), false, 'bit 13 is version 11\'s');
 assert.equal(applyMovementCheckpoint(untouched, { version: 8, values: ours.values.slice(0, 63), flags: 8192 }), false);
 assert.equal(JSON.stringify(captureMovementCheckpoint(untouched)), before);
@@ -202,4 +203,4 @@ assert.equal(seated._body.restSupportY, resting._body.restSupportY, 'the replay 
 assert.equal(applyMovementCheckpoint(seated, ours), true);
 assert.ok(Number.isNaN(seated._body.restSupportY), 'a checkpoint without a roof clears it');
 
-console.log('mp movement checkpoint: 64-value version-11 layout identical to the authority encoder, versions 8, 7, 6, 5 and 4 still decode, the roof and the body contact a hull rests on carried and cleared, a hit\'s shove replayed exactly from the checkpoint, identity after apply, f32 tolerant, typed rejections pass');
+console.log('mp movement checkpoint: 64-value version-12 layout identical to the authority encoder, versions 8, 7, 6, 5 and 4 still decode, the roof and the body contact a hull rests on carried and cleared, a hit\'s shove replayed exactly from the checkpoint, identity after apply, f32 tolerant, typed rejections pass');

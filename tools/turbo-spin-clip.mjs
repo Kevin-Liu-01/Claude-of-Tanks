@@ -40,7 +40,7 @@ const TIERS = { desktop: 'desktop', phone: 'phone' };
 const hullNow = () => {
   const D = window.__DEBUG, p = D.game.player, s = p.state;
   return { t: +D.game.timeS.toFixed(2), grounded: s.grounded, y: +s.pos.y.toFixed(2), speed: +s.speed.toFixed(1),
-    pitch: +s.visualPitch.toFixed(2), roll: +s.visualRoll.toFixed(2), spin: s._airSpinAxis, overturned: s.overturned,
+    pitch: +s.visualPitch.toFixed(2), roll: +s.visualRoll.toFixed(2), boost: s._boostNozzle, boostsUsed: s._boostsUsed, overturned: s.overturned,
     turboReadyIn: Math.max(0, +(((p.turboReadyS ?? -Infinity) - D.game.timeS)).toFixed(2)) };
 };
 

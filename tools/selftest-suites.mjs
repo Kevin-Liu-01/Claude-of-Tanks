@@ -125,15 +125,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/strikeMissileWire.selftest.mjs',
     // 2026-11-22 (turbo-spin-275): Turbo and the air spin in Turbo Ball and Gravity, the shared action step and the movement
     'src/sim/turboSpin.selftest.mjs',
-    // 2026-11-22 (turbo-spin-275): a host migration mid-flip and mid-turbo; the flip finishes, the cooldown runs on
+    // 2026-11-22 (turbo-spin-275): a host migration mid-boost and mid-turbo; the burn and its boosts spent carry, the cooldown runs on
     'src/mp/host/turboSpinMigration.selftest.mjs',
-    // 2026-11-24 (bot-turbo-276): bots take Turbo and the air spin through the action step, only where the mode carries them
+    // 2026-11-24 (bot-turbo-276): bots take Turbo and the belly boost through the action step, only where the mode carries them
     'src/sim/botTurboSpin.selftest.mjs',
-    // 2026-11-24 (flip-boost-276): the air spin a dodge: each move's shove and turn, the cooldown, one a flight, the ground
-    // dodge, the ball, page/authority parity, planted controls
-    'src/sim/flipBoost.selftest.mjs',
-    // 2026-11-25 (thrust-flips-277): the air spin a thruster burn on a rigid body: r x F about the centre of mass, the
-    // burn's shape (ramp, taper, coast, counter-burn), the centre of mass ballistic in flight, a replay from mid burn
+    // 2026-11-27 (thrust-boosts-279): boosts as plain force vectors, five a flight: the stepped climb under its cap, a side
+    // boost's drift and roll without a return, two summing, the sixth refused, the plumes drawing the force applied, the
+    // ground press, Turbo's butt burn in flight, a replay round trip and page/authority parity, planted controls
+    'src/sim/thrustBoosts.selftest.mjs',
+    // 2026-11-25 (thrust-flips-277; thrust-boosts-279): a boost a force at a point on a rigid body: r x F about the centre
+    // of mass, a constant burn and nothing after it, the centre of mass ballistic in flight, a replay from mid-burn
     'src/sim/hullThrusters.selftest.mjs',
     // 2026-11-22 (turbo-spin-275): the wire's action mask is the OR of the action table; unnamed bits refused both ways
     'src/mp/wire/actionBitMask.selftest.mjs',

@@ -202,6 +202,7 @@ import {
   type BattleTeamNations,
   type RecordedRosterSeat,
 } from './rosterState.ts';
+import { turboNozzle } from '../sim/hullFlight.ts';
 export { createBus, createGameState, mulberry32 } from './stateCore.ts';
 export { soloRosterPlan } from './soloRosterPlan.ts';
 
@@ -2703,9 +2704,10 @@ function soloActionsHost(game: SoloGameState, bus: EventBus, world: SoloWorld): 
       moduleRepaired: (entity, module) => ref.bus.emit('module:state', { id: entity.id, module, state: 'ok', source: 'repair-kit' }),
       fireOut: (entity) => ref.bus.emit('tank:fire', { id: entity.id, burning: false }),
       engineStrained: (entity) => ref.bus.emit('module:state', { id: entity.id, module: 'engine', state: entity.combat.modules.engine?.state ?? 'yellow' }),
-      // a couch seat's Turbo and air spin (turbo-spin-275): its HUD and sound, as the player's press emits them
-      turboed: (entity) => ref.bus.emit('tank:turbo', { id: entity.id, readyS: entity.modeTurbo?.cooldownS ?? 0 }),
-      airSpun: (entity) => ref.bus.emit('tank:airSpin', { id: entity.id, axis: entity.state._airSpinAxis, readyS: entity.modeAirSpin?.cooldownS ?? 0 }),
+      // a couch seat's Turbo and boost (turbo-spin-275): its HUD and sound, as the player's press emits them; the nozzle a
+      // burn fires (thrust-boosts-279: Turbo's in flight the butt's), for a hull drawn without its live burn
+      turboed: (entity) => ref.bus.emit('tank:turbo', { id: entity.id, readyS: entity.modeTurbo?.cooldownS ?? 0, nozzle: turboNozzle(entity.state) }),
+      airSpun: (entity) => ref.bus.emit('tank:airSpin', { id: entity.id, nozzle: entity.state._boostNozzle, readyS: entity.modeAirSpin?.cooldownS ?? 0 }),
     };
     entry = { host, ref };
     soloActionHosts.set(game, entry);

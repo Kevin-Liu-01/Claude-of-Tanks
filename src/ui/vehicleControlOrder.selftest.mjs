@@ -128,7 +128,7 @@ assert.equal(hud.match(/arrangeVehicleControls\(/g)?.length, 1, 'the HUD arrange
 assert.match(hud, /if\(controlsJumpMode===on\)return;\n\s*controlsJumpMode=on;\n\s*arrangeVehicleControls\(controlsRow,vehicleControls,on\);/,
   'the row is rearranged only when the jump flag changes, never per frame');
 assert.equal(hud.match(/jumpHint\.classList\.toggle\(/g)?.length, 1, 'the jump flag is set in one place, beside the arrangement');
-assert.match(hud, /setControlsJumpMode\(isJumpMode\(ruleset\),\{turbo:!!ruleset\?\.turbo,airSpin:!!ruleset\?\.airSpin\}\);/, 'the pre-battle rules set the flag (and the mode\'s Turbo and air spin)');
+assert.match(hud, /setControlsJumpMode\(isJumpMode\(ruleset\),\{turbo:!!ruleset\?\.turbo,airSpin:!!ruleset\?\.airSpin,charges:ruleset\?\.airSpin\?\.charges\?\?0\}\);/, 'the pre-battle rules set the flag (and the mode\'s Turbo, boost and its charges)');
 assert.match(hud, /if\(frame\.matchModeState\?\.id\)\{\n\s*const modeRules=[^\n]*\n\s*setControlsJumpMode\(isJumpMode\(modeRules\)/, 'the live mode state sets the flag');
 assert.doesNotMatch(hud, /controlsRow\.(append|prepend|appendChild|insertBefore|replaceChildren)\(/, 'nothing else reorders the row');
 

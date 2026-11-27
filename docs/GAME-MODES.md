@@ -580,47 +580,57 @@ damage needs to scale a lot more").
 
 Turbo Ball adds three ruleset knobs (`jumpMps`, `recoilLaunchScale`, `shellKnockScale`) stamped on
 every entity by the mode controller: **F** launches an upright hull 13 m/s upward — a rocket that boosted
-again after 0.35 s of flight (round 30, owner 2026-09-20; since turbo-spin-275 F in flight spins instead, below) — (the key
+again after 0.35 s of flight (round 30, owner 2026-09-20; since turbo-spin-275 F in flight is the boost instead, below) — (the key
 still self-rights an overturned hull), the firing recoil becomes a real launch opposite the muzzle
 (×12 — aim behind you and fire for a speed boost, aim down to hop), and impact knocks are ×2.5 —
 eight times the ×0.3 baseline. The
 HUD shows a rocket · JUMP · F keycap only in rulesets with a jump; the touch layer shows a rocket button there,
 which also flips an overturned hull.
 
-**Turbo and the air spin** (turbo-spin-275, owner 2026-11-22: "for turbo ball and gravity mode add another thing with
+**Turbo and the boosts** (turbo-spin-275, owner 2026-11-22: "for turbo ball and gravity mode add another thing with
 going up called turbo - it makes you go launch forward for a short bit ... f should also be an official command so u can
 literally spin in air but only if ur in air (gray if ur not)"). Turbo Ball and Gravity (Mars) only (`turbo`, `airSpin`
 in `sim/matchRuleset.ts`):
 
-- **Turbo** (Z; gamepad LS; action bit 18): a forward leap along the hull, +12 m/s and a 2.5 m/s hop in Turbo Ball (+9
-  and 2.2 on Mars), a fall stopped in flight, so the jump then Turbo is an air dash; a 3 s cooldown
-  (`sim/modeMoves.ts requestHullTurbo`). The two modes' physics carry a launch ceiling (`launchCeilingMps`, 45 m/s) past
-  the drivetrain's 1.2 × top speed: held in flight, bled off on the ground at 14 m/s² (the recoil launch shares it).
-- **Air spin** (F in flight; its own action, unbound by default, and action bit 19 for the tile, the phone key and the
-  touch button, which never jump): one whole flip or roll, the axis from the drive at the press (W or nothing a front
-  flip, S a back flip, A or D a roll). The rocket's mid-air re-boost gives way to it in these modes. The ground ends a
-  turn; the movement checkpoint (version 11) and the migration extras carry one in progress. A dodge since flip-boost-276
-  (each move shoves the hull along it, `AirSpinRules`, one a flight, a 1.2 s cooldown, a ground dodge's hop on the
-  ground).
-- **The thrusters** (thrust-flips-277, owner 2026-11-24: "look like your literally swinging around an axis instead of
-  like a rocket strapped to your butt and sides being activated to change your motion"). The turn and the shove are a
-  burn on a rigid body (`sim/hullThrusters.ts`, `sim/movement.ts driveAirSpin`), not a set rate: nozzles at mount points on
-  the hull's contact box (the butt for the front flip, the nose's underside for the back flip, the side away from the
-  travel for a roll, so a roll lifts its far side and rolls the way it travels) push the hull, their moment r × F about
-  the centre of mass turns it through the box's inertia, and a couple of attitude jets beside them makes up the rest. The
-  main burn lights at 30 % of its thrust, ramps up, and tapers off as the spin reaches 14 rad/s (about 0.15 s, the move's
-  whole shove); the hull coasts on its momentum; then the opposite jets fire a counter-burn that brings it to rest one
-  whole turn round, in about 0.65 s from the press. In flight the hull turns about its centre of mass (its root, under the
-  tracks, moves round it). The burn reads only the spin's checkpointed state (the turn it still owes, the spring's rate),
-  so the checkpoint stays at version 11; the migration extras carry the spin's rate. Each firing nozzle draws a flame and
-  sheds fire and smoke (`fx/hullThrusterPlumes.ts`), each burn's ignition is heard (`tank:thrust`), and a network peer's
-  or a replay's hull draws a ghost of the burn from its `tank:airSpin` event. `thrustArrows=1` draws each nozzle's force.
-  Recordings from before 277 do not replay on it (the sim changed; replays refuse another build).
-- The air spin greys out on the ground everywhere (the HUD tile, the phone controller's key, the touch button); the jump
-  dims in flight; Turbo shows its cooldown. A phone's survival edge seats the jump, Turbo and the air spin as round buttons.
-- Checks by hand: `node tools/turbo-spin-clip.mjs --out=DIR` films them in real time through the real keys (render lock).
-- `node tools/thrust-flips-clip.mjs --out=DIR [--arrows]` films each flip and roll as still strips from a chase and a
-  side camera at fixed battle-time offsets (render lock); run from a 276 checkout's directory it films the "before".
+- **Turbo** (Z; gamepad LS; action bit 18): on the ground a forward leap along the hull, +12 m/s and a 2.5 m/s hop in
+  Turbo Ball (+9 and 2.2 on Mars); in flight it fires the butt's thrusters (below), which push the hull forward and tip
+  its nose down, spending none of the flight's boosts; a 3 s cooldown (`sim/modeMoves.ts requestHullTurbo`). The two
+  modes' physics carry a launch ceiling (`launchCeilingMps`, 45 m/s) past the drivetrain's 1.2 × top speed: held in
+  flight, bled off on the ground at 14 m/s² (the recoil launch shares it).
+- **Boosts** (thrust-boosts-279, owner 2026-11-27: "we should be able to elevate/boost up multiple times into the sky,
+  and that the subsequent side/rear boosts that alow you to roll shouldnt like just have you end at rogiinal position they
+  should literally be just like a additional force vector added from that side"). F in flight (and the boost's own
+  action, unbound by default, action bit 19 for the tile, the phone key and the touch button) fires the nozzle the drive
+  picks at the press: W or nothing the belly (straight up the hull's own up), S the nose's underside (back and a little
+  up), A or D the side away from the push (toward the side the steer turns to, a little up). Five a flight
+  (`AirSpinRules.charges`), refilled by the ground, at least 0.35 s apart; the HUD tile shows the charges left as pips.
+  The belly pushes 0.75 × the mode's jump (Turbo Ball 9.75 m/s; Mars, the Moon and Earth by their world's jump), and no
+  nozzle lifts the climb past 1.25 × the jump (`climbCapMps`, a cap on vertical speed alone), so pressed at each apex the
+  climb comes in steps: Turbo Ball 14 → 49 m over five, Mars 12 → 42 m, the Moon 47 → 174 m, Earth 1.8 → 4.6 m. On the
+  ground the boost's own key hops the hull at `hopMps` first.
+- **The thrusters** (thrust-flips-277; thrust-boosts-279). A boost is a force at a point on a rigid body
+  (`sim/hullThrusters.ts`, `sim/movement.ts driveBoost`): each nozzle pair sits at mount points on the hull's contact
+  box and burns at a constant thrust for 0.2 s that delivers its shove (`upMps`, `backMps`, `sideMps`, `forwardMps`).
+  The push moves the centre of mass (the hull goes away from the side that fired) and its moment r × F about the centre
+  of mass turns the hull through the box's inertia: none for the belly, the nose up for the nose's push, down for the
+  butt's, a side push rolling the hull the way it goes (its far side up; about 3.5 rad/s on a 50 t hull in Turbo Ball).
+  Nothing else fires: no attitude jets, no counter-burn, no turn to finish. The hull keeps the velocity and spin the
+  forces gave it: the mode's air angular drag (0.8-0.9 /s) is the only damper and turns toward no attitude, a flight
+  in which a nozzle has fired may spin up to 8 rad/s (the flight's 1.2-1.4 rad/s launch cap would take the roll in a
+  tick), and its drift across the heading holds until the tracks touch. Boosts add up as vectors (each pushes along the
+  hull's attitude at its press). The ground takes the landing: contact, the rollover and the self-right (F on a roof).
+  In flight the hull turns about its centre of mass. The movement checkpoint (version 12: its 64th value the nozzle and
+  the burn left, flag bits 13-15 the boosts spent) and the migration extras (`boost`, `boostMotion`, `boostsUsed`)
+  carry a boosted flight. Each firing nozzle draws a flame sized by the thrust the step applied and sheds fire and smoke
+  (`fx/hullThrusterPlumes.ts`), each burn's ignition is heard (`tank:thrust`), and a network peer's or a replay's hull
+  draws a ghost of the burn from its `tank:airSpin` or `tank:turbo` event's nozzle. `thrustArrows=1` draws each
+  nozzle's force. Bots take the belly boost alone, once a flight, and never Turbo in flight.
+- The boost greys when the sim would refuse it (the HUD tile, the phone controller's key, the touch button); the jump
+  dims in flight; Turbo shows its cooldown. A phone's survival edge seats the jump, Turbo and the boost as round buttons.
+- Checks by hand: `node tools/turbo-spin-clip.mjs --out=DIR` films them in real time through the real keys (render lock);
+  `node tools/thrust-boosts-clip.mjs --out=DIR` films the boosts from the player's camera with the HUD (render lock).
+  Receipts: `src/sim/thrustBoosts.selftest.mjs` (its reverted control against the 277 burn:
+  `node tools/thrust-boosts-controls.mjs`), `src/sim/hullThrusters.selftest.mjs`.
 
 ### Speed-based damage, falls and rebounds (owner 2026-09-25)
 

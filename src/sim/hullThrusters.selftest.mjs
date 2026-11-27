@@ -1,30 +1,24 @@
-// hullThrusters.selftest.mjs — the air spin as a thruster burn on a rigid body (thrust-flips-277; owner 2026-11-24: "right
-// now the flips and barrel rolls in gravity mode look like your literally swinging around an axis instead of like a rocket
-// strapped to your butt and sides being activated to change your motion"). Copyright (c) 2026 Kevin B. Liu.
+// hullThrusters.selftest.mjs — a boost as a force at a point on a rigid body (thrust-flips-277; thrust-boosts-279, owner
+// 2026-11-27: the side and rear boosts "just like a additional force vector added from that side"). Copyright (c) 2026
+// Kevin B. Liu.
 //
-// Pins (sim/hullThrusters.ts, sim/movement.ts driveAirSpin), on a real hull (the M1A1 Abrams HC's contact box) and the
-// fixture:
-//   - the torque is r x F: for each move the main nozzles' moment about the centre of mass, recomputed here from their
-//     mounts and forces as full 3-vectors, has no component off the move's axis, and with the attitude jets beside them
-//     sums to the burn's angular acceleration; each attitude-jet pair is a couple (no net force); the front flip fires
-//     from behind the centre of mass (the butt), the back flip from ahead of it and below, a roll from the side away from
-//     its travel, which lifts that side;
-//   - the burn has a shape: it lights at a share of its thrust, ramps to all of it, tapers as the spin reaches its rate,
-//     coasts with no burn, then a counter-burn in the turn's second half stops it a whole turn round at rest, in about
-//     AIR_SPIN_TURN_S;
-//   - in flight the centre of mass, not the root, keeps a ballistic path: while the hull coasts its centre of mass falls
-//     at the mode's gravity along a straight horizontal line, while the root under the tracks swings round it (a planted
-//     control: the root's own path fails the same check);
-//   - deterministic: two runs are bit-identical, and a replay from a checkpoint taken mid main burn (the prediction's
-//     version 11, no new value) follows the original exactly;
-//   - planted: a set-rate turn (the 276 spin: full rate on the press tick) fails the burn-shape check.
+// Pins (sim/hullThrusters.ts, sim/movement.ts driveBoost), on a real hull (the M1A1 Abrams HC's contact box):
+//   - the torque is r x F: each nozzle pair's moment about the centre of mass, recomputed here from its mounts and forces
+//     as full 3-vectors, has no yaw, and is the pair's alphaPitch / alphaRoll; the belly's has none at all; the butt
+//     (Turbo in flight) turns the nose down, the nose's underside turns it up, a side pair fires from the side away from
+//     its push and rolls the hull the way it is pushed (the far side up);
+//   - the burn: a constant thrust for BOOST_BURN_S (twelve 60 Hz steps), whose push along the nozzle's travel is the
+//     mode's shove (within 2 %), and nothing after it: no couple, no counter-burn, the spin it leaves bled by the
+//     flight's drag alone (exp(-drag t) to within 1 %);
+//   - in a boosted flight the centre of mass, not the root, keeps a ballistic path (a planted control: the root's own path
+//     fails the same check);
+//   - deterministic: two runs are bit-identical, and a replay from a checkpoint taken mid-burn with three boosts spent (the
+//     prediction's version 12) follows the original exactly and refuses what it would (two boosts left, then none).
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import {
-  AIR_SPIN_BURN, airSpinBurn, airSpinSense, airSpinThrusters, attitudeJets, createAirSpinThrusters, hullThrustFrame, nozzleAlpha,
-} from './hullThrusters.ts';
-import { AIR_SPIN_RATE } from './hullFlight.ts';
-import { AIR_SPIN_AXES, createTankState, updateTank, SIM_DT } from './movement.ts';
+import { boostThrusters, createBoostThrusters, hullThrustFrame, nozzlePitchAlpha, nozzleRollAlpha } from './hullThrusters.ts';
+import { BOOST_BURN_S, BOOST_NOZZLES } from './hullFlight.ts';
+import { createTankState, updateTank, SIM_DT } from './movement.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
 import { applyHullActions } from './hullActions.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
@@ -38,92 +32,59 @@ const SPEC = TANK_SPECS[SPEC_ID];
 const frame = hullThrustFrame(SPEC);
 const MODE = 'turbo_ball';
 const RULES = matchRulesetFor(MODE);
-const MOVES = [
-  { name: 'front flip', axis: AIR_SPIN_AXES.FRONT_FLIP, shove: RULES.airSpin.forwardMps, throttle: 1, steer: 0 },
-  { name: 'back flip', axis: AIR_SPIN_AXES.BACK_FLIP, shove: RULES.airSpin.backMps, throttle: -1, steer: 0 },
-  { name: 'roll left', axis: AIR_SPIN_AXES.ROLL_LEFT, shove: RULES.airSpin.sideMps, throttle: 0, steer: 1 },
-  { name: 'roll right', axis: AIR_SPIN_AXES.ROLL_RIGHT, shove: RULES.airSpin.sideMps, throttle: 0, steer: -1 },
+const B = RULES.airSpin;
+const N = BOOST_NOZZLES;
+const NOZZLES = [
+  // the belly near the apex (pressed early in the jump's climb, the climb cap takes part of it: thrustBoosts.selftest.mjs)
+  { name: 'belly', nozzle: N.UP, shove: B.upMps, throttle: 0, steer: 0, pitch: 0, roll: 0, climbTicks: 125 },
+  { name: 'nose', nozzle: N.BACK, shove: B.backMps, throttle: -1, steer: 0, pitch: 1, roll: 0 },
+  { name: 'left push', nozzle: N.LEFT, shove: B.sideMps, throttle: 0, steer: 1, pitch: 0, roll: -1 },
+  { name: 'right push', nozzle: N.RIGHT, shove: B.sideMps, throttle: 0, steer: -1, pitch: 0, roll: 1 },
+  { name: 'butt (Turbo)', nozzle: N.FORWARD, shove: B.forwardMps, turbo: true, pitch: -1, roll: 0 },
 ];
 const cross = (r, f) => [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
 
 // ---- the torque is r x F
-for (const move of MOVES) {
-  const t = airSpinThrusters(frame, move.axis, move.shove, createAirSpinThrusters());
-  const pitch = Math.abs(move.axis) === 1;
-  const torque = [0, 0, 0];
-  for (const n of t.nozzles) {
-    const tau = cross([n.x - frame.comX, n.y - frame.comY, n.z - frame.comZ], [n.dx * n.accel, n.dy * n.accel, n.dz * n.accel]);
-    for (let i = 0; i < 3; i++) torque[i] += tau[i];
+for (const move of NOZZLES) {
+  const t = boostThrusters(frame, move.nozzle, move.shove, createBoostThrusters());
+  const torque = [0, 0, 0], force = [0, 0, 0];
+  for (const n of t.pair) {
+    const f = [n.dx * n.accel, n.dy * n.accel, n.dz * n.accel];
+    const tau = cross([n.x - frame.comX, n.y - frame.comY, n.z - frame.comZ], f);
+    for (let i = 0; i < 3; i++) { torque[i] += tau[i]; force[i] += f[i]; }
   }
-  // pitch is about x (the spring's pitch is -tau_x: nose up), a roll about z (+tau_z lifts the left, +x)
-  const onAxis = pitch ? -torque[0] / frame.k2Pitch : torque[2] / frame.k2Roll;
-  const off = pitch ? [torque[1], torque[2]] : [torque[0], torque[1]];
-  assert.ok(Math.abs(onAxis * airSpinSense(move.axis) - t.alphaMainNozzles) < 1e-9, `${move.name}: the nozzles' moment is r x F (${onAxis.toFixed(3)} rad/s^2)`);
-  assert.ok(off.every((c) => Math.abs(c) < 1e-9), `${move.name}: no moment off its axis (${off.map((c) => c.toExponential(1))})`);
-  assert.equal(Math.sign(onAxis), airSpinSense(move.axis), `${move.name}: the nozzles turn the hull the move's way`);
-  const jets = attitudeJets(frame, pitch, airSpinSense(move.axis), t.alphaCouple, 'couple');
-  const net = jets.reduce((sum, j) => sum + j.dy * j.accel, 0);
-  const jetAlpha = jets.reduce((sum, j) => sum + nozzleAlpha(frame, j, move.axis), 0);
-  assert.ok(Math.abs(net) < 1e-9, `${move.name}: the attitude jets are a couple (net ${net})`);
-  assert.ok(t.alphaCouple > 0 && Math.sign(jetAlpha) === airSpinSense(move.axis), `${move.name}: the jets turn it the same way`);
-  assert.ok(Math.abs(t.alphaMainNozzles + jetAlpha * airSpinSense(move.axis) - AIR_SPIN_BURN.alphaMain) < 1e-9,
-    `${move.name}: nozzles ${t.alphaMainNozzles.toFixed(1)} + jets ${Math.abs(jetAlpha).toFixed(1)} = the burn's ${AIR_SPIN_BURN.alphaMain} rad/s^2`);
-  const n = t.nozzles[0];
-  if (move.axis === AIR_SPIN_AXES.FRONT_FLIP) assert.ok(n.z < frame.comZ - 1 && n.dz > 0.9, 'the front flip fires from the butt, pushing forward');
-  if (move.axis === AIR_SPIN_AXES.BACK_FLIP) assert.ok(n.z > frame.comZ + 1 && n.y < frame.comY && n.dz < 0, 'the back flip fires from the nose\'s underside, pushing back');
-  if (Math.abs(move.axis) === 2) {
-    const toward = move.axis === AIR_SPIN_AXES.ROLL_LEFT ? 1 : -1;
-    assert.ok(Math.sign(n.x - frame.comX) === -toward && Math.sign(n.dx) === toward, `${move.name}: fired from the side away from its travel`);
-    // that side goes up: the left (+x) side's sense is the opposite of the travel's
-    assert.equal(airSpinSense(move.axis), -toward, `${move.name}: the far side lifts, the hull rolls the way it travels`);
+  // the spring's pitch is -tau_x (nose up), its roll +tau_z (the left, +x, up)
+  const pitch = -torque[0] / frame.k2Pitch, roll = torque[2] / frame.k2Roll;
+  assert.ok(Math.abs(torque[1]) < 1e-9, `${move.name}: no yaw (${torque[1]})`);
+  assert.ok(Math.abs(pitch - t.alphaPitch) < 1e-9 && Math.abs(roll - t.alphaRoll) < 1e-9,
+    `${move.name}: the pair's turn is its r x F (pitch ${pitch.toFixed(2)}, roll ${roll.toFixed(2)} rad/s^2)`);
+  const pitchSign = Math.abs(pitch) < 1e-9 ? 0 : Math.sign(pitch), rollSign = Math.abs(roll) < 1e-9 ? 0 : Math.sign(roll);
+  assert.equal(pitchSign, move.pitch, `${move.name}: pitch sense`);
+  assert.equal(rollSign, move.roll, `${move.name}: roll sense`);
+  for (const n of t.pair) {
+    assert.ok(Math.abs(nozzlePitchAlpha(frame, n) + nozzleRollAlpha(frame, n)) < 1e3, `${move.name}: finite`);
+  }
+  // the push over the burn along the nozzle's travel is the shove
+  const along = move.nozzle === N.UP ? force[1] : move.nozzle === N.FORWARD ? force[2] : move.nozzle === N.BACK ? -force[2]
+    : move.nozzle === N.LEFT ? force[0] : -force[0];
+  assert.ok(Math.abs(along * BOOST_BURN_S - move.shove) < 1e-9, `${move.name}: a full burn pushes ${move.shove} m/s along its travel`);
+  const n = t.pair[0];
+  if (move.nozzle === N.FORWARD) assert.ok(n.z < frame.comZ - 1 && n.dz > 0.9, 'the butt pushes forward from behind the centre of mass');
+  if (move.nozzle === N.BACK) assert.ok(n.z > frame.comZ + 1 && n.y < frame.comY && n.dz < 0, 'the nose\'s underside pushes back');
+  if (move.nozzle === N.UP) assert.ok(n.y <= frame.comY && n.dy === 1 && Math.abs(t.alphaPitch) + Math.abs(t.alphaRoll) < 1e-9, 'the belly pushes up, through the centre of mass');
+  if (move.nozzle === N.LEFT || move.nozzle === N.RIGHT) {
+    const toward = move.nozzle === N.LEFT ? 1 : -1;
+    assert.ok(Math.sign(n.x - frame.comX) === -toward && Math.sign(n.dx) === toward, `${move.name}: fired from the side away from its push`);
   }
 }
 
-// ---- the burn's shape
-/** The burn law run from rest at the sim's step: each step's levels, and the ticks to a whole turn. */
-function profile(law = airSpinBurn) {
-  const levels = { main: 0, trim: 0, counter: 0 };
-  let left = 2 * Math.PI, rate = 0;
-  const rows = [];
-  for (let tick = 0; tick < 120; tick++) {
-    law(left, rate, levels);
-    rows.push({ ...levels, rate, left });
-    rate += (levels.main * AIR_SPIN_BURN.alphaMain + levels.trim * AIR_SPIN_BURN.alphaCounter - levels.counter * AIR_SPIN_BURN.alphaCounter) * SIM_DT;
-    const step = rate * SIM_DT;
-    if (step >= left - AIR_SPIN_BURN.finishRad || (rate <= 0 && levels.counter > 0)) return { rows, ticks: tick + 1, endRate: Math.abs(rate) };
-    left -= step;
-  }
-  return { rows, ticks: Infinity, endRate: rate };
-}
-/** The shape: ramp up from a share, all of it, a taper, a coast with none, a counter-burn in the second half. */
-function shaped({ rows, ticks }) {
-  const first = rows[0];
-  const peak = rows.findIndex((r) => r.main === 1);
-  const cut = rows.findIndex((r, i) => i > peak && r.main === 0);
-  const tapered = rows.slice(peak, cut).some((r) => r.main > 0 && r.main < 1);
-  const coast = rows.slice(cut).findIndex((r) => r.counter > 0);
-  const counterAt = cut + coast;
-  return first.main > 0 && first.main < 0.5 && rows[0].rate === 0 && peak > 0 && cut > peak && tapered && coast > 5
-    && rows[counterAt].left < Math.PI && Number.isFinite(ticks);
-}
-{
-  const run = profile();
-  assert.ok(shaped(run), 'the burn lights at a share, ramps, tapers, coasts and counter-burns in the second half');
-  const nominal = 2 * Math.PI / AIR_SPIN_RATE / SIM_DT;
-  assert.ok(Math.abs(run.ticks - nominal) <= 3, `a whole turn in about AIR_SPIN_TURN_S (${run.ticks} ticks, nominal ${nominal.toFixed(1)})`);
-  assert.ok(run.endRate < 3, `it ends near rest (${run.endRate.toFixed(2)} rad/s at the last step)`);
-  const burn = run.rows.filter((r) => r.main > 0).length, counter = run.rows.filter((r) => r.counter > 0).length;
-  console.log(`hullThrusters: the burn ${burn} ticks, the coast ${run.ticks - burn - counter}, the counter-burn ${counter}; a whole turn in ${run.ticks} ticks`);
-  // planted: the 276 spin, a set rate from the press tick (full rate at once, never a burn)
-  const setRate = (left, rate, out) => { out.main = rate < AIR_SPIN_BURN.rateMax ? 1e9 : 0; out.trim = 0; out.counter = 0; return out; };
-  assert.equal(shaped(profile(setRate)), false, 'planted: a set-rate turn fails the burn shape');
-}
-
-// ---- in flight the centre of mass keeps a ballistic path, the root swings round it
+// ---- the burn in the sim
 const field = { getHeightAt: () => 0, getNormalAt: () => null, getGroundType: () => 'medium' };
 const clock = { t: 0 };
-const host = { get timeS() { return clock.t; }, verdict: false, consumables: false, rng: () => 0.5, ground: () => 0, world: null, wind: null,
-  supply() {}, smokeLaunched() {}, turboed() {}, airSpun() {}, selfRighted() {} };
+const host = {
+  get timeS() { return clock.t; }, verdict: false, consumables: false, rng: () => 0.5, ground: () => 0, world: null, wind: null,
+  supply() {}, smokeLaunched() {}, turboed() {}, airSpun() {}, selfRighted() {},
+};
 function hull() {
   return {
     id: 'thruster', spec: SPEC, state: createTankState(SPEC, new Vector3(0, 0, 0), 0.4),
@@ -133,18 +94,39 @@ function hull() {
   };
 }
 function tick(e, bits = 0) { e.input.actionBits = bits; applyHullActions(e, host); updateTank(e, field, SIM_DT, null); clock.t += SIM_DT; }
-/** A hull jumped, 20 ticks into the climb, the move pressed. */
-function pressed(move) {
+/** A hull jumped, `climbTicks` into the climb, the nozzle pressed (its drive, or Turbo). */
+function pressed(move, climbTicks = move.climbTicks ?? 40) {
   const e = hull(); clock.t = 0;
   for (let n = 0; n < 120; n++) tick(e);
   tick(e, PLAYER_ACTION_BITS.SELF_RIGHT);
-  for (let n = 0; n < 20; n++) tick(e);
-  e.input.throttle = move.throttle; e.input.steer = move.steer;
-  tick(e, PLAYER_ACTION_BITS.AIR_SPIN);
+  for (let n = 0; n < climbTicks; n++) tick(e);
+  e.input.throttle = move.throttle ?? 0; e.input.steer = move.steer ?? 0;
+  tick(e, move.turbo ? PLAYER_ACTION_BITS.TURBO : PLAYER_ACTION_BITS.SELF_RIGHT);
   e.input.throttle = 0; e.input.steer = 0;
-  assert.equal(e.state._airSpinAxis, move.axis, `${move.name}: pressed`);
+  assert.equal(e.state._boostNozzle, move.nozzle, `${move.name}: pressed`);
   return e;
 }
+const drag = RULES.physics.airAngularDrag;
+for (const move of NOZZLES) {
+  const e = pressed(move);
+  // the press tick burnt its first step; count the rest, then the coast
+  let burnTicks = 1;
+  while (e.state._boostBurnS > 0 && burnTicks < 30) { assert.equal(e.state._thrust.level, 1, `${move.name}: a constant thrust`); tick(e); burnTicks++; }
+  assert.equal(burnTicks, Math.round(BOOST_BURN_S / SIM_DT), `${move.name}: the burn lasts ${BOOST_BURN_S} s (${burnTicks} ticks)`);
+  const p0 = e.state._spring.pitchV, r0 = e.state._spring.rollV;
+  for (let n = 0; n < 30; n++) {
+    tick(e);
+    assert.equal(e.state._thrust.nozzle, 0, `${move.name}: nothing fires after the burn`);
+  }
+  const decay = Math.exp(-drag * 30 * SIM_DT);
+  for (const [v0, v1, axis] of [[p0, e.state._spring.pitchV, 'pitch'], [r0, e.state._spring.rollV, 'roll']]) {
+    if (Math.abs(v0) < 1e-6) continue;
+    assert.ok(Math.abs(v1 / v0 - decay) < 0.01, `${move.name}: the ${axis} rate is the flight's drag alone (${(v1 / v0).toFixed(4)} vs ${decay.toFixed(4)})`);
+  }
+  if (move.pitch || move.roll) assert.ok(Math.abs(move.pitch ? p0 : r0) > 0.5, `${move.name}: it turns (${(move.pitch ? p0 : r0).toFixed(2)} rad/s)`);
+}
+
+// ---- the centre of mass is ballistic in a boosted flight
 /** The centre of mass in the world (Euler YXZ: yaw, -pitch, roll), and the root. */
 function comOf(s) {
   const p = -s.visualPitch, r = s.visualRoll, y = s.yaw;
@@ -153,7 +135,7 @@ function comOf(s) {
   return [s.pos.x + x1 * Math.cos(y) + z2 * Math.sin(y), s.pos.y + y2, s.pos.z - x1 * Math.sin(y) + z2 * Math.cos(y)];
 }
 const gravity = 9.81 * RULES.gravityScale;
-/** The worst departure from a ballistic path over the coast's ticks (second differences: 0 horizontally, -g dt^2 up). */
+/** The worst departure from a ballistic path (second differences: 0 horizontally, -g dt^2 up). */
 const ballistic = (path) => {
   let worst = 0;
   for (let i = 1; i + 1 < path.length; i++) {
@@ -164,46 +146,52 @@ const ballistic = (path) => {
   }
   return worst;
 };
-for (const move of MOVES) {
+for (const move of NOZZLES.filter((m) => m.pitch || m.roll)) {
   const e = pressed(move);
+  while (e.state._boostBurnS > 0) tick(e);
   const com = [], root = [];
-  let coastTicks = 0, ticks = 0;
-  while (e.state._airSpinAxis && ticks < 120) {
-    tick(e); ticks++;
-    const t = e.state._thrust;
-    if (t.main === 0 && t.trim === 0 && t.counter === 0 && t.lift === 0 && e.state._airSpinAxis && e.state._airSpinLeft < 2 * Math.PI - 0.5) {
-      com.push(comOf(e.state)); root.push([e.state.pos.x, e.state.pos.y, e.state.pos.z]); coastTicks++;
-    } else if (com.length) break;
-  }
-  assert.ok(coastTicks >= 8, `${move.name}: a coast (${coastTicks} ticks)`);
+  for (let n = 0; n < 24 && !e.state.grounded; n++) { tick(e); com.push(comOf(e.state)); root.push([e.state.pos.x, e.state.pos.y, e.state.pos.z]); }
+  assert.ok(com.length >= 16, `${move.name}: a coast (${com.length} ticks)`);
   const comErr = ballistic(com), rootErr = ballistic(root);
-  // the ride integrates with its own step (semi-implicit), so the centre of mass is ballistic to within a step's rounding
   assert.ok(comErr < 0.5, `${move.name}: the centre of mass coasts ballistic (worst ${comErr.toFixed(3)} m/s^2 off gravity)`);
-  assert.ok(rootErr > 20, `planted: the root under the tracks is not ballistic mid-${move.name} (${rootErr.toFixed(1)} m/s^2 off), so the check sees a pivot`);
+  assert.ok(rootErr > 1.5, `planted: the root under the tracks is not ballistic after the ${move.name} (${rootErr.toFixed(1)} m/s^2 off), so the check sees a pivot`);
 }
 
-// ---- determinism and a replay from mid main burn
+// ---- determinism and a replay from mid-burn, three boosts spent
 function midBurn() {
-  const e = pressed(MOVES[0]);
-  for (let n = 0; n < 5; n++) tick(e);
+  const e = hull(); clock.t = 0;
+  for (let n = 0; n < 120; n++) tick(e);
+  tick(e, PLAYER_ACTION_BITS.SELF_RIGHT);
+  for (let n = 0; n < 10; n++) tick(e);
+  for (const steer of [0, 1, 0]) {
+    e.input.steer = steer;
+    tick(e, PLAYER_ACTION_BITS.SELF_RIGHT);
+    e.input.steer = 0;
+    for (let n = 0; n < 23; n++) tick(e);
+  }
+  e.input.steer = -1;
+  tick(e, PLAYER_ACTION_BITS.SELF_RIGHT);
+  e.input.steer = 0;
+  for (let n = 0; n < 4; n++) tick(e);
   return e;
 }
 const a = midBurn(), b = midBurn();
 assert.deepEqual(captureMovementPredictionState(a.state), captureMovementPredictionState(b.state), 'two runs are bit-identical');
-assert.ok(a.state._thrust.main > 0, 'the checkpoint is mid main burn');
+assert.ok(a.state._boostBurnS > 0 && a.state._boostNozzle === N.RIGHT && a.state._boostsUsed === 4, 'the checkpoint is mid-burn, four boosts spent');
 const checkpoint = captureMovementPredictionState(a.state);
-assert.equal(checkpoint.version, 11, 'no new checkpoint version: the burn reads the version-11 values');
+assert.equal(checkpoint.version, 12, 'the boosts ride checkpoint version 12');
 const replay = hull();
 replay.state.pos.copy(a.state.pos); replay.state.yaw = a.state.yaw; replay.state.speed = a.state.speed;
 replay.state.verticalSpeed = a.state.verticalSpeed; replay.state.visualPitch = a.state.visualPitch; replay.state.visualRoll = a.state.visualRoll;
-replay.state.overturned = a.state.overturned; replay.state._spring.recoilVX = a.state._spring.recoilVX; replay.state._spring.recoilVZ = a.state._spring.recoilVZ;
+replay.state.overturned = a.state.overturned;
 assert.equal(applyMovementPredictionState(replay.state, checkpoint), true);
+assert.equal(replay.state._boostsUsed, 4, 'the replay has four boosts spent');
 let worst = 0;
 for (let n = 0; n < 90; n++) {
   updateTank(a, field, SIM_DT, null); updateTank(replay, field, SIM_DT, null);
-  worst = Math.max(worst, Math.abs(a.state.visualPitch - replay.state.visualPitch), Math.abs(a.state.pos.z - replay.state.pos.z),
-    Math.abs(a.state.pos.y - replay.state.pos.y));
+  worst = Math.max(worst, Math.abs(a.state.visualRoll - replay.state.visualRoll), Math.abs(a.state.pos.x - replay.state.pos.x),
+    Math.abs(a.state.pos.z - replay.state.pos.z), Math.abs(a.state.pos.y - replay.state.pos.y));
 }
-assert.equal(worst, 0, `the replay from mid burn follows the original exactly (worst ${worst})`);
+assert.equal(worst, 0, `the replay from mid-burn follows the original exactly (worst ${worst})`);
 
-console.log('hullThrusters: each move\'s moment is r x F about the centre of mass, on its axis alone, with couple attitude jets; the burn ramps, tapers, coasts and counter-burns to a whole turn at rest; the centre of mass coasts ballistic while the root swings round it; bit-identical runs and a replay from mid burn; a set-rate turn is caught');
+console.log('hullThrusters: each pair\'s turn is its own r x F about the centre of mass (none for the belly, nose down for the butt, up for the nose, a side pair rolling the hull the way it pushes); a constant 0.2 s burn delivers the shove and nothing fires after it, the spin bled by the flight\'s drag alone; the centre of mass coasts ballistic while the root swings round it; bit-identical runs and a version-12 replay from mid-burn');

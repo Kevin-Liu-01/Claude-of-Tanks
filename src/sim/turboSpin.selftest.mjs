@@ -1,32 +1,30 @@
-// turboSpin.selftest.mjs — Turbo and the air spin (turbo-spin-275; owner 2026-11-22: "for turbo ball and gravity mode add
+// turboSpin.selftest.mjs — Turbo and the boost key (turbo-spin-275; owner 2026-11-22: "for turbo ball and gravity mode add
 // another thing with going up called turbo - it makes you go launch forward for a short bit ... f should also be an official
-// command so u can literally spin in air but only if ur in air (gray if ur not)"; he picked F in the air, flips and rolls,
-// Z and a 3 s cooldown). Copyright (c) 2026 Kevin B. Liu.
+// command so u can literally spin in air but only if ur in air (gray if ur not)"; he picked F in the air and Z with a 3 s
+// cooldown; thrust-boosts-279 made F in flight a boost). Copyright (c) 2026 Kevin B. Liu.
 //
 // Pins, on the shared per-hull action step both drivers call (sim/hullActions.ts):
-//   - only Turbo Ball and Gravity (mars) carry Turbo and the air spin; every other mode carries neither, and a press there
+//   - only Turbo Ball and Gravity (mars) carry Turbo and the boosts; every other mode carries neither, and a press there
 //     does nothing;
-//   - Turbo: the forward leap on the ground (speed and a hop) and in flight (speed, the fall stopped), never past the
-//     launch cap; refused while it cools and for a hull on its roof on the ground; taken again once the cooldown has run;
-//   - F (SELF_RIGHT): a jump on the ground, a flip or roll in flight (no rocket re-boost: the burn's nozzles tilt a little
-//     up, thrust-flips-277, but the climb gains nothing like a jump), the axis from the drive (W or nothing a front flip,
-//     S a back flip, A a roll left, D a roll right); one whole turn (about AIR_SPIN_TURN_S, the thrusters' burn since
-//     thrust-flips-277) in the sense its thrusters turn it (hullThrusters.ts airSpinSense: a roll lifts the side away from
-//     its travel), then the axis stops and the hull lands on its tracks; a second press mid-turn is refused;
-//   - the air spin's own bit flips in flight; on the ground it is the ground dodge's hop into the flip (flip-boost-276;
-//     its shoves, cooldown and one-a-flight rule are flipBoost.selftest.mjs's), lit on the ground;
-//   - the ground ends a turn; two runs of the same presses are bit-identical; a replay from a mid-flip checkpoint
-//     (movementPredictionState.ts version 10) follows the original exactly.
+//   - the nozzle a press picks from the drive (sim/hullFlight.ts boostNozzleFor): W or none the belly, S the nose, A/D a
+//     side (a steer as strong as the throttle);
+//   - Turbo: the forward leap on the ground (speed and a hop), never past the launch cap; in flight the butt's burn
+//     (thrust-boosts-279: the run speed gains its push over the burn, a fall goes on falling but for the push); refused
+//     while it cools and for a hull on its roof on the ground; taken again once the cooldown has run;
+//   - F (SELF_RIGHT): a jump on the ground, a boost in flight (the nozzle the drive picks, lit at once and heard); a second
+//     press while a burn is under way is refused;
+//   - the boost's own bit boosts in flight; on the ground it is the ground press, a hop that then fires;
+//   - the ground ends a burn and refills the flight's boosts.
+// (The boosts' forces, charges and plumes: thrustBoosts.selftest.mjs; the r x F and the checkpoint replay:
+// hullThrusters.selftest.mjs.)
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import { createTankState, updateTank, SIM_DT, AIR_SPIN_AXES, airSpinAxisFor, canTankAirSpin } from './movement.ts';
+import { createTankState, updateTank, SIM_DT, canTankBoost } from './movement.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
 import { applyHullActions } from './hullActions.ts';
 import { turboReadyIn } from './modeMoves.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
-import { applyMovementPredictionState, captureMovementPredictionState } from './movementPredictionState.ts';
-import { AIR_SPIN_RATE } from './hullFlight.ts';
-import { airSpinSense } from './hullThrusters.ts';
+import { BOOST_BURN_S, BOOST_NOZZLES, boostNozzleFor } from './hullFlight.ts';
 
 const SPEC = {
   name: 'fixture-mbt', enginePowerHp: 1200, weightTons: 50, topSpeedKmh: 65, reverseSpeedKmh: 15,
@@ -62,19 +60,18 @@ function tick(entity, bits = 0) {
   clock.t += SIM_DT;
 }
 function run(entity, ticks) { for (let n = 0; n < ticks; n++) tick(entity); }
-const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 // ---- which modes
 for (const mode of ['turbo_ball', 'mars']) {
   const r = matchRulesetFor(mode);
   assert.ok(r.turbo && r.turbo.forwardMps > 0 && r.turbo.cooldownS === 3, `${mode} carries Turbo with the 3 s cooldown`);
-  assert.ok(r.airSpin && r.airSpin.cooldownS > 0 && r.airSpin.forwardMps > 0, `${mode} carries the air spin (a dodge since flip-boost-276)`);
+  assert.ok(r.airSpin && r.airSpin.cooldownS > 0 && r.airSpin.upMps > 0 && r.airSpin.charges === 5, `${mode} carries the boosts, five a flight`);
   assert.ok(r.jumpMps > 0, `${mode} is a jump mode`);
 }
 for (const mode of ['standard', 'capture_the_flag', 'zone_control', 'air_support', 'drone']) {
   const r = matchRulesetFor(mode);
   assert.equal(r.turbo, null, `${mode} has no Turbo`);
-  assert.equal(r.airSpin, null, `${mode} has no air spin`);
+  assert.equal(r.airSpin, null, `${mode} has no boosts`);
   const e = hull(mode);
   run(e, 120);
   const speed = e.state.speed;
@@ -82,14 +79,14 @@ for (const mode of ['standard', 'capture_the_flag', 'zone_control', 'air_support
   assert.ok(Math.abs(e.state.speed - speed) < 0.5 && e.state.grounded, `${mode}: the presses do nothing`);
 }
 
-// ---- the axis a press picks
-assert.equal(airSpinAxisFor(0, 0), AIR_SPIN_AXES.FRONT_FLIP, 'no drive held: a front flip');
-assert.equal(airSpinAxisFor(1, 0), AIR_SPIN_AXES.FRONT_FLIP, 'W: a front flip');
-assert.equal(airSpinAxisFor(-1, 0), AIR_SPIN_AXES.BACK_FLIP, 'S: a back flip');
-assert.equal(airSpinAxisFor(0, 1), AIR_SPIN_AXES.ROLL_LEFT, 'A (steer +): a roll left');
-assert.equal(airSpinAxisFor(1, -1), AIR_SPIN_AXES.ROLL_RIGHT, 'W and D held alike: the barrel roll (flip-boost-276; 275 flipped)');
-assert.equal(airSpinAxisFor(1, 0.5), AIR_SPIN_AXES.FRONT_FLIP, 'W with a light steer: the flip');
-assert.equal(airSpinAxisFor(0.5, -0.9), AIR_SPIN_AXES.ROLL_RIGHT, 'D stronger than W: a roll right');
+// ---- the nozzle a press picks
+assert.equal(boostNozzleFor(0, 0), BOOST_NOZZLES.UP, 'no drive held: the belly');
+assert.equal(boostNozzleFor(1, 0), BOOST_NOZZLES.UP, 'W: the belly (W is held through a run)');
+assert.equal(boostNozzleFor(-1, 0), BOOST_NOZZLES.BACK, 'S: the nose, pushing back');
+assert.equal(boostNozzleFor(0, 1), BOOST_NOZZLES.LEFT, 'A (steer +): pushed left');
+assert.equal(boostNozzleFor(1, -1), BOOST_NOZZLES.RIGHT, 'W and D held alike: the side');
+assert.equal(boostNozzleFor(1, 0.5), BOOST_NOZZLES.UP, 'W with a light steer: the belly');
+assert.equal(boostNozzleFor(0.5, -0.9), BOOST_NOZZLES.RIGHT, 'D stronger than W: pushed right');
 
 // ---- Turbo on the ground and in the air
 for (const mode of ['turbo_ball', 'mars']) {
@@ -110,13 +107,15 @@ for (const mode of ['turbo_ball', 'mars']) {
   assert.ok(e.state.speed <= cooling + 0.5, `${mode}: refused while it cools`);
   run(e, Math.ceil(turbo.cooldownS / SIM_DT));
   assert.equal(turboReadyIn(e, clock.t), 0, `${mode}: ready after ${turbo.cooldownS} s`);
-  // in the air: after a jump at its apex, the leap adds the speed and stops the fall
+  // in the air: after a jump past its apex, the butt's burn adds its push to the run over the burn, and the fall goes on
   tick(e, PLAYER_ACTION_BITS.SELF_RIGHT);
   while (e.state._ride.v > -1) tick(e);
   const air = e.state.speed;
   tick(e, PLAYER_ACTION_BITS.TURBO);
-  assert.ok(e.state.speed > air + turbo.forwardMps * 0.8, `${mode}: the air dash adds its speed`);
-  assert.ok(e.state._ride.v > 0, `${mode}: and stops the fall`);
+  assert.ok(e.state.speed < air + 0.2 * turbo.forwardMps, `${mode}: the burn pushes over its time, not at once`);
+  run(e, Math.round(BOOST_BURN_S / SIM_DT));
+  assert.ok(e.state.speed > air + matchRulesetFor(mode).airSpin.forwardMps * 0.9, `${mode}: the butt's burn adds its push (${(e.state.speed - air).toFixed(2)} m/s)`);
+  assert.ok(e.state._ride.v < 0, `${mode}: and the fall goes on but for the push's lift`);
   // on its roof on the ground: no leap
   const roof = hull(mode); clock.t = 0;
   run(roof, 60);
@@ -126,75 +125,49 @@ for (const mode of ['turbo_ball', 'mars']) {
   assert.equal(roof.state.speed, before, `${mode}: a hull on its roof cannot leap`);
 }
 
-// ---- F: a jump on the ground, a flip in the air; one whole turn, back on its tracks
+// ---- F: a jump on the ground, a boost in flight
 function flight(mode, throttle, steer, { press = PLAYER_ACTION_BITS.SELF_RIGHT } = {}) {
   const e = hull(mode); clock.t = 0; heard.length = 0;
+  const charges = matchRulesetFor(mode).airSpin.charges;
   run(e, 120);
-  assert.equal(canTankAirSpin(e.state), true, `${mode}: lit on the ground too, the ground dodge (flip-boost-276)`);
+  assert.equal(canTankBoost(e.state, charges), true, `${mode}: lit on the ground too, the ground press`);
   tick(e, PLAYER_ACTION_BITS.SELF_RIGHT);
   assert.equal(e.state.grounded, false, `${mode}: F on the ground jumps`);
+  assert.equal(e.state._boostsUsed, 0, `${mode}: the jump spends no boost`);
   run(e, 20);
-  assert.equal(canTankAirSpin(e.state), true, `${mode}: the spin lit in flight`);
-  const v = e.state._ride.v;
+  assert.equal(canTankBoost(e.state, charges), true, `${mode}: the boost lit in flight`);
   e.input.throttle = throttle; e.input.steer = steer;
   tick(e, press);
-  const jump = matchRulesetFor(mode).jumpMps;
-  assert.ok(e.state._ride.v - v < 0.1 * jump, `${mode}: no rocket re-boost from F in the air (${(e.state._ride.v - v).toFixed(3)} m/s against a ${jump} m/s jump)`);
+  e.input.throttle = 0; e.input.steer = 0;
   return e;
 }
 for (const mode of ['turbo_ball', 'mars']) {
-  for (const [throttle, steer, axis, key] of [[1, 0, AIR_SPIN_AXES.FRONT_FLIP, 'pitch'], [-1, 0, AIR_SPIN_AXES.BACK_FLIP, 'pitch'],
-    [0, 1, AIR_SPIN_AXES.ROLL_LEFT, 'roll'], [0, -1, AIR_SPIN_AXES.ROLL_RIGHT, 'roll']]) {
+  for (const [throttle, steer, nozzle] of [[1, 0, BOOST_NOZZLES.UP], [0, 0, BOOST_NOZZLES.UP], [-1, 0, BOOST_NOZZLES.BACK],
+    [0, 1, BOOST_NOZZLES.LEFT], [0, -1, BOOST_NOZZLES.RIGHT]]) {
     const e = flight(mode, throttle, steer);
-    assert.equal(e.state._airSpinAxis, axis, `${mode}: drive ${throttle}/${steer} picks axis ${axis}`);
+    assert.equal(e.state._boostNozzle, nozzle, `${mode}: drive ${throttle}/${steer} fires nozzle ${nozzle}`);
+    assert.ok(e.state._thrust.level > 0, `${mode}: lit at once`);
     assert.deepEqual(heard.at(-1), ['spin', mode]);
+    run(e, Math.round(matchRulesetFor(mode).airSpin.cooldownS / SIM_DT) - 13);
     tick(e, PLAYER_ACTION_BITS.SELF_RIGHT);
-    assert.equal(heard.filter(([what]) => what === 'spin').length, 1, `${mode}: a second press mid-turn is refused`);
-    const field0 = key === 'pitch' ? 'visualPitch' : 'visualRoll';
-    let turned = 0, last = e.state[field0], ticks = 0;
-    while (e.state._airSpinAxis && ticks < 120) { tick(e); turned += wrap(e.state[field0] - last); last = e.state[field0]; ticks++; }
-    const nominal = Math.round(2 * Math.PI / AIR_SPIN_RATE / SIM_DT);
-    assert.ok(Math.abs(ticks - nominal) <= 3, `${mode}: one turn in about ${(nominal * SIM_DT).toFixed(2)} s (${ticks} ticks)`);
-    assert.ok(Math.abs(Math.abs(turned) - 2 * Math.PI) < 0.35, `${mode}: a whole turn about its ${key} (${turned.toFixed(2)} rad)`);
-    assert.equal(Math.sign(turned), airSpinSense(axis), `${mode}: in the sense its thrusters turn it`);
-    while (!e.state.grounded) tick(e);
-    run(e, 180);
-    assert.equal(e.state.overturned, false, `${mode}: axis ${axis} lands on its tracks`);
+    assert.equal(heard.filter(([what]) => what === 'spin').length, 1, `${mode}: a second press while the burn runs is refused`);
   }
-  // the air spin's own bit: a flip in flight; on the ground the ground dodge, its hop into a flip (flip-boost-276)
+  // the boost's own bit: a boost in flight; on the ground the ground press, its hop then its burn
   const g = hull(mode); clock.t = 0; run(g, 120);
   tick(g, PLAYER_ACTION_BITS.AIR_SPIN);
-  assert.ok(g.state._airSpinAxis === AIR_SPIN_AXES.FRONT_FLIP && g.state.grounded === false,
-    `${mode}: the air spin's own key on the ground is the ground dodge's hop into its flip`);
+  assert.ok(g.state._boostNozzle === BOOST_NOZZLES.UP && g.state.grounded === false && g.state._boostsUsed === 1,
+    `${mode}: the boost's own key on the ground hops and fires, one boost spent`);
   const a = flight(mode, 0, 0, { press: PLAYER_ACTION_BITS.AIR_SPIN });
-  assert.equal(a.state._airSpinAxis, AIR_SPIN_AXES.FRONT_FLIP, `${mode}: and flips in flight`);
+  assert.equal(a.state._boostNozzle, BOOST_NOZZLES.UP, `${mode}: and boosts in flight`);
 }
 
-// ---- the ground ends a turn
+// ---- the ground ends a burn and refills the boosts
 {
   const e = flight('turbo_ball', 0, 1);
+  assert.ok(e.state._boostBurnS > 0 && e.state._boostsUsed === 1, 'mid-burn, one spent');
   e.state.grounded = true; e.state._ride.grounded = true;
   updateTank(e, field, SIM_DT, null);
-  assert.equal(e.state._airSpinAxis, 0, 'the ground ends a roll');
+  assert.ok(e.state._boostNozzle === 0 && e.state._boostBurnS === 0 && e.state._boostsUsed === 0, 'the ground ends the burn and refills the boosts');
 }
 
-// ---- determinism and the mid-flip replay
-function script() {
-  const e = flight('mars', 0, -1); // a roll right
-  run(e, 15);
-  return e;
-}
-const a = script(), b = script();
-assert.deepEqual(captureMovementPredictionState(a.state), captureMovementPredictionState(b.state), 'two runs of the same presses are bit-identical');
-const checkpoint = captureMovementPredictionState(a.state);
-assert.ok(a.state._airSpinAxis === AIR_SPIN_AXES.ROLL_RIGHT && a.state._airSpinLeft > 1, 'the checkpoint is mid-roll');
-const replay = hull('mars');
-replay.state.pos.copy(a.state.pos); replay.state.yaw = a.state.yaw; replay.state.speed = a.state.speed;
-replay.state.verticalSpeed = a.state.verticalSpeed; replay.state.visualPitch = a.state.visualPitch; replay.state.visualRoll = a.state.visualRoll;
-replay.state.overturned = a.state.overturned;
-assert.equal(applyMovementPredictionState(replay.state, checkpoint), true);
-for (let n = 0; n < 90; n++) { updateTank(a, field, SIM_DT, null); updateTank(replay, field, SIM_DT, null); }
-assert.equal(replay.state.visualRoll, a.state.visualRoll, 'the replay rolls as the original');
-assert.equal(replay.state.pos.y, a.state.pos.y, 'and flies as it');
-
-console.log('turboSpin: Turbo Ball and Gravity alone carry Turbo and the air spin; Turbo leaps on the ground and dashes in the air under the launch cap, cools 3 s, and never leaps off a roof; F jumps on the ground and flips or rolls in flight (W/none front, S back, A left, D right), one whole turn under its thruster burn (about 0.65 s), landing on its tracks; the air spin key on the ground hops into the ground dodge; the ground ends a turn; runs and a mid-flip replay are bit-identical');
+console.log('turboSpin: Turbo Ball and Gravity alone carry Turbo and the boosts; the drive picks the nozzle (W/none the belly, S the nose, A/D a side); Turbo leaps on the ground under the launch cap, fires the butt in flight, cools 3 s, and never leaps off a roof; F jumps on the ground and boosts in flight, a second press refused mid-burn; the boost key on the ground hops and fires; the ground ends a burn and refills the boosts');

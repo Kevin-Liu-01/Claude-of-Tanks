@@ -1,15 +1,16 @@
 /**
- * The air spin's thruster plumes (thrust-flips-277; owner 2026-11-24: "look like your literally swinging around an axis
- * instead of like a rocket strapped to your butt and sides being activated to change your motion"): the visible cause of
- * the burn the simulation runs (sim/hullThrusters.ts). Each firing nozzle draws a flame along its exhaust (the opposite of
- * the push it gives the hull) at its mount on the hull, parented to the hull's root so it turns with it, sized by its
- * thrust, and sheds fire and smoke there; you can see which end and which side fired. Each burn's ignition (the main burn,
- * the counter-burn, a ground dodge's lift) is reported once, for its sound.
+ * The boost's thruster plumes (thrust-flips-277; thrust-boosts-279, owner 2026-11-27: the side and rear boosts "just like
+ * a additional force vector added from that side"): the visible cause of the burn the simulation runs
+ * (sim/hullThrusters.ts). The firing pair draws a flame each along its exhaust (the opposite of the push it gives the
+ * hull) at its mount on the hull, parented to the hull's root so it turns with it, sized by the thrust the step applied
+ * (HullThrustState.level: under a full burn where the climb cap took some of it), and sheds fire and smoke there; you can
+ * see which end and which side fired. Each burn's ignition (the burn, a ground press's lift) is reported once, for its
+ * sound.
  *
  * Where the hull's state carries the live burn (a solo battle, the authority's own hulls: TankState._thrust) the plumes
- * draw it; where it does not (a network peer's hull, a replay's track), the `tank:airSpin` event starts a ghost of the
- * burn: the same burn law (airSpinBurn) run from the press on the presentation clock. Presentation only: nothing here
- * feeds the simulation.
+ * draw it, only while it applies force; where it does not (a network peer's hull, a replay's track), the `tank:airSpin`
+ * or `tank:turbo` event's nozzle starts a ghost of the burn: the same pair at a full burn for BOOST_BURN_S on the
+ * presentation clock. Presentation only: nothing here feeds the simulation.
  *
  * Debug: thrust arrows (each nozzle's force on the hull, scaled by its thrust; the centre of mass marked) when
  * `setDebugArrows(true)` (main.ts: the `thrustArrows=1` query).
@@ -18,15 +19,14 @@ import {
   AdditiveBlending, BufferAttribute, Color, ConeGeometry, CylinderGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial,
   Quaternion, SphereGeometry, Vector3, type Object3D,
 } from 'three';
+import { BOOST_BURN_S } from '../sim/hullFlight.ts';
 import {
-  AIR_SPIN_BURN, airSpinBurn, airSpinPitches, airSpinSense, airSpinThrusters, attitudeJets, createAirSpinThrusters,
-  hullThrustFrame, type AirSpinBurnLevels, type HullNozzle, type HullThrustState,
+  boostThrusters, createBoostThrusters, hullThrustFrame, type HullNozzle, type HullThrustState,
 } from '../sim/hullThrusters.ts';
 
 /** What the plumes read of a hull's state. */
 export interface ThrusterPlumeState {
   _thrust?: HullThrustState | null;
-  _airSpinAxis?: number;
   grounded?: boolean;
   speed?: number;
   yaw?: number;
@@ -39,31 +39,32 @@ export interface ThrusterPlumeFx {
   thrusterJet?(pos: Vector3, exhaustDir: Vector3, intensity: number, hullVel: Vector3): void;
 }
 
-export type ThrusterBurnPhase = 'main' | 'counter' | 'lift';
+export type ThrusterBurnPhase = 'main' | 'lift';
 
 export interface HullThrusterPlumes {
   /** Draw a hull's burn this frame; `visible` false parks its plumes. */
   sync(id: string, root: Object3D, spec: Parameters<typeof hullThrustFrame>[0], state: ThrusterPlumeState,
     dtFrame: number, visible: boolean, fx: ThrusterPlumeFx | null): void;
-  /** A hull's air spin began (the `tank:airSpin` event): the ghost burn for a hull whose state has no live one. */
-  noteAirSpin(id: string, axis: number): void;
+  /** A hull's boost fired (the `tank:airSpin` or `tank:turbo` event's nozzle): the ghost burn for a hull whose state has
+   *  no live one. */
+  noteBoost(id: string, nozzle: number): void;
   setDebugArrows(on: boolean): void;
   /** Forget a hull (its visual disposed). */
   forget(id: string): void;
-  /** The burns drawn last frame, by hull (the capture tools' receipt). */
-  debug(): Record<string, { axis: number; main: number; trim: number; counter: number; lift: number; ghost: boolean }>;
+  /** The burns drawn last frame, by hull (the capture tools' receipt): the nozzle, the thrust share, the lift, how many
+   *  flames stood, and whether a ghost drew it. */
+  debug(): Record<string, { nozzle: number; level: number; lift: number; flames: number; ghost: boolean }>;
 }
 
 /** A nozzle's thrust (m/s^2 per unit hull mass) that draws a full-length flame. */
-const FULL_ACCEL = 70;
+const FULL_ACCEL = 30;
 /** Flame length at a full burn, in hull lengths, and its base radius in hull widths. */
 const FLAME_LENGTH_HULLS = 0.42;
 const FLAME_RADIUS_WIDTHS = 0.075;
-/** The nominal shove a ghost burn sizes its nozzles with (m/s; Turbo Ball's front flip). */
+/** The nominal shove a ghost burn sizes its pair with (m/s; about a Turbo Ball boost's). */
 const GHOST_SHOVE = 10;
-/** A ghost burn this old has ended whatever it did. */
-const GHOST_MAX_S = 1.5;
-const SLOTS = 8;
+/** A pair, and a ground press's two lift jets. */
+const SLOTS = 4;
 
 interface Slot {
   group: Group;
@@ -79,11 +80,11 @@ interface Rig {
   group: Group;
   slots: Slot[];
   com: Mesh | null;
-  last: { main: number; counter: number; lift: number };
-  ghost: { axis: number; left: number; rate: number; ageS: number } | null;
+  last: { main: number; lift: number };
+  ghost: { nozzle: number; leftS: number } | null;
   emitAcc: number;
   clockS: number;
-  drawn: { axis: number; main: number; trim: number; counter: number; lift: number; ghost: boolean };
+  drawn: { nozzle: number; level: number; lift: number; flames: number; ghost: boolean };
 }
 
 let outerGeometry: ConeGeometry | null = null;
@@ -136,23 +137,18 @@ function makeArrow(parent: Group): Group {
   return arrow;
 }
 
-const ARROW_COLOURS: Record<HullNozzle['role'] | 'lift', number> = {
-  main: 0xff3b30, couple: 0xffd60a, counter: 0x30d5ff, lift: 0x34c759,
-};
+const ARROW_COLOURS: Record<'main' | 'lift', number> = { main: 0xff3b30, lift: 0x34c759 };
 
 export function createHullThrusterPlumes(options: { onBurn?(id: string, phase: ThrusterBurnPhase, pos: Vector3): void } = {}): HullThrusterPlumes {
   const rigs = new Map<string, Rig>();
   /** Ghost burns noted before their hull's first plume frame (its rig is made on its next sync). */
   const pendingGhosts = new Map<string, NonNullable<Rig['ghost']>>();
   let arrows = false;
-  const thrusters = createAirSpinThrusters();
-  const jets: HullNozzle[] = [];
-  const counterJets: HullNozzle[] = [];
+  const thrusters = createBoostThrusters();
   const liftJets: HullNozzle[] = [
-    { role: 'main', x: 0, y: 0, z: 0, dx: 0, dy: 1, dz: 0, accel: 0 },
-    { role: 'main', x: 0, y: 0, z: 0, dx: 0, dy: 1, dz: 0, accel: 0 },
+    { x: 0, y: 0, z: 0, dx: 0, dy: 1, dz: 0, accel: 0 },
+    { x: 0, y: 0, z: 0, dx: 0, dy: 1, dz: 0, accel: 0 },
   ];
-  const levels: AirSpinBurnLevels = { main: 0, trim: 0, counter: 0 };
   const up = new Vector3(0, 1, 0);
   const exhaust = new Vector3();
   const quaternion = new Quaternion();
@@ -180,13 +176,13 @@ export function createHullThrusterPlumes(options: { onBurn?(id: string, phase: T
     }
     root.add(group);
     return {
-      root, group, slots, com: null, last: { main: 0, counter: 0, lift: 0 }, ghost: null, emitAcc: 0, clockS: 0,
-      drawn: { axis: 0, main: 0, trim: 0, counter: 0, lift: 0, ghost: false },
+      root, group, slots, com: null, last: { main: 0, lift: 0 }, ghost: null, emitAcc: 0, clockS: 0,
+      drawn: { nozzle: 0, level: 0, lift: 0, flames: 0, ghost: false },
     };
   };
 
   const placeSlot = (rig: Rig, index: number, nozzle: HullNozzle, level: number, hullLength: number, hullWidth: number,
-    role: HullNozzle['role'] | 'lift', flicker: number): number => {
+    role: 'main' | 'lift', flicker: number): number => {
     const slot = rig.slots[index];
     if (!slot) return index;
     const thrust = nozzle.accel * level;
@@ -205,7 +201,7 @@ export function createHullThrusterPlumes(options: { onBurn?(id: string, phase: T
     if (arrows) {
       if (!slot.arrow) slot.arrow = makeArrow(rig.group);
       // the push on the hull, its head at the nozzle's mount (drawn from it, it pointed into the hull and hid there)
-      const length = Math.max(1.4, thrust * 0.06);
+      const length = Math.max(1.4, thrust * 0.12);
       worldDir.set(nozzle.dx, nozzle.dy, nozzle.dz).normalize();
       slot.arrow.visible = true;
       slot.arrow.position.set(nozzle.x - worldDir.x * length, nozzle.y - worldDir.y * length, nozzle.z - worldDir.z * length);
@@ -219,24 +215,10 @@ export function createHullThrusterPlumes(options: { onBurn?(id: string, phase: T
     return index + 1;
   };
 
-  const stepGhost = (ghost: NonNullable<Rig['ghost']>, dt: number): void => {
-    let left = Math.max(0, dt);
-    while (left > 1e-6 && ghost.axis) {
-      const h = Math.min(1 / 60, left);
-      left -= h;
-      ghost.ageS += h;
-      airSpinBurn(ghost.left, ghost.rate, levels);
-      ghost.rate += (levels.main * AIR_SPIN_BURN.alphaMain + levels.trim * AIR_SPIN_BURN.alphaCounter
-        - levels.counter * AIR_SPIN_BURN.alphaCounter) * h;
-      ghost.left = Math.max(0, ghost.left - Math.max(0, ghost.rate) * h);
-      if (ghost.left <= AIR_SPIN_BURN.finishRad || ghost.ageS > GHOST_MAX_S) ghost.axis = 0;
-    }
-  };
-
   return {
     sync(id, root, spec, state, dtFrame, visible, fx) {
       let rig = rigs.get(id) ?? null;
-      const live = state._thrust && state._airSpinAxis ? state._thrust : null;
+      const live = state._thrust && (state._thrust.nozzle || state._thrust.lift) ? state._thrust : null;
       const pending = pendingGhosts.get(id) ?? null;
       if (!live && !rig && !pending) return;
       if (!rig || rig.root !== root) {
@@ -249,22 +231,20 @@ export function createHullThrusterPlumes(options: { onBurn?(id: string, phase: T
       if (pending) { rig.ghost = pending; pendingGhosts.delete(id); }
       rig.clockS += Math.max(0, dtFrame);
       const clockS = rig.clockS;
-      // the burn: the live one, or the ghost's
-      let axis = 0, main = 0, trim = 0, counter = 0, lift = 0, shove = GHOST_SHOVE, ghostDrawn = false;
+      // the burn: the live one (as much of it as the step applied), or the ghost's full burn while it lasts
+      let nozzle = 0, level = 0, lift = 0, shove = GHOST_SHOVE, ghostDrawn = false;
       if (live) {
         rig.ghost = null;
-        axis = live.axis; main = live.main; trim = live.trim; counter = live.counter; lift = live.lift;
+        nozzle = live.nozzle; level = live.level; lift = live.lift;
         shove = live.shove > 0 ? live.shove : GHOST_SHOVE;
-      } else if (rig.ghost?.axis) {
+      } else if (rig.ghost?.nozzle) {
         const ghost = rig.ghost;
-        airSpinBurn(ghost.left, ghost.rate, levels);
-        axis = ghost.axis; main = levels.main; trim = levels.trim; counter = levels.counter; ghostDrawn = true;
-        stepGhost(ghost, dtFrame);
+        nozzle = ghost.nozzle; level = 1; ghostDrawn = true;
+        ghost.leftS -= Math.max(0, dtFrame);
+        if (ghost.leftS <= 0) rig.ghost = null;
       }
-      rig.drawn.axis = axis; rig.drawn.main = main; rig.drawn.trim = trim; rig.drawn.counter = counter;
-      rig.drawn.lift = lift; rig.drawn.ghost = ghostDrawn;
       for (const slot of rig.slots) { slot.group.visible = false; slot.intensity = 0; if (slot.arrow) slot.arrow.visible = false; }
-      const firing = visible && axis !== 0 && (main > 0 || trim > 0 || counter > 0 || lift > 0);
+      const firing = visible && ((nozzle !== 0 && level > 0) || lift > 0);
       rig.group.visible = firing;
       if (rig.com) rig.com.visible = false;
       // ignitions, for their sound (heard even off screen)
@@ -276,30 +256,21 @@ export function createHullThrusterPlumes(options: { onBurn?(id: string, phase: T
           options.onBurn(id, phase, worldPos);
         }
       };
+      const main = nozzle !== 0 ? level : 0;
       ignite('main', main, rig.last.main);
-      ignite('counter', counter, rig.last.counter);
       ignite('lift', lift, rig.last.lift);
-      rig.last.main = main; rig.last.counter = counter; rig.last.lift = lift;
+      rig.last.main = main; rig.last.lift = lift;
+      rig.drawn.nozzle = nozzle; rig.drawn.level = main; rig.drawn.lift = lift; rig.drawn.ghost = ghostDrawn;
+      rig.drawn.flames = 0;
       if (!firing) return;
       const frame = hullThrustFrame(spec);
       const hullLength = Math.max(2, frame.front - frame.rear);
       const hullWidth = Math.max(1.5, 2 * frame.halfWidth);
-      const pitch = airSpinPitches(axis), sense = airSpinSense(axis);
       let index = 0;
       const flick = (i: number) => 1 + 0.09 * Math.sin(clockS * 61 + i * 1.7) + 0.05 * Math.sin(clockS * 149 + i * 2.9);
       if (main > 0) {
-        airSpinThrusters(frame, axis, shove, thrusters);
-        for (const nozzle of thrusters.nozzles) index = placeSlot(rig, index, nozzle, main, hullLength, hullWidth, 'main', flick(index));
-        attitudeJets(frame, pitch, sense, Math.max(0, thrusters.alphaCouple), 'couple', jets);
-        for (const nozzle of jets) index = placeSlot(rig, index, nozzle, main, hullLength, hullWidth, 'couple', flick(index));
-      }
-      if (trim > 0) {
-        attitudeJets(frame, pitch, sense, AIR_SPIN_BURN.alphaCounter, 'couple', jets);
-        for (const nozzle of jets) index = placeSlot(rig, index, nozzle, trim, hullLength, hullWidth, 'couple', flick(index));
-      }
-      if (counter > 0) {
-        attitudeJets(frame, pitch, -sense, AIR_SPIN_BURN.alphaCounter, 'counter', counterJets);
-        for (const nozzle of counterJets) index = placeSlot(rig, index, nozzle, counter, hullLength, hullWidth, 'counter', flick(index));
+        boostThrusters(frame, nozzle, shove, thrusters);
+        for (const n of thrusters.pair) index = placeSlot(rig, index, n, main, hullLength, hullWidth, 'main', flick(index));
       }
       if (lift > 0) {
         for (let i = 0; i < 2; i++) {
@@ -309,6 +280,7 @@ export function createHullThrusterPlumes(options: { onBurn?(id: string, phase: T
           index = placeSlot(rig, index, jet, lift, hullLength, hullWidth, 'lift', flick(index));
         }
       }
+      rig.drawn.flames = index;
       if (arrows) {
         if (!rig.com) {
           rig.com = new Mesh(new SphereGeometry(0.28, 12, 8), new MeshBasicMaterial({ color: 0xffffff, depthTest: false, toneMapped: false }));
@@ -335,10 +307,10 @@ export function createHullThrusterPlumes(options: { onBurn?(id: string, phase: T
         fx.thrusterJet(worldPos, worldDir, slot.intensity, hullVel);
       }
     },
-    noteAirSpin(id, axis) {
-      if (!axis) return;
+    noteBoost(id, nozzle) {
+      if (!nozzle) return;
       const rig = rigs.get(id);
-      const ghost = { axis, left: 2 * Math.PI, rate: 0, ageS: 0 };
+      const ghost = { nozzle, leftS: BOOST_BURN_S };
       if (rig) rig.ghost = ghost;
       else pendingGhosts.set(id, ghost);
     },

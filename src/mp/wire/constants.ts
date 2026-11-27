@@ -88,6 +88,9 @@ export const WIRE_VERSION = 13;
 // flip-boost-276 (no bump: the match build's prediction and authority digests already part builds that differ): the air
 // spin a dodge, the movement checkpoint's version 11 (flag bit 13, the flight's dodge spent), the migration extras'
 // airSpinReadyIn and flipUsed, and tank_air_spin's readyS.
+// thrust-boosts-279 (rides 279's 18, Main's ruling): the air spin a boost, nozzles as plain force vectors and five a
+// flight; the movement checkpoint's version 12 (its 64th value the boost, flag bits 13-15 the boosts spent) and the
+// migration extras' boost, boostMotion and boostsUsed in place of airSpin, airSpinRate and flipUsed.
 // 16 (combined-arms-276, release 276): a new battle mode id, Combined Arms (BATTLE_MODE_IDS), which a 275 Rooms Worker or
 // tab would refuse or play as Standard: a 275 tab and a 276 tab never share a match. The wire is unchanged (13). The Rooms
 // Worker ships first. One bump for the release: a later 276 change rides 16 unreleased.

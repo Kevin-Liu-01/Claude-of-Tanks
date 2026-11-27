@@ -121,8 +121,9 @@ export interface MatchModeEntity {
   isPlayer?: boolean;
   spec?: {dims:{widthM:number;heightM:number;hullLengthM:number};armor:{boundingRadiusM?:number};role?:string;topSpeedKmh?:number};
   state: { pos: Vec3Like; yaw: number; speed: number; modeScale?:number;
-    /** The translation impulse and the dodge turning (movement.ts TankState): the ball's touch reads them (flip-boost-276). */
-    _spring?: { recoilVX: number; recoilVZ: number }; _airSpinAxis?: number };
+    /** The translation impulse and the boosted flight (movement.ts TankState): the ball's touch reads them (flip-boost-276;
+     *  thrust-boosts-279). */
+    _spring?: { recoilVX: number; recoilVZ: number }; _boostNozzle?: number };
   combat: {
     hp: number;
     maxHp: number;
@@ -2091,8 +2092,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const driveX = detMath.sin(entity.state.yaw) * entity.state.speed + (entity.state._spring?.recoilVX ?? 0);
     const driveZ = detMath.cos(entity.state.yaw) * entity.state.speed + (entity.state._spring?.recoilVZ ?? 0);
     const closing = Math.max(0, driveX * nx + driveZ * nz);
-    // a hull mid-dodge (flip-boost-276; movement.ts requestTankAirSpin) strikes harder and higher: the flip's own hit
-    const flip = entity.state._airSpinAxis ? 1 : 0;
+    // a hull in a boosted flight (flip-boost-276's dodge; thrust-boosts-279, movement.ts requestTankBoost) strikes harder
+    // and higher: the boost's own hit
+    const flip = entity.state._boostNozzle ? 1 : 0;
     const push = 4 + closing * 0.35 + flip * BALL_FLIP_STRIKE_MPS;
     ball.vx = ball.vx * 0.42 + driveX * 0.82 + nx * push;
     ball.vz = ball.vz * 0.42 + driveZ * 0.82 + nz * push;

@@ -28,7 +28,7 @@ import type { CombatState, DamageTankSpec } from '../../sim/damage.ts';
 import { applyConsumableMultipliers } from '../../sim/consumableRules.ts';
 import type { ConsumableState } from '../../sim/consumableRules.ts';
 import { createAuxiliaryState } from '../../sim/auxiliarySystems.ts';
-import { airSpinRateOf, encodeAirSpin, restoreAirSpin } from '../../sim/movementPredictionState.ts';
+import { decodeBoost, encodeBoost } from '../../sim/movementPredictionState.ts';
 import type { AuxiliaryState } from '../../sim/auxiliarySystems.ts';
 import type { SmokeScreen } from '../../sim/smokeScreen.ts';
 
@@ -936,20 +936,29 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
         tank._spool = Math.max(0, Math.min(1, motion[0]));
         tank.yawRate = motion[1];
       }
-      // Turbo's cooldown runs on through the gap to the resume frame; a flip or roll turns on from the row's attitude
-      // (turbo-spin-275: a migration mid-spin finished the turn the old host owed; without it the hull stopped turning)
+      // Turbo's cooldown runs on through the gap to the resume frame
       if (lifeGoesOn && Number.isFinite(extras.turboReadyIn)) {
         entity.turboReadyS = actor.authority.timeS + Math.max(0, extras.turboReadyIn! - gapS - tailS);
       }
-      // (thrust-flips-277) with the rate it turns at: the turn rides its momentum, and the burn reads it
-      if (lifeGoesOn && typeof extras.airSpin === 'number') {
-        restoreAirSpin(tank, extras.airSpin, gapS, Number.isFinite(extras.airSpinRate) ? extras.airSpinRate! : null);
+      // a boosted flight (thrust-boosts-279): the nozzle it last fired and the burn it has left (less the row's age), and
+      // the spin and drift no row carries; the boost gap and the flight's boosts spent, so a new host refuses what the old
+      // one would
+      const boost = lifeGoesOn && typeof extras.boost === 'number' ? decodeBoost(extras.boost) : null;
+      if (boost) {
+        tank._boostNozzle = boost.nozzle;
+        tank._boostBurnS = Math.max(0, boost.burnS - gapS);
+        const motion = extras.boostMotion;
+        if (Array.isArray(motion) && motion.length === 4 && motion.every(Number.isFinite)) {
+          tank._spring.pitchV = motion[0];
+          tank._spring.rollV = motion[1];
+          tank._spring.recoilVX = motion[2];
+          tank._spring.recoilVZ = motion[3];
+        }
       }
-      // the air spin's cooldown and the flight's spent dodge (flip-boost-276): a new host refuses a second as the old did
       if (lifeGoesOn && Number.isFinite(extras.airSpinReadyIn)) {
         entity.airSpinReadyS = actor.authority.timeS + Math.max(0, extras.airSpinReadyIn! - gapS - tailS);
       }
-      if (lifeGoesOn && extras.flipUsed === true) tank._flipUsed = true;
+      if (lifeGoesOn && Number.isInteger(extras.boostsUsed) && extras.boostsUsed! > 0) tank._boostsUsed = extras.boostsUsed!;
       if (extras.way) entity.aiCtl?.takeDrive?.(extras.way, gapS, lifeGoesOn);
       else if (extras.streams) entity.aiCtl?.takeStreams?.(extras.streams);
     }
@@ -1053,15 +1062,16 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
       // Turbo's cooldown and a flip or roll still turning (turbo-spin-275): a fresh host has both at rest
       const turboReadyIn = leftOf(entity.turboReadyS ?? -Infinity, timeS);
       if (turboReadyIn > 0) extras.turboReadyIn = turboReadyIn;
-      const airSpin = encodeAirSpin(entity.state._airSpinAxis ?? 0, entity.state._airSpinLeft ?? 0);
-      if (airSpin !== 0) {
-        extras.airSpin = airSpin;
-        const airSpinRate = airSpinRateOf(entity.state);
-        if (airSpinRate !== 0 && Number.isFinite(airSpinRate)) extras.airSpinRate = airSpinRate;
+      const boost = encodeBoost(entity.state._boostNozzle ?? 0, entity.state._boostBurnS ?? 0);
+      if (boost !== 0) {
+        extras.boost = boost;
+        const spring = entity.state._spring;
+        const motion: [number, number, number, number] = [spring.pitchV, spring.rollV, spring.recoilVX, spring.recoilVZ];
+        if (motion.every(Number.isFinite)) extras.boostMotion = motion;
       }
       const airSpinReadyIn = leftOf(entity.airSpinReadyS ?? -Infinity, timeS);
       if (airSpinReadyIn > 0) extras.airSpinReadyIn = airSpinReadyIn;
-      if (entity.state._flipUsed === true) extras.flipUsed = true;
+      if ((entity.state._boostsUsed ?? 0) > 0) extras.boostsUsed = entity.state._boostsUsed;
       const way = entity.aiCtl?.captureDrive?.();
       if (way) extras.way = way;
     } else {

@@ -1,98 +1,35 @@
 /**
- * Hull thrusters (thrust-flips-277; owner 2026-11-24, on 276: "right now the flips and barrel rolls in gravity mode look
- * like your literally swinging around an axis instead of like a rocket strapped to your butt and sides being activated to
- * change your motion. it doesnt look natural at all").
+ * Hull thrusters (thrust-flips-277; thrust-boosts-279, owner 2026-11-27: "the subsequent side/rear boosts that alow you
+ * to roll shouldnt like just have you end at rogiinal position they should literally be just like a additional force
+ * vector added from that side"; 276: "like a rocket strapped to your butt and sides being activated to change your
+ * motion").
  *
- * The air spin (flip-boost-276's dodge) is rigid-body dynamics, not a prescribed turn. Nozzles sit at mount points on the
- * hull's box: the butt for the front flip, the nose's underside for the back flip, the side away from the travel for a
- * barrel roll, and a pair of attitude jets per sense (a couple: one end pushed up, the other down, no net force). Each
- * applies a force at its point: the force moves the centre of mass, its moment about the centre of mass, r x F, turns the
- * hull through the box's inertia, and the turn carries on its own momentum after the burn. A burn has a shape: it lights
- * at a share of its thrust and ramps up, holds, and tapers off as the spin reaches its rate; the hull coasts; then the
- * opposite jets fire a counter-burn that brings it to rest one whole turn round, on its tracks (controlled landings, the
- * owner's dodge being a move rather than a tumble).
+ * A boost is a force at a point, nothing more. Its nozzles sit at mount points on the hull's box: the belly for the climb
+ * (UP), the butt for Turbo in flight (FORWARD), the nose's underside for the back push (BACK), the side away from the push
+ * for a side boost (LEFT, RIGHT), each a pair symmetric about the centre of mass. A press burns its pair at a constant
+ * thrust for BOOST_BURN_S (hullFlight.ts). The force moves the centre of mass (the hull goes away from the side that
+ * fired) and its moment about the centre of mass, r x F, turns the hull through the box's inertia. Nothing else fires:
+ * no attitude couple, no counter-burn, no turn to finish. The hull keeps whatever velocity and spin the forces gave it,
+ * the mode's air angular drag the only damper, and successive boosts add up as vectors. The ground takes the landing
+ * (contact, rollover, the self-right).
  *
- * Everything here is a function of the spin's state: the turn it still owes (`_airSpinLeft`) and the rate it turns at
- * (the attitude spring's), so the prediction checkpoint (version 11) and a migrated host already carry all of it, and a
- * replay re-derives the same burns. Per unit mass: forces are m/s^2, torques m^2/s^2, the inertia the box's squared radii
- * of gyration (m^2). Hull-local axes are the renderer's root: x the hull's left (a positive steer turns toward it), y up,
- * z forward. A dependency-light leaf so the renderer draws the plumes from the rule the simulation applies.
+ * Everything here is a function of the burn's state (the nozzle firing and the seconds it has left, movement.ts
+ * `_boostNozzle` and `_boostBurnS`) and the mode's rules, so the prediction checkpoint (version 12) and a migrated host
+ * carry all of it, and a replay re-derives the same burns. Per unit mass: forces are m/s^2, torques m^2/s^2, the inertia
+ * the box's squared radii of gyration (m^2). Hull-local axes are the renderer's root: x the hull's left (a positive
+ * steer turns toward it), y up, z forward. A dependency-light leaf so the renderer draws the plumes from the rule the
+ * simulation applies.
  */
+import type { AirSpinRules } from './matchRuleset.ts';
+import { BOOST_BURN_S, BOOST_NOZZLES } from './hullFlight.ts';
 import { tankContactRect, tankMassCenterOffsetM } from './tankContactShape.ts';
 
 /** A hull as its contact box reads it (tankContactShape.ts's own spec shape). */
 type ContactSpec = Parameters<typeof tankContactRect>[0];
 
-/** The burn's law (one whole turn in about AIR_SPIN_TURN_S, hullFlight.ts). */
-export const AIR_SPIN_BURN = Object.freeze({
-  /** The rate the main burn spins the hull up to (rad/s). */
-  rateMax: 14,
-  /** Angular acceleration at a full main burn (rad/s^2): its nozzles' moment plus the attitude jets'. */
-  alphaMain: 100,
-  /** At a full counter-burn (rad/s^2): the opposite attitude jets alone. */
-  alphaCounter: 90,
-  /** The main burn lights at this share of its thrust and reaches all of it by `rampRad` of turn. */
-  rampFloor: 0.3,
-  rampRad: 0.12,
-  /** It tapers over the last `taper` of the rate and cuts below `cut` of its thrust. */
-  taper: 0.3,
-  cut: 0.05,
-  /** The main nozzles fire only this early in the turn (rad); past it the attitude jets alone trim the rate. */
-  window: 2.2,
-  /** The counter-burn takes the stop the remaining turn asks (rate^2 / 2 turn) from `counterFrom` of its authority, all
-   *  of it by `counterFrom + counterBand`, and only in the turn's second half. */
-  counterFrom: 0.65,
-  counterBand: 0.3,
-  /** A turn slower than this (rad/s) with more than `trimFrom` rad still owed is trimmed back up by the attitude jets. */
-  trimRate: 3,
-  trimFrom: 0.5,
-  /** A turn this close to whole (rad) is whole. */
-  finishRad: 0.01,
-});
-
-/** The burn this step, each a share of its thrust (0..1). `main`: the move's nozzles with their attitude jets; `trim`:
- *  the attitude jets along the turn; `counter`: the opposite attitude jets. */
-export interface AirSpinBurnLevels { main: number; trim: number; counter: number }
-
-/**
- * The burn for a spin that still owes `left` rad of its turn and turns at `rate` rad/s along it (negative: against it).
- * Deterministic in its two inputs (no clock): the checkpoint's own values pick it.
- */
-export function airSpinBurn(left: number, rate: number, out: AirSpinBurnLevels): AirSpinBurnLevels {
-  const B = AIR_SPIN_BURN;
-  out.main = 0; out.trim = 0; out.counter = 0;
-  const owed = Math.max(0, Math.min(2 * Math.PI, Number.isFinite(left) ? left : 0));
-  const w = Number.isFinite(rate) ? rate : 0;
-  if (!(owed > 0)) return out;
-  const turned = 2 * Math.PI - owed;
-  const stop = w > 0 ? w * w / (2 * Math.max(owed, 1e-6)) : 0;
-  const counter = Math.min(1, Math.max(0, (stop - B.counterFrom * B.alphaCounter) / (B.counterBand * B.alphaCounter)));
-  if (counter > 0 && turned > Math.PI) {
-    out.counter = counter;
-  } else if (turned < B.window && w < B.rateMax) {
-    const ramp = B.rampFloor + (1 - B.rampFloor) * Math.min(1, turned / B.rampRad);
-    const taper = (B.rateMax - w) / (B.rateMax * B.taper);
-    const main = Math.min(1, ramp, taper);
-    out.main = main >= B.cut ? main : 0;
-  } else if (w < B.trimRate && owed > B.trimFrom) {
-    out.trim = Math.min(1, (B.trimRate - w) / B.trimRate);
-  }
-  return out;
-}
-
-/** Pitch spins: the air spin's axes ±1 (movement.ts AIR_SPIN_AXES), rolls ±2. */
-export function airSpinPitches(axis: number): boolean { return Math.abs(axis) === 1; }
-
-/**
- * The sense the burn turns the hull in, as the attitude spring signs its rate (positive pitch nose up; positive roll
- * lifts the hull's left, +x). A flip turns as its axis is signed (BACK_FLIP +1 nose up, FRONT_FLIP -1 nose down). A
- * barrel roll comes out of its side nozzles' moment: the roll to the left (+2) fires the right side's nozzles, which
- * lift the right side, so the left goes down (-1), and the hull rolls the way it travels, as a barrel does.
- */
-export function airSpinSense(axis: number): number {
-  if (!axis) return 0;
-  return airSpinPitches(axis) ? Math.sign(axis) : -Math.sign(axis);
-}
+/** A flight in which a nozzle has fired turns at what its nozzles gave it, up to this (rad/s; Main's ruling 4): the
+ *  flight's ordinary rate cap (the mode's airAngularSpeedMax, 1.2-1.4) would take a side boost's roll in a tick. */
+export const BOOST_SPIN_CAP = 8;
 
 /** The hull's box as the thrusters read it (root-local metres), its centre of mass and squared radii of gyration. */
 export interface HullThrustFrame {
@@ -131,81 +68,101 @@ export function hullThrustFrame(spec: ContactSpec): HullThrustFrame {
   return frame;
 }
 
-/** What a nozzle does in a burn: the move's own (`main`), the attitude jets beside it (`couple`), the opposite jets
- *  (`counter`). The trim fires the `couple` jets. */
-export type NozzleRole = 'main' | 'couple' | 'counter';
-
 /** One nozzle: its mount (root-local), the unit direction it pushes the hull (its exhaust leaves the other way) and its
  *  thrust per unit hull mass at a full burn (m/s^2). */
-export interface HullNozzle { role: NozzleRole; x: number; y: number; z: number; dx: number; dy: number; dz: number; accel: number }
+export interface HullNozzle { x: number; y: number; z: number; dx: number; dy: number; dz: number; accel: number }
 
-/** A move's thrusters for one hull and one shove, and what a full burn of each set does (filled in place: the sim calls it
- *  every step of a burn). */
-export interface AirSpinThrusters {
-  axis: number;
-  /** The move's nozzles, a pair, each pushing `accel` along its direction. */
-  nozzles: [HullNozzle, HullNozzle];
-  /** Angular acceleration (rad/s^2, along the move's turn: airSpinSense) the move's own nozzles give at a full burn,
-   *  from r x F, and the attitude jets' share (alphaMain less it). */
-  alphaMainNozzles: number;
-  alphaCouple: number;
+/** A boost's nozzle pair for one hull and one shove, and what its full burn does to the hull's spin (filled in place: the
+ *  sim calls it every step of a burn). */
+export interface BoostThrusters {
+  nozzle: number;
+  pair: [HullNozzle, HullNozzle];
+  /** The pair's angular acceleration at a full burn (rad/s^2), from r x F, in the attitude spring's senses: `pitch`
+   *  positive nose up, `roll` positive the hull's left (+x) side up. */
+  alphaPitch: number;
+  alphaRoll: number;
 }
 
-export function createAirSpinThrusters(): AirSpinThrusters {
-  const nozzle = (): HullNozzle => ({ role: 'main', x: 0, y: 0, z: 0, dx: 0, dy: 0, dz: 0, accel: 0 });
-  return { axis: 0, nozzles: [nozzle(), nozzle()], alphaMainNozzles: 0, alphaCouple: 0 };
+export function createBoostThrusters(): BoostThrusters {
+  const nozzle = (): HullNozzle => ({ x: 0, y: 0, z: 0, dx: 0, dy: 0, dz: 0, accel: 0 });
+  return { nozzle: 0, pair: [nozzle(), nozzle()], alphaPitch: 0, alphaRoll: 0 };
 }
 
 /** The pair's spread across the hull (a share of its half width) and a side pair's along it (a share of its half length). */
 const PAIR_SPREAD = 0.5;
 const SIDE_PAIR_Z = 0.45;
-/** The move's nozzles' tilt off its travel, toward up: the butt's 15 degrees, the nose's 30, the sides' 20. Exact
- *  constants (the det-math rule: no native transcendental in the sim): 15 = 45 - 30; 20's to double precision. */
+/** The nozzles' tilt off their push, toward up: the butt's 15 degrees, the nose's 30, the sides' 20. Exact constants (the
+ *  det-math rule: no native transcendental in the sim): 15 = 45 - 30; 20's to double precision. */
 const SIN15 = (Math.sqrt(6) - Math.sqrt(2)) / 4, COS15 = (Math.sqrt(6) + Math.sqrt(2)) / 4;
 const SIN30 = 0.5, COS30 = Math.sqrt(3) / 2;
 const SIN20 = 0.3420201433256687, COS20 = 0.9396926207859084;
 
+/** The shove a nozzle's burn delivers along its push (m/s; AirSpinRules), 0 with no rules or no such nozzle. */
+export function boostShove(nozzle: number, rules: AirSpinRules | null | undefined): number {
+  if (!rules) return 0;
+  const shove = nozzle === BOOST_NOZZLES.UP ? rules.upMps
+    : nozzle === BOOST_NOZZLES.FORWARD ? rules.forwardMps
+      : nozzle === BOOST_NOZZLES.BACK ? rules.backMps
+        : nozzle === BOOST_NOZZLES.LEFT || nozzle === BOOST_NOZZLES.RIGHT ? rules.sideMps : 0;
+  return Number.isFinite(shove) && shove > 0 ? shove : 0;
+}
+
 /**
- * The move's own nozzles and their thrust for a hull, sized so the main burn's push along the move, over the burn that
- * brings the spin to `rateMax`, is `shoveMps` (AirSpinRules: forwardMps, backMps, sideMps); their moment about the centre
- * of mass is r x F, and the attitude jets supply the rest of `alphaMain`. Axis ±1 a flip, ±2 a roll (AIR_SPIN_AXES).
+ * A boost's nozzle pair for a hull, sized so its burn (BOOST_BURN_S at full thrust) delivers `shoveMps` along its push
+ * (the push's horizontal share for a tilted nozzle, all of it for the belly's), and that pair's r x F about the centre of
+ * mass over the box's inertia. An unknown nozzle fills a pair at no thrust.
  */
-export function airSpinThrusters(frame: HullThrustFrame, axis: number, shoveMps: number, out: AirSpinThrusters): AirSpinThrusters {
-  const B = AIR_SPIN_BURN;
+export function boostThrusters(frame: HullThrustFrame, nozzle: number, shoveMps: number, out: BoostThrusters): BoostThrusters {
   const shove = Math.max(0, Number.isFinite(shoveMps) ? shoveMps : 0);
   let dx = 0, dy = 0, dz = 0, along = 1;
-  let mx = 0, my = 0, mz = 0;
-  if (axis === -1) {
-    // FRONT_FLIP: the butt, a little above the centre of mass, pushing forward and a little up
+  // each mount: a pair either side of the centre of mass across the hull (s = -1, +1 on x), or along it for a side pair
+  let x0 = frame.comX, y0 = frame.comY, z0 = frame.comZ, spreadX = 0, spreadZ = 0;
+  if (nozzle === BOOST_NOZZLES.UP) {
+    // the belly, under the centre of mass, pushing straight up the hull's own up
+    dy = 1;
+    y0 = frame.belly; spreadX = frame.halfWidth * PAIR_SPREAD;
+  } else if (nozzle === BOOST_NOZZLES.FORWARD) {
+    // the butt, a little above the centre of mass, pushing forward and a little up
     dy = SIN15; dz = COS15; along = COS15;
-    mx = frame.halfWidth * PAIR_SPREAD; my = frame.comY + 0.15 * (frame.top - frame.comY); mz = frame.rear;
-  } else if (axis === 1) {
-    // BACK_FLIP: the nose's underside, pushing back and up
+    y0 = frame.comY + 0.15 * (frame.top - frame.comY); z0 = frame.rear; spreadX = frame.halfWidth * PAIR_SPREAD;
+  } else if (nozzle === BOOST_NOZZLES.BACK) {
+    // the nose's underside, pushing back and up
     dy = SIN30; dz = -COS30; along = COS30;
-    mx = frame.halfWidth * PAIR_SPREAD; my = frame.belly; mz = frame.front;
-  } else {
-    // a roll: the side away from the travel, at the centre of mass's height, pushing toward the travel and a little up
-    const toward = axis === 2 ? 1 : -1; // ROLL_LEFT travels to +x
+    y0 = frame.belly; z0 = frame.front; spreadX = frame.halfWidth * PAIR_SPREAD;
+  } else if (nozzle === BOOST_NOZZLES.LEFT || nozzle === BOOST_NOZZLES.RIGHT) {
+    // the side away from the push, at the centre of mass's height, pushing across and a little up
+    const toward = nozzle === BOOST_NOZZLES.LEFT ? 1 : -1;
     dx = toward * COS20; dy = SIN20; along = COS20;
-    mx = -toward * frame.halfWidth; my = frame.comY; mz = SIDE_PAIR_Z * (frame.front - frame.rear) * 0.5;
+    x0 = frame.comX - toward * frame.halfWidth; spreadZ = SIDE_PAIR_Z * (frame.front - frame.rear) * 0.5;
   }
-  const accel = shove > 0 ? shove * B.alphaMain / (B.rateMax * along) / 2 : 0;
-  const pitch = airSpinPitches(axis);
-  out.axis = axis;
-  out.alphaMainNozzles = 0;
+  const known = dx !== 0 || dy !== 0 || dz !== 0;
+  const accel = known && shove > 0 ? shove / (along * BOOST_BURN_S) / 2 : 0;
+  out.nozzle = known ? nozzle : 0;
+  out.alphaPitch = 0;
+  out.alphaRoll = 0;
   for (let i = 0; i < 2; i++) {
     const s = i === 0 ? -1 : 1;
-    const nozzle = out.nozzles[i]!;
-    nozzle.role = 'main';
-    nozzle.x = pitch ? frame.comX + s * mx : mx;
-    nozzle.y = my;
-    nozzle.z = pitch ? mz : frame.comZ + s * mz;
-    nozzle.dx = dx; nozzle.dy = dy; nozzle.dz = dz;
-    nozzle.accel = accel;
-    out.alphaMainNozzles += nozzleAlpha(frame, nozzle, axis) * airSpinSense(axis);
+    const n = out.pair[i]!;
+    n.x = x0 + s * spreadX; n.y = y0; n.z = z0 + s * spreadZ;
+    n.dx = dx; n.dy = dy; n.dz = dz;
+    n.accel = accel;
+    out.alphaPitch += nozzlePitchAlpha(frame, n);
+    out.alphaRoll += nozzleRollAlpha(frame, n);
   }
-  out.alphaCouple = B.alphaMain - out.alphaMainNozzles;
   return out;
+}
+
+/** A nozzle's r x F about the centre of mass at full thrust over the box's pitch inertia, nose up positive (-tau_x). */
+export function nozzlePitchAlpha(frame: HullThrustFrame, n: HullNozzle): number {
+  const ry = n.y - frame.comY, rz = n.z - frame.comZ;
+  return -(ry * n.dz - rz * n.dy) * n.accel / frame.k2Pitch;
+}
+
+/** A nozzle's r x F about the centre of mass at full thrust over the box's roll inertia, the left (+x) side up positive
+ *  (+tau_z). */
+export function nozzleRollAlpha(frame: HullThrustFrame, n: HullNozzle): number {
+  const rx = n.x - frame.comX, ry = n.y - frame.comY;
+  return (rx * n.dy - ry * n.dx) * n.accel / frame.k2Roll;
 }
 
 /**
@@ -223,45 +180,11 @@ export function hullToWorld(x: number, y: number, z: number, sinYaw: number, cos
   return out;
 }
 
-/** A nozzle's angular acceleration at full thrust about the move's axis, in the spring's sense: r x F about the centre of
- *  mass over the box's inertia (pitch: -tau_x, the nose going up; roll: +tau_z, the left side going up). */
-export function nozzleAlpha(frame: HullThrustFrame, nozzle: HullNozzle, axis: number): number {
-  const rx = nozzle.x - frame.comX, ry = nozzle.y - frame.comY, rz = nozzle.z - frame.comZ;
-  const fx = nozzle.dx * nozzle.accel, fy = nozzle.dy * nozzle.accel, fz = nozzle.dz * nozzle.accel;
-  if (airSpinPitches(axis)) return -(ry * fz - rz * fy) / frame.k2Pitch;
-  return (rx * fy - ry * fx) / frame.k2Roll;
-}
-
-/**
- * The attitude jets for a sense of turn (spring sense: +1 nose up or left side up, -1 the other way) on a pitch or a
- * roll: two vertical jets at opposite ends of the box, one pushing up, one down, each `accel` (a couple: no net force,
- * the moment its force times the ends' spread). `alpha` (rad/s^2) sizes them.
- */
-export function attitudeJets(frame: HullThrustFrame, pitch: boolean, sense: number, alpha: number, role: NozzleRole,
-  out: HullNozzle[] = []): HullNozzle[] {
-  out.length = 0;
-  const a = Math.abs(alpha);
-  if (!(a > 0) || !sense) return out;
-  if (pitch) {
-    // nose up: the nose's underside pushes up, the tail's deck down (and the reverse for nose down)
-    const accel = a * frame.k2Pitch / Math.max(0.5, frame.front - frame.rear);
-    const up = sense > 0;
-    out.push({ role, x: frame.comX, y: up ? frame.belly : frame.top, z: frame.front, dx: 0, dy: up ? 1 : -1, dz: 0, accel });
-    out.push({ role, x: frame.comX, y: up ? frame.top : frame.belly, z: frame.rear, dx: 0, dy: up ? -1 : 1, dz: 0, accel });
-  } else {
-    // left side up (+x): the left's underside pushes up, the right's deck down
-    const accel = a * frame.k2Roll / Math.max(0.5, 2 * frame.halfWidth);
-    const up = sense > 0;
-    out.push({ role, x: frame.halfWidth, y: up ? frame.belly : frame.top, z: frame.comZ, dx: 0, dy: up ? 1 : -1, dz: 0, accel });
-    out.push({ role, x: -frame.halfWidth, y: up ? frame.top : frame.belly, z: frame.comZ, dx: 0, dy: up ? -1 : 1, dz: 0, accel });
-  }
-  return out;
-}
-
-/** The burn the renderer draws (movement.ts TankState._thrust, written each step): the move's axis and each set's share
- *  of its thrust (AirSpinBurnLevels), `lift` while a ground dodge's hop waits to clear the ground before it turns. */
-export interface HullThrustState { axis: number; main: number; trim: number; counter: number; lift: number; shove: number }
+/** The burn the renderer draws (movement.ts TankState._thrust, written each step): the nozzle firing (BOOST_NOZZLES, 0
+ *  none), the share of its thrust the step applied (0..1: under 1 where the climb cap took some of it), `lift` while a
+ *  ground press's hop waits to clear the ground before it fires, and the shove the pair is sized for. */
+export interface HullThrustState { nozzle: number; level: number; lift: number; shove: number }
 
 export function createHullThrustState(): HullThrustState {
-  return { axis: 0, main: 0, trim: 0, counter: 0, lift: 0, shove: 0 };
+  return { nozzle: 0, level: 0, lift: 0, shove: 0 };
 }

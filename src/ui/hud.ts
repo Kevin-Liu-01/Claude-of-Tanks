@@ -48,7 +48,7 @@ import { droneControl } from './droneControlState.ts';
 import { battleSightShift } from './battleSight.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
-import { canTankAirSpin, tankAirborne } from '../sim/hullFlight.ts';
+import { canTankBoost, tankAirborne, tankBoostsLeft } from '../sim/hullFlight.ts';
 import { createTurboCooldown } from '../game/turboCooldown.ts';
 import { canSelfRightTank } from '../sim/rollover.ts';
 import { penVerdict } from '../sim/penVerdict.ts';
@@ -3124,10 +3124,11 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   jumpHint.setAttribute('aria-label', t('hud.jump'));
   jumpHint.dataset.tip = t('hud.jump'); // (its name reads as its glyph at the 11 px floor: the word in the hover tip)
   const jumpKey = requireElement<HTMLElement>(jumpHint, '.sk');
-  // turbo-spin-275 (owner 2026-11-22, Turbo Ball and Gravity): Turbo (Z) and the air spin (F in flight) follow the jump,
-  // tiles of its kind (.cot-jump: shown with it, off the phone row, where the touch layer's round buttons stand). The air
-  // spin greys on the ground (data-grounded) and the jump dims in flight (data-airborne), where F spins; Turbo counts its
-  // cooldown down and refills its edge (data-cooling, --refill).
+  // turbo-spin-275 (owner 2026-11-22, Turbo Ball and Gravity): Turbo (Z) and the boost (F in flight; thrust-boosts-279)
+  // follow the jump, tiles of its kind (.cot-jump: shown with it, off the phone row, where the touch layer's round buttons
+  // stand). The boost greys when the sim would refuse it (data-grounded) and its caption shows the flight's charges left
+  // as pips (data-pips); the jump dims in flight (data-airborne), where F boosts; Turbo counts its cooldown down and refills
+  // its edge (data-cooling, --refill).
   const modeMoveTile = (id: 'turbo' | 'airSpin', act: () => void): { button: HTMLButtonElement; label: HTMLElement; key: HTMLElement } => {
     const def = vehicleAction(id);
     const button = el('button', `cot-jump cot-mode-move cot-${id === 'turbo' ? 'turbo' : 'air-spin'} cot-m-rise cot-m-by-on`, controlsRow);
@@ -3144,7 +3145,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   const spinTile = modeMoveTile('airSpin', () => bus.emit('ui:airSpin', {}));
   /** Turbo's cooldown on the HUD's clock, from the seat's own events (game/turboCooldown.ts, the phone pad's too). */
   const turboCooldown = createTurboCooldown(bus, () => playerRef?.id, () => lastTimeS);
-  /** The air spin's (flip-boost-276: a dodge with a short cooldown), from its `tank:airSpin` events alike. */
+  /** The boost's gap between presses (flip-boost-276; thrust-boosts-279), from its `tank:airSpin` events alike. */
   const airSpinCooldown = createTurboCooldown(bus, () => playerRef?.id, () => lastTimeS, 'tank:airSpin');
   let lastModeMovesKey = -1;
   const specialLabel = requireElement<HTMLElement>(specialButton, '.sl');
@@ -3204,8 +3205,9 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   // (mobile-hud-274) each control names itself: a phone seats the survival ones (the smoke) in the left edge's section
   for (const [id, button] of Object.entries(vehicleControls)) button.dataset.control = id;
   let controlsJumpMode:boolean|null=null;
-  let controlsModeMoves={turbo:false,airSpin:false};
-  function setControlsJumpMode(on:boolean,moves:{turbo:boolean;airSpin:boolean}=controlsModeMoves):void{
+  let controlsModeMoves={turbo:false,airSpin:false,charges:0};
+  let lastSpinPips='';
+  function setControlsJumpMode(on:boolean,moves:{turbo:boolean;airSpin:boolean;charges:number}=controlsModeMoves):void{
     jumpHint.classList.toggle('on',on);
     controlsModeMoves=moves;
     turboTile.button.classList.toggle('on',on&&moves.turbo);
@@ -3242,12 +3244,21 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   function updateSpecialAction(player: HudTank | null | undefined, aim: HudAimInput | null | undefined = null): void {
     const canControl=!!player?.combat&&!player.combat.destroyed;
     setDisabled(jumpHint,!canControl);
-    // turbo-spin-275: the air spin lights by the rule the sim applies (sim/hullFlight.ts; flip-boost-276: on the ground too,
-    // the ground dodge, until the flight's dodge is spent, and dark while it cools); the jump dims in flight
+    // turbo-spin-275: the boost lights by the rule the sim applies (sim/hullFlight.ts canTankBoost; on the ground too, the
+    // ground press; thrust-boosts-279: until the flight's charges are spent, and dark through a burn and the gap between
+    // presses), its caption the charges left as pips; the jump dims in flight
     const flying=tankAirborne(player?.state);
     jumpHint.toggleAttribute('data-airborne',flying&&controlsModeMoves.airSpin);
-    const spinGrey=!canTankAirSpin(player?.state)||airSpinCooldown.readyIn(lastTimeS)>0;
+    const charges=controlsModeMoves.charges;
+    const spinGrey=!canTankBoost(player?.state,charges)||airSpinCooldown.readyIn(lastTimeS)>0;
     spinTile.button.toggleAttribute('data-grounded',spinGrey);
+    const boostsLeft=tankBoostsLeft(player?.state,charges);
+    const pips=charges>0?'\u25cf'.repeat(boostsLeft)+'\u25cb'.repeat(Math.max(0,charges-boostsLeft)):'';
+    if(pips!==lastSpinPips){
+      lastSpinPips=pips;
+      spinTile.button.dataset.pips=String(boostsLeft);
+      setControlText(spinTile.label,pips||t(vehicleAction('airSpin').label),!!pips);
+    }
     setDisabled(spinTile.button,!canControl||spinGrey);
     const turboWait=turboCooldown.readyIn(lastTimeS);
     setDisabled(turboTile.button,!canControl||turboWait>0);
@@ -9447,7 +9458,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     setText(spinTile.key, frame.keyCaps?.airSpin ?? frame.selfRightKeyLabel ?? 'F');
     if(frame.matchModeState?.id){
       const modeRules=liveRuleset?.mode===frame.matchModeState.id?liveRuleset:matchRulesetFor(normalizeGameMode(frame.matchModeState.id));
-      setControlsJumpMode(isJumpMode(modeRules),{turbo:!!modeRules?.turbo,airSpin:!!modeRules?.airSpin});
+      setControlsJumpMode(isJumpMode(modeRules),{turbo:!!modeRules?.turbo,airSpin:!!modeRules?.airSpin,charges:modeRules?.airSpin?.charges??0});
     }
     if(frame.keyCaps)applyKeyCaps(frame.keyCaps);
     if(frame.auxiliaryKeyLabels){
@@ -9642,7 +9653,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       // Owner (2026-09-16): a ruleset without consumables (Turbo Ball) shows no consumable slots — the
       // separator and the three keycaps leave the shell selector instead of reading as "∞" spares.
       jumpLabel.textContent = t('hud.jump');
-      setControlsJumpMode(isJumpMode(ruleset),{turbo:!!ruleset?.turbo,airSpin:!!ruleset?.airSpin});
+      setControlsJumpMode(isJumpMode(ruleset),{turbo:!!ruleset?.turbo,airSpin:!!ruleset?.airSpin,charges:ruleset?.airSpin?.charges??0});
       turboCooldown.reset();
       airSpinCooldown.reset();
       // round 30: the touch layer shows its rocket button in the same rulesets

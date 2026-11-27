@@ -1,17 +1,18 @@
-// turboSpinMigration.selftest.mjs — a host migration mid-turbo and mid-flip (turbo-spin-275). Copyright (c) 2026 Kevin B. Liu.
+// turboSpinMigration.selftest.mjs — a host migration mid-turbo and mid-boost (turbo-spin-275; thrust-boosts-279). Copyright
+// (c) 2026 Kevin B. Liu.
 //
-// Turbo Ball: one seat jumps and presses F in the air (a front flip, sim/movement.ts requestTankAirSpin), the other presses
-// Turbo (sim/hullActions.ts requestHullTurbo: the leap, then a 3 s cooldown). The old host's keyframe goes through the
-// migration codec onto a second actor on the same roster (resumeHullBody's handoff), and both hosts step on:
-//   - the flip keeps turning on the new host and ends where the old host's ends, the hull back on its tracks;
+// Turbo Ball: one seat jumps and boosts three times in the air (the belly, then A, then D: sim/movement.ts
+// requestTankBoost), the keyframe mid-way through the third burn; the other presses Turbo (sim/hullActions.ts
+// requestHullTurbo: the leap, then a 3 s cooldown). The old host's keyframe goes through the migration codec onto a second
+// actor on the same roster (resumeHullBody's handoff), and both hosts step on:
+//   - the boosted flight carries (MigrationEntityExtras.boost, boostMotion, boostsUsed): the third burn finishes on the new
+//     host and the hull flies, rolls and drifts as on the old one;
+//   - three of the flight's five boosts spent: two more presses are taken on both hosts, the next refused on both (Main's
+//     receipt: mid-flight with 3 used, after migration 2 remain);
 //   - Turbo's cooldown runs on: a press half a second later is refused on both hosts, one after it ends is taken on both;
-//   - the leap's speed and lift ride the row (the dasher's flight matches).
-//   - the air spin's cooldown and the flight's spent dodge run on (flip-boost-276): a second F in the same flight, past
-//     the cooldown, is refused on both hosts.
-// Since thrust-flips-277 the extras carry the spin's rate as well (the turn rides the hull's angular momentum under its
-// thrusters' burn), and a third negative control drops it.
-// Negative controls: the same handoff with the extras' spin dropped leaves the new host's hull hanging mid-flip (the
-// receipt fails without MigrationEntityExtras.airSpin); with the spent dodge dropped the new host takes the second F.
+//     the leap's speed and lift ride the row (the dasher's flight matches).
+// Negative controls: the extras without the boost leave the new host's hull without its burn (apart in its path); without
+// the boost's motion its roll and drift part; without the boosts spent the new host takes five more presses.
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
@@ -20,7 +21,7 @@ import { applyResumeState, captureEntityExtras, decodeMigrationKeyframe, encodeM
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
-import { AIR_SPIN_AXES } from '../../sim/movement.ts';
+import { BOOST_NOZZLES } from '../../sim/hullFlight.ts';
 
 const MODE = 'turbo_ball';
 const RULES = matchRulesetFor(MODE);
@@ -37,31 +38,44 @@ const DT = 1 / 60;
 
 /** Two hosts' inputs, stepped together; a press lasts one tick. */
 function step(sim, inputs, ticks = 1) { for (let n = 0; n < ticks; n++) { sim.step({ dt: DT, inputs }); for (const c of inputs.values()) c.actionBits = 0; } }
+/** F for the flipper with a drive, on one host. */
+function boost(sim, inputs, steer = 0) {
+  const c = inputs.get('flipper');
+  c.throttle = 0; c.steer = steer; c.actionBits = PLAYER_ACTION_BITS.SELF_RIGHT;
+  step(sim, inputs);
+  c.steer = 0;
+}
 
-function handoff({ dropSpin = false, dropFlipUsed = false, dropRate = false } = {}) {
+function handoff({ dropBoost = false, dropMotion = false, dropUsed = false } = {}) {
   const old = make(null), sim = old.authority;
   const flip = control(), dash = control();
   const inputs = new Map([['flipper', flip], ['dasher', dash]]);
   sim.onMatchReady();
   step(sim, inputs, 90);
   const flipper = sim.entityById.get('flipper'), dasher = sim.entityById.get('dasher');
-  assert.deepEqual(flipper.modeAirSpin, RULES.airSpin, 'setup: Turbo Ball stamps the air spin');
+  assert.deepEqual(flipper.modeAirSpin, RULES.airSpin, 'setup: Turbo Ball stamps the boosts');
   assert.deepEqual(dasher.modeTurbo, RULES.turbo, 'setup: and Turbo');
-  // the flipper jumps (F on the ground), flies a third of a second, then F again: the front flip (W held)
+  // the flipper jumps (F on the ground), then boosts: the belly, A, D
   flip.actionBits = PLAYER_ACTION_BITS.SELF_RIGHT; step(sim, inputs);
   assert.equal(flipper.state.grounded, false, 'setup: F on the ground jumps');
   step(sim, inputs, 20);
-  const climb = flipper.state._ride.v;
-  flip.throttle = 1; flip.actionBits = PLAYER_ACTION_BITS.SELF_RIGHT; step(sim, inputs);
-  assert.equal(flipper.state._airSpinAxis, AIR_SPIN_AXES.FRONT_FLIP, 'setup: F in the air with W held is a front flip');
-  assert.ok(flipper.state._ride.v < climb, 'F in the air no longer re-boosts the rocket');
+  boost(sim, inputs, 0);
+  assert.equal(flipper.state._boostNozzle, BOOST_NOZZLES.UP, 'setup: F in the air with no drive fires the belly');
+  step(sim, inputs, 23);
+  boost(sim, inputs, 1);
+  assert.equal(flipper.state._boostNozzle, BOOST_NOZZLES.LEFT, 'setup: with A held the right side pushes it left');
   // the dasher leaps
   const before = dasher.state.speed;
   dash.actionBits = PLAYER_ACTION_BITS.TURBO; step(sim, inputs);
   assert.ok(dasher.state.speed > before + RULES.turbo.forwardMps * 0.8, `setup: Turbo adds its forward speed (${before.toFixed(1)} -> ${dasher.state.speed.toFixed(1)})`);
   assert.equal(dasher.state.grounded, false, 'setup: and leaves the ground');
-  step(sim, inputs, 12);
-  assert.ok(flipper.state._airSpinAxis !== 0 && flipper.state._airSpinLeft > 1, 'setup: the flip is mid-turn at the keyframe');
+  step(sim, inputs, 22);
+  boost(sim, inputs, -1);
+  step(sim, inputs, 4);
+  assert.ok(flipper.state._boostNozzle === BOOST_NOZZLES.RIGHT && flipper.state._boostBurnS > 0 && flipper.state._boostsUsed === 3,
+    'setup: the keyframe is mid-way through the third burn, three boosts spent');
+  assert.ok(Math.abs(flipper.state._spring.rollV) > 0.5 && Math.abs(flipper.state._spring.recoilVX) + Math.abs(flipper.state._spring.recoilVZ) > 1,
+    'setup: the hull rolls and drifts');
   const readyIn = dasher.turboReadyS - sim.timeS;
   assert.ok(readyIn > 2.5, 'setup: the cooldown runs at the keyframe');
 
@@ -73,13 +87,13 @@ function handoff({ dropSpin = false, dropFlipUsed = false, dropRate = false } = 
   const extras = captureEntityExtras(old);
   const flipperExtras = extras.find((entry) => entry.entityId === old.wireIdOf('flipper'));
   const dasherExtras = extras.find((entry) => entry.entityId === old.wireIdOf('dasher'));
-  assert.ok(typeof flipperExtras.airSpin === 'number', 'the extras carry the flip');
-  assert.ok(Math.abs(flipperExtras.airSpinRate) > 5, 'and the rate it turns at (thrust-flips-277: the turn rides its momentum)');
-  assert.ok(Math.abs(dasherExtras.turboReadyIn - readyIn) < 0.01, 'and the cooldown left');
-  assert.ok(flipperExtras.airSpinReadyIn > 0.5 && flipperExtras.flipUsed === true, 'and the air spin\'s cooldown and spent dodge (flip-boost-276)');
-  if (dropSpin) delete flipperExtras.airSpin;
-  if (dropFlipUsed) delete flipperExtras.flipUsed;
-  if (dropRate) delete flipperExtras.airSpinRate;
+  assert.ok(typeof flipperExtras.boost === 'number' && flipperExtras.boost > 0, 'the extras carry the boosted flight');
+  assert.ok(Array.isArray(flipperExtras.boostMotion) && Math.abs(flipperExtras.boostMotion[1]) > 0.5, 'and its spin and drift');
+  assert.equal(flipperExtras.boostsUsed, 3, 'and the three boosts spent');
+  assert.ok(Math.abs(dasherExtras.turboReadyIn - readyIn) < 0.01, 'and Turbo\'s cooldown left');
+  if (dropBoost) delete flipperExtras.boost;
+  if (dropMotion) delete flipperExtras.boostMotion;
+  if (dropUsed) delete flipperExtras.boostsUsed;
   const sealed = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs, timeS: sim.timeS, phase: 'playing',
     modeCheckpoint: sim.captureModeCheckpoint(), entities: extras, frame }));
   const fresh = make({ tick, battleTimeMs });
@@ -90,82 +104,74 @@ function handoff({ dropSpin = false, dropFlipUsed = false, dropRate = false } = 
   for (const [id, c] of inputs) Object.assign(freshInputs.get(id), c, { actionBits: 0 });
   return { sim, next, inputs, freshInputs };
 }
+/** The flipper's path apart on the two hosts over `ticks` (worst roll in rad, worst position in m). */
+function follow(h, ticks) {
+  const a = h.sim.entityById.get('flipper').state, b = h.next.entityById.get('flipper').state;
+  let roll = 0, pos = 0;
+  for (let n = 0; n < ticks; n++) {
+    step(h.sim, h.inputs); step(h.next, h.freshInputs);
+    roll = Math.max(roll, Math.abs(Math.atan2(Math.sin(a.visualRoll - b.visualRoll), Math.cos(a.visualRoll - b.visualRoll))));
+    pos = Math.max(pos, Math.hypot(a.pos.x - b.pos.x, a.pos.y - b.pos.y, a.pos.z - b.pos.z));
+  }
+  return { roll, pos };
+}
+/** Presses F (no drive) for the flipper on both hosts every 24 ticks, `count` times: how many each host took. */
+function pressMore(h, count) {
+  const a = h.sim.entityById.get('flipper'), b = h.next.entityById.get('flipper');
+  const taken = [0, 0];
+  for (let k = 0; k < count; k++) {
+    assert.ok(!a.state.grounded && !b.state.grounded, `setup: press ${k + 1} in flight on both hosts`);
+    const before = [a.state._boostsUsed, b.state._boostsUsed];
+    boost(h.sim, h.inputs); boost(h.next, h.freshInputs);
+    if (a.state._boostsUsed > before[0]) taken[0]++;
+    if (b.state._boostsUsed > before[1]) taken[1]++;
+    step(h.sim, h.inputs, 23); step(h.next, h.freshInputs, 23);
+  }
+  return taken;
+}
 
 // ---- the handoff with the extras whole
-const { sim, next, inputs, freshInputs } = handoff();
+const whole = handoff();
+const { sim, next, inputs, freshInputs } = whole;
 const oldFlip = sim.entityById.get('flipper').state, newFlip = next.entityById.get('flipper').state;
-assert.equal(newFlip._airSpinAxis, oldFlip._airSpinAxis, 'the new host turns the same flip');
-assert.ok(Math.abs(newFlip._airSpinLeft - oldFlip._airSpinLeft) < 1e-6, 'with the turn it still owes');
+assert.equal(newFlip._boostNozzle, oldFlip._boostNozzle, 'the new host burns the same nozzle');
+assert.ok(Math.abs(newFlip._boostBurnS - oldFlip._boostBurnS) < 1e-6, 'with the burn it has left');
+assert.equal(newFlip._boostsUsed, 3, 'and three boosts spent');
 const oldDash = sim.entityById.get('dasher'), newDash = next.entityById.get('dasher');
 assert.ok(Math.abs((newDash.turboReadyS - next.timeS) - (oldDash.turboReadyS - sim.timeS)) < 0.02, 'Turbo\'s cooldown runs on');
 const oldFlipper = sim.entityById.get('flipper'), newFlipper = next.entityById.get('flipper');
-assert.ok(Math.abs((newFlipper.airSpinReadyS - next.timeS) - (oldFlipper.airSpinReadyS - sim.timeS)) < 0.02, 'the air spin\'s cooldown runs on');
-assert.equal(newFlip._flipUsed, true, 'and the flight\'s dodge stays spent');
-/** F again for the flipper on both hosts, well into the same flight with the cooldown run: whether each took it. */
-function secondF(a, b, ai, bi) {
-  const fa = a.entityById.get('flipper'), fb = b.entityById.get('flipper');
-  assert.ok(!fa.state.grounded && !fb.state.grounded && fa.airSpinReadyS <= a.timeS && fb.airSpinReadyS <= b.timeS, 'setup: in flight, cooled');
-  ai.get('flipper').actionBits = PLAYER_ACTION_BITS.SELF_RIGHT; bi.get('flipper').actionBits = PLAYER_ACTION_BITS.SELF_RIGHT;
-  step(a, ai); step(b, bi);
-  return [fa.state._airSpinAxis !== 0, fb.state._airSpinAxis !== 0];
-}
-let worstPitch = 0, worstY = 0, endedAt = null;
-for (let n = 0; n < 240; n++) {
+assert.ok(Math.abs((newFlipper.airSpinReadyS - next.timeS) - (oldFlipper.airSpinReadyS - sim.timeS)) < 0.02, 'the gap between boosts runs on');
+const path = follow(whole, 30);
+assert.ok(path.roll < 0.05 && path.pos < 0.05, `the new host's boosted flight follows the old host's (roll within ${path.roll.toFixed(4)} rad, path within ${path.pos.toFixed(4)} m)`);
+// half a second on: the cooldown refuses Turbo on both hosts
+{
+  const speeds = [oldDash.state.speed, newDash.state.speed];
+  inputs.get('dasher').actionBits = PLAYER_ACTION_BITS.TURBO; freshInputs.get('dasher').actionBits = PLAYER_ACTION_BITS.TURBO;
   step(sim, inputs); step(next, freshInputs);
-  worstPitch = Math.max(worstPitch, Math.abs(Math.atan2(Math.sin(newFlip.visualPitch - oldFlip.visualPitch), Math.cos(newFlip.visualPitch - oldFlip.visualPitch))));
-  worstY = Math.max(worstY, Math.abs(newDash.state.pos.y - oldDash.state.pos.y));
-  if (endedAt === null && !newFlip._airSpinAxis) endedAt = n;
-  if (n === 90) assert.deepEqual(secondF(sim, next, inputs, freshInputs), [false, false], 'a second F in one flight is refused on both hosts');
-  if (n === 30) {
-    // half a second on: the cooldown refuses Turbo on both hosts
-    const speeds = [oldDash.state.speed, newDash.state.speed];
-    inputs.get('dasher').actionBits = PLAYER_ACTION_BITS.TURBO; freshInputs.get('dasher').actionBits = PLAYER_ACTION_BITS.TURBO;
-    step(sim, inputs); step(next, freshInputs);
-    assert.ok(oldDash.state.speed <= speeds[0] + 0.5 && newDash.state.speed <= speeds[1] + 0.5, 'Turbo is refused on both hosts while it cools');
-  }
+  assert.ok(oldDash.state.speed <= speeds[0] + 0.5 && newDash.state.speed <= speeds[1] + 0.5, 'Turbo is refused on both hosts while it cools');
 }
-assert.ok(endedAt !== null && endedAt < 60, `the flip finishes on the new host (${endedAt} ticks after the handoff)`);
-assert.ok(worstPitch < 0.05, `the new host's flip follows the old host's (worst pitch apart ${worstPitch.toFixed(4)} rad)`);
-assert.ok(worstY < 0.05, `the dasher's leap flies on alike (worst height apart ${worstY.toFixed(4)} m)`);
-// the landing's rebound settles alike on both hosts
-for (let n = 0; n < 120 && !(newFlip.grounded && oldFlip.grounded); n++) { step(sim, inputs); step(next, freshInputs); }
-assert.equal(newFlip.grounded, true, 'the flipper is down again');
-assert.equal(newFlip.overturned, false, 'on its tracks: a whole flip lands as it left');
+const taken = pressMore(whole, 3);
+assert.deepEqual(taken, [2, 2], 'two boosts remain on both hosts: two presses taken, the third refused');
+let worstY = 0;
+for (let n = 0; n < 120; n++) { step(sim, inputs); step(next, freshInputs); worstY = Math.max(worstY, Math.abs(newDash.state.pos.y - oldDash.state.pos.y)); }
+assert.ok(worstY < 0.05, `the dasher flies on alike (worst height apart ${worstY.toFixed(4)} m)`);
 // the cooldown over (3 s from the press): Turbo is taken on both hosts
-for (let n = 0; n < 60; n++) { step(sim, inputs); step(next, freshInputs); }
+for (let n = 0; n < 60 && !(oldDash.turboReadyS <= sim.timeS && newDash.turboReadyS <= next.timeS); n++) { step(sim, inputs); step(next, freshInputs); }
 assert.ok(oldDash.turboReadyS <= sim.timeS && newDash.turboReadyS <= next.timeS, 'the cooldown has run out on both hosts');
+for (let n = 0; n < 240 && !(oldDash.state.grounded && newDash.state.grounded); n++) { step(sim, inputs); step(next, freshInputs); }
+step(sim, inputs, 30); step(next, freshInputs, 30);
 const speeds = [oldDash.state.speed, newDash.state.speed];
 inputs.get('dasher').actionBits = PLAYER_ACTION_BITS.TURBO; freshInputs.get('dasher').actionBits = PLAYER_ACTION_BITS.TURBO;
 step(sim, inputs); step(next, freshInputs);
 assert.ok(oldDash.state.speed > speeds[0] + 5 && newDash.state.speed > speeds[1] + 5, 'Turbo is taken again on both hosts');
 
-// ---- negative control: the extras without the flip
-const dropped = handoff({ dropSpin: true });
-const hung = dropped.next.entityById.get('flipper').state, ref = dropped.sim.entityById.get('flipper').state;
-let apart = 0;
-for (let n = 0; n < 40; n++) {
-  step(dropped.sim, dropped.inputs); step(dropped.next, dropped.freshInputs);
-  apart = Math.max(apart, Math.abs(Math.atan2(Math.sin(hung.visualPitch - ref.visualPitch), Math.cos(hung.visualPitch - ref.visualPitch))));
-}
-assert.ok(apart > 0.5, `negative control: without the carried spin the new host's hull falls out of the flip (${apart.toFixed(2)} rad apart)`);
+// ---- negative controls
+const noBoost = follow(handoff({ dropBoost: true }), 30);
+assert.ok(noBoost.pos > 0.3, `negative control: without the carried boost the new host's hull leaves the old one's path (${noBoost.pos.toFixed(2)} m apart)`);
+const noMotion = follow(handoff({ dropMotion: true }), 30);
+assert.ok(noMotion.roll > 0.3 && noMotion.pos > 0.3, `negative control: without the carried motion its roll and drift part (${noMotion.roll.toFixed(2)} rad, ${noMotion.pos.toFixed(2)} m)`);
+const noUsed = handoff({ dropUsed: true });
+step(noUsed.sim, noUsed.inputs, 30); step(noUsed.next, noUsed.freshInputs, 30);
+assert.deepEqual(pressMore(noUsed, 3), [2, 3], 'negative control: without the carried boosts spent the new host takes a press the old one refuses');
 
-// ---- negative control: the extras without the spin's rate (thrust-flips-277): the new host's burn spins it up again from rest
-let lagged = 0;
-{
-  const slow = handoff({ dropRate: true });
-  const a = slow.next.entityById.get('flipper').state, b = slow.sim.entityById.get('flipper').state;
-  for (let n = 0; n < 40; n++) {
-    step(slow.sim, slow.inputs); step(slow.next, slow.freshInputs);
-    lagged = Math.max(lagged, Math.abs(Math.atan2(Math.sin(a.visualPitch - b.visualPitch), Math.cos(a.visualPitch - b.visualPitch))));
-  }
-  assert.ok(lagged > 0.3, `negative control: without the carried rate the new host's flip falls behind (${lagged.toFixed(2)} rad apart)`);
-}
-
-// ---- negative control: the extras without the spent dodge
-{
-  const lost = handoff({ dropFlipUsed: true });
-  for (let n = 0; n < 90; n++) { step(lost.sim, lost.inputs); step(lost.next, lost.freshInputs); }
-  assert.deepEqual(secondF(lost.sim, lost.next, lost.inputs, lost.freshInputs), [false, true], 'negative control: without the carried spent dodge the new host takes a second F');
-}
-
-console.log(`turboSpinMigration: a migration mid-flip finishes the flip on the new host (pitch within ${worstPitch.toFixed(4)} rad, done ${endedAt} ticks on, back on its tracks); mid-turbo the leap flies on (height within ${worstY.toFixed(4)} m) and the 3 s cooldown refuses then takes Turbo on both hosts; the air spin's cooldown and spent dodge carry (a second F refused on both); dropping the spent dodge lets the new host take it; dropping the carried spin leaves the hull ${apart.toFixed(2)} rad off, its rate ${lagged.toFixed(2)} rad`);
+console.log(`turboSpinMigration: a migration mid-boost with three spent carries the burn, spin and drift (roll within ${path.roll.toFixed(4)} rad, path within ${path.pos.toFixed(4)} m) and leaves two boosts on both hosts (two taken, the third refused); mid-turbo the leap flies on (height within ${worstY.toFixed(4)} m) and the 3 s cooldown refuses then takes Turbo on both hosts; dropping the boost parts the path by ${noBoost.pos.toFixed(2)} m, the motion by ${noMotion.roll.toFixed(2)} rad, and the count lets a press through`);
