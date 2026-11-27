@@ -75,7 +75,7 @@ export function tokenPin(text, tokens) {
  */
 export function computeWorldState(ctx) {
   const { root, graph, world: data, steps, toolchain, schema, fleetEntries, builderKey, chainOf,
-    rowOf, buildReadTables, dynamicProblem, environmentOf, envRows, config, fleetKey, rowsOf = graph.rowsOf,
+    rowOf, buildReadTables, dynamicProblem, shaderSwitchProblem = () => null, environmentOf, envRows, config, fleetKey, rowsOf = graph.rowsOf,
     fleetCore = [], loaderFiles = [] } = ctx;
   if (!data || !steps.length) return null;
   const abs = (rel) => resolve(root, rel), rel = (path) => relative(root, path);
@@ -118,7 +118,8 @@ export function computeWorldState(ctx) {
       for (const file of own.expanded) if (mapFiles[map].has(file)) mapExecuted.add(file);
     }
     for (const file of new Set([...executed, ...mapExecuted])) {
-      const problem = dynamicProblem(file);
+      // (279) a world tool that names a switch a masked shader region sets (fingerprint.mjs) cannot trust the mask
+      const problem = dynamicProblem(file) ?? shaderSwitchProblem(file);
       if (problem) reasons.push(problem);
       // A world file that imports a fleet entry module must be a declared, pinned user of the per-id API.
       if ([...graph.edges(file).exec].some((target) => fleetApi.has(target))) {

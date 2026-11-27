@@ -63,7 +63,7 @@
     "src/vehicles/ghillieSuit.ts": {"start":6503},
     "src/vehicles/machineGunGeometry.ts": {"start":1614},
     "src/vehicles/materialPainter.ts": {"start":3587},
-    "src/vehicles/materials.ts": {"start":4695},
+    "src/vehicles/materials.ts": {"start":4695,"bumps":[{"to":4706,"why":"shader-key-mask-279-r2 merge: shader-text region markers (integ/279)"}]},
     "src/vehicles/modern2.ts": {"start":1649},
     "src/vehicles/modern3.ts": {"start":2992},
     "src/vehicles/profiles/abrams.ts": {"start":8695},

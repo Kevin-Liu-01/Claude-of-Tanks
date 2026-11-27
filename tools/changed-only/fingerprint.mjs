@@ -9,8 +9,8 @@
 //   builderKey(id)   = H(core, roster, group(g) for every fleet group on the id's spec chain)
 //   core             = every file the fleet entry modules reach without going through a group's builder registration
 //                      (specs, the factory, kits, materials, generated spec data, the index/loader maps); a file with
-//                      declared shader text (steps.mjs SHADER_TEXT, 274) keyed with that text masked, which only the GPU
-//                      steps key (their page compiles it)
+//                      declared shader text (steps.mjs SHADER_TEXT, 274; its marked regions, 279) keyed with that text
+//                      masked, which only the GPU steps key (their page compiles it)
 //   group(g)         = the files fleetFactory GROUP_LOADERS[g] reaches beyond the core
 //   rowsKey          = the rows of every per-id table the fleet reaches, for every id on the spec chain, minus the
 //                      step's own rows of this id; with the balance pass out of the core (steps.mjs BALANCE), each id's
@@ -31,9 +31,9 @@ import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
 import { budgetedSync, watchChild } from './childBudget.mjs';
 import { AGGREGATES, BALANCE, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
-  CATALOG_FILES, MAP_REGISTRY_FILE, PER_ID_ACCESSORS, PROCESS_MARKER_ENV, SCHEDULING_ENV, SHADER_TEXT, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS,
+  isCatalogFile, MAP_REGISTRY_FILE, PER_ID_ACCESSORS, PROCESS_MARKER_ENV, SCHEDULING_ENV, SHADER_TEXT, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS,
   WORLD_STEPS, stepDefinition } from './steps.mjs';
-import { maskShaderText } from './shader-text.mjs';
+import { maskShaderText, switchSites } from './shader-text.mjs';
 import { expandGlobs, declaredNotInput, tableFileList } from './globs.mjs';
 import { computeWorldState, tokenPin } from './world.mjs';
 
@@ -216,6 +216,9 @@ export const DEFAULT_CONFIG = Object.freeze({
   groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: PER_ID_ACCESSORS, balance: BALANCE,
   // (274) shader text the CPU and world keys mask (steps.mjs SHADER_TEXT)
   shaderText: SHADER_TEXT,
+  // (279) which files are string catalogs (steps.mjs isCatalogFile): a step that declares `catalogKeys` keys those keys'
+  // values in them, not their bytes
+  catalogs: isCatalogFile,
   // (274) stopAtFleetCore: the world closures stop at the whole fleet core, which `fleetKey` holds, not only at its entry
   // modules (world.mjs)
   world: Object.freeze({ registryFile: MAP_REGISTRY_FILE, outputs: WORLD_OUTPUTS, fleetApiUsers: FLEET_API_USERS,
@@ -228,9 +231,24 @@ export const DEFAULT_CONFIG = Object.freeze({
  * carry a table recorded under 273's keys over to these without a regen; delete it with that tool once main's table is
  * re-keyed.
  */
-export const KEYS_273 = Object.freeze({ ...DEFAULT_CONFIG, shaderText: Object.freeze({}),
+/** (279) The string catalogs as 267 to 274 listed them: the other five locales' catalogs were keyed whole. */
+const CATALOGS_274 = Object.freeze(['src/ui/i18nCatalog.en-US.json', 'src/ui/i18nCatalog.zh-CN.json']);
+const listedCatalog = (path) => CATALOGS_274.includes(path);
+
+export const KEYS_273 = Object.freeze({ ...DEFAULT_CONFIG, shaderText: Object.freeze({}), catalogs: listedCatalog,
   declared: Object.freeze(Object.fromEntries(Object.entries(DECLARED_DYNAMIC).filter(([file]) => file !== 'tools/media-r5/paths.mjs'))),
   world: Object.freeze({ ...DEFAULT_CONFIG.world, stopAtFleetCore: false }) });
+
+/**
+ * (279) The keys as 274 took them: the declared constants masked, none of the marked regions (shader-text.mjs),
+ * FIELD_DUST_GLSL keyed, and only the en-US and zh-CN string catalogs taken out of the GPU steps' keys. tools/changed-only/rekey.mjs --from=274 carries a table recorded under them over to these
+ * without a regen (these key a part of what they keyed); delete it with that option once main's table is re-keyed.
+ */
+export const KEYS_274 = Object.freeze({ ...DEFAULT_CONFIG, shaderText: Object.freeze({
+  'src/vehicles/materials.ts': Object.freeze({
+    consts: Object.freeze(SHADER_TEXT['src/vehicles/materials.ts'].consts.filter((name) => name !== 'FIELD_DUST_GLSL')),
+  }),
+}), catalogs: listedCatalog });
 
 
 /** The tokens that pin the balance pass's importers (steps.mjs BALANCE): its own `tokens` and every name its entries
@@ -251,7 +269,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   root = resolve(root);
   const { tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
     groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: ACCESSORS, balance: BALANCE_PASS,
-    shaderText: SHADER_DECLARED = {} } = { ...DEFAULT_CONFIG, ...config };
+    shaderText: SHADER_DECLARED = {}, catalogs: isCatalog } = { ...DEFAULT_CONFIG, ...config };
   const declaredHelpers = Object.fromEntries(Object.entries(DECLARED_DYNAMIC)
     .filter(([, declaration]) => declaration.importHelper).map(([file, declaration]) => [file, declaration.importHelper]));
   graph ??= createGraph({ root, importHelpers: declaredHelpers, ...(cacheDir ? { cacheDir } : {}) });
@@ -274,10 +292,15 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   const roster = H(JSON.stringify(data.roster));
 
   // The values of the catalog keys a step declares (267, steps.mjs `catalogKeys`): one row per key, its value in each
-  // catalog ("absent" where it has none). A pattern ending in `*` takes every key with that prefix.
-  let catalogs = null;
-  const catalogValues = (patterns) => {
-    catalogs ??= CATALOG_FILES.map((file) => { try { return JSON.parse(graph.readText(abs(file))); } catch { return {}; } });
+  // catalog the step reaches, in path order ("absent" where it has none). A pattern ending in `*` takes every key with
+  // that prefix.
+  const catalogCache = new Map();
+  const catalogOf = (file) => {
+    if (!catalogCache.has(file)) catalogCache.set(file, (() => { try { return JSON.parse(graph.readText(abs(file))); } catch { return {}; } })());
+    return catalogCache.get(file);
+  };
+  const catalogValues = (patterns, files) => {
+    const catalogs = [...files].sort().map(catalogOf);
     const keys = [...new Set(catalogs.flatMap((catalog) => Object.keys(catalog)))].filter((key) => patterns.some((pattern) =>
       (pattern.endsWith('*') ? key.startsWith(pattern.slice(0, -1)) : key === pattern)));
     const named = new Set([...patterns.filter((pattern) => !pattern.endsWith('*')), ...keys]);
@@ -423,13 +446,26 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   // (274) Shader text (steps.mjs SHADER_TEXT): a fleet file's declared GLSL runs only inside a compile hook, which Node never
   // calls, so the core, the groups, the CPU steps and the world key the file with it masked; the GPU steps key its bytes
   // (their page compiles it). A declaration the checker refuses keeps the file keyed by its bytes everywhere.
-  const shaderMasked = new Map(), shaderProblems = [];
+  // (279) A masked region may set a shader switch (a COT_ define) only no module Node runs for a CPU or world step names
+  // outside the masked text: the fleet's executed modules here (else the file is keyed whole), each CPU and world tool's
+  // below (else that step runs on every id or map). Then the define steers only the shader compiler.
+  const shaderMasked = new Map(), shaderProblems = [], shaderSwitches = [];
   for (const [file, declaration] of Object.entries(SHADER_DECLARED)) {
     if (!graph.isFile(abs(file))) { shaderProblems.push(`${file}: no such file`); continue; }
-    const { masked, problems } = maskShaderText(graph.readText(abs(file)), file, declaration.consts);
-    if (masked === null) shaderProblems.push(...problems.map((problem) => `${file}: ${problem}`));
-    else shaderMasked.set(abs(file), sha256(masked));
+    const { masked, problems, switches } = maskShaderText(graph.readText(abs(file)), file, declaration);
+    if (masked === null) { shaderProblems.push(...problems.map((problem) => `${file}: ${problem}`)); continue; }
+    // (a node the graph holds may name no file here: an untracked build output a module only names)
+    const named = [...executed].filter((other) => graph.isFile(other)).sort().flatMap((other) => switchSites(other === abs(file) ? masked : graph.readText(other), rel(other), switches)
+      .map((name) => `${file}: its switch ${name} is named in ${rel(other)}${other === abs(file) ? ' outside its regions' : ''}`));
+    if (named.length) { shaderProblems.push(...named); continue; }
+    shaderMasked.set(abs(file), sha256(masked));
+    shaderSwitches.push(...switches);
   }
+  /** A tool file that names a masked switch: the step (a CPU or world one) cannot trust the mask. */
+  const shaderSwitchProblem = (file) => {
+    const named = shaderSwitches.length && !shaderMasked.has(file) && graph.isFile(file) ? switchSites(graph.readText(file), rel(file), shaderSwitches) : [];
+    return named.length ? `${rel(file)} names the shader switch ${named.join(', ')} that a masked region sets` : null;
+  };
   const nodeRows = (files, options = {}) => graph.rowsOf(files, { ...options, masked: shaderMasked });
   const core = H(...nodeRows(coreSet), ...envRows(environmentOf(executedOf(coreSet))),
     ...[...aggregateFiles].map((file) => `agg:${rel(file)}:${graph.hashFile(file)}`));
@@ -487,7 +523,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
       }
     }
     for (const file of toolExecuted) {
-      const problem = dynamicProblem(file);
+      const problem = dynamicProblem(file) ?? (step.device === 'gpu' ? null : shaderSwitchProblem(file));
       if (problem) reasons.push(problem);
     }
     const declaredReads = toolExecuted.flatMap((file) => DECLARED_DYNAMIC[rel(file)]?.reads ?? []);
@@ -503,8 +539,9 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
       // the per-id files its own output rows name (266, `inputField`)
       ...step.outputs.filter((table) => inputTables[table]).map((table) => inputTables[table])])].sort();
     // (267) a step that declares the catalog keys its page draws keys their values, not the whole string catalogs
-    const catalogRows = step.catalogKeys ? catalogValues(step.catalogKeys) : [];
-    const keyedFiles = step.catalogKeys ? new Set([...toolFiles].filter((file) => !CATALOG_FILES.includes(rel(file)))) : toolFiles;
+    const catalogFiles = step.catalogKeys ? [...toolFiles].map(rel).filter(isCatalog) : [];
+    const catalogRows = step.catalogKeys ? catalogValues(step.catalogKeys, catalogFiles) : [];
+    const keyedFiles = step.catalogKeys ? new Set([...toolFiles].filter((file) => !isCatalog(rel(file)))) : toolFiles;
     const gpu = step.device === 'gpu';
     const tool = H(`step:${stepDefinition(step)}`,
       ...(gpu ? graph.rowsOf : nodeRows)(new Set([...keyedFiles, ...foreignTables]), { exclude: ownFiles }),
@@ -574,7 +611,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   const world = computeWorldState({
     root, graph, world: data.world, steps: worldSteps, toolchain, schema: SCHEMA, fleetEntries: [...FLEET_ENTRIES.map(abs)],
     fleetKey: H(`core:${core}`, `roster:${roster}`, ...specsKey), builderKey, chainOf, rowOf, buildReadTables, dynamicProblem,
-    environmentOf, envRows, rowsOf: nodeRows, fleetCore: coreSet, loaderFiles: [...loaderFiles],
+    shaderSwitchProblem, environmentOf, envRows, rowsOf: nodeRows, fleetCore: coreSet, loaderFiles: [...loaderFiles],
     config: { ...worldConfig, declared: DECLARED_DYNAMIC, expandGlobs, stepDefinition },
   });
 
@@ -763,12 +800,14 @@ export function recordStep(manifest, name, ids, inKeys, after, { skip = new Set(
  * at the core): an id no input of its old key moved for has no input of its new key moved either. A stamp current under
  * `before` is re-taken the same way. The component lines move for every step that carried all of its ids (and the
  * shared lines); a step left with due ids keeps its lines, so its reasons stay true. Returns { step: { carried, left } }.
+ * (279) `leave`: steps that carry nothing. rekey.mjs --base takes `before` on an older copy of a file whose code did not
+ * move (comments only); the GPU steps key that file's bytes, which did move, so they stay due.
  */
-export function rekeyManifest(manifest, before, after) {
+export function rekeyManifest(manifest, before, after, { leave = new Set() } = {}) {
   const report = {}, whole = [];
   const carry = (name, view0, view1) => {
     const keys = manifest.keys[name] ?? {}, stamps = manifest.stamps?.[name] ?? {};
-    const rosterHolds = manifest.rosters?.[name] === view0.roster; // the resolver's first test (resolveChanged)
+    const rosterHolds = !leave.has(name) && manifest.rosters?.[name] === view0.roster; // the resolver's first test (resolveChanged)
     let carried = 0, left = 0;
     for (const id of view0.ids) {
       const recorded = keys[id], stamp = stamps[id];

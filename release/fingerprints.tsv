@@ -98,7 +98,7 @@ comp	world:donors:wreckPlan:urban	64e496b5b8c7496b
 comp	world:donors:wreckPlan:verdant	3539b3e40cbcbb0d
 comp	world:donors:wreckPlan:whiteout	25fe9fef2aa4f051
 comp	world:donors:wreckPlan:winter	07451ba9a20e71fb
-comp	world:fleet	e2b14a8b16f3420f
+comp	world:fleet	04eb8693d4813deb
 comp	world:map:collision:airfield	f02d8c5fb5c96dda
 comp	world:map:collision:alpine	6240a6de8529d1f5
 comp	world:map:collision:autumn	efa9c6eab230569f
@@ -201,7 +201,7 @@ comp	world:map:wreckPlan:winter	8be5504b53f983f9
 comp	world:tool:collision	fd4cd5c4d6287f32
 comp	world:tool:trenches	c78fac2e65398b2f
 comp	world:tool:wreckPlan	9fde8c02184296e8
-core	509592572721630b
+core	5b759ba0f91e52d3
 file	anatomy	src/vehicles/combatAnatomyCalibrations.ts	d604534bea1fdf2c
 file	anatomy	src/vehicles/combatAnatomyGroups/abrams.generated.ts	8a63f094b3f7c42f
 file	anatomy	src/vehicles/combatAnatomyGroups/abramsSourceX.generated.ts	46901a9614b4c2fc
