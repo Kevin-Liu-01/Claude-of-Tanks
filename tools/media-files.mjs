@@ -8,15 +8,18 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, wri
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isBigMedia, pathIndex, readManifest } from './blob-media.mjs';
+import { buildManifestPath, isBigMedia, pathIndex, readManifest } from './blob-media.mjs';
 import { idForPath } from '../src/presentation/blobMediaPath.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = join(ROOT, 'public');
 /** Where the tools that make media put big files (tools/blob-media.mjs adopt reads it), outside the repository. */
 export const STAGING = resolve(process.env.COT_MEDIA_STAGING ?? join(homedir(), 'cot-media-staging'));
+// the manifest a build reads (a test fixture's under COT_BLOB_MEDIA_MANIFEST), so a receipt and the build agree on it
+let manifest;
+const theManifest = () => (manifest ??= readManifest(buildManifestPath()));
 let index;
-const items = () => (index ??= pathIndex(readManifest()));
+const items = () => (index ??= pathIndex(theManifest()));
 
 /** A media path in any of the forms the code writes (`/media/x`, `media/x`, `public/media/x`, an absolute file path under
  *  public/) as its site path, `/media/x`; null for anything else. */
@@ -28,16 +31,17 @@ export function sitePath(path) {
 }
 
 /**
- * The file a media path (or the Blob URL a page was given for one) names: { where: 'public', bytes, file } for one in
- * public/, { where: 'blob', bytes, sha256, type, width, height, durationS, url, item } for a Blob path item, or null when
- * it ships from neither.
+ * The one resolver for a served file's identity (media-blob-279): { where: 'public', bytes, file } for a file in public/
+ * (a /media/ path in any form sitePath reads, or any other site path such as /maps/x.webp), { where: 'blob', bytes,
+ * sha256, type, width, height, durationS, url, item } for a Blob path item (or the Blob URL a page was given for one), or
+ * null when it ships from neither. Every tool that hashes, sizes or checks a served picture or film asks here, never
+ * public/ directly: a file that moved to Blob is no longer in public/.
  */
 export function mediaFile(path) {
   const site = sitePath(path);
-  if (site) {
-    const file = join(PUBLIC, site);
-    if (existsSync(file) && statSync(file).isFile()) return { where: 'public', path: site, file, bytes: statSync(file).size };
-  }
+  const plain = String(path).split(/[?#]/)[0];
+  const local = site ? join(PUBLIC, site) : /^\/[^/]/.test(plain) && !plain.startsWith(`${ROOT}/`) ? join(PUBLIC, plain) : null;
+  if (local && existsSync(local) && statSync(local).isFile()) return { where: 'public', path: site ?? plain, file: local, bytes: statSync(local).size };
   // a site path, or a URL a page was given for one (a family's or the rewrite's: its pathname names the item)
   const item = (site && items().get(site)) || blobItemForUrl(path);
   if (!item) return null;
@@ -46,8 +50,7 @@ export function mediaFile(path) {
 }
 
 /** True when the path ships, from public/ or from Blob (any site path: one outside /media/ ships from public/ alone). */
-export const mediaExists = (path) => mediaFile(path) !== null
-  || (/^\/[^?#]+$/.test(String(path)) && existsSync(join(PUBLIC, String(path))) && statSync(join(PUBLIC, String(path))).isFile());
+export const mediaExists = (path) => mediaFile(path) !== null;
 
 /** The path's bytes, from either place (an Error when it ships from neither). */
 export function mediaBytes(path) {
@@ -65,11 +68,23 @@ export function mediaDigest(path) {
   return { bytes: found.bytes, sha256: createHash('sha256').update(readFileSync(found.file)).digest('hex'), where: 'public' };
 }
 
-/** The path item a run-time family URL (blobMediaFamily.ts) or a rewritten URL names, by its pathname; null if none. */
+/** The Blob item a URL names, by its pathname: a path item's run-time family URL (blobMediaFamily.ts) or rewritten URL,
+ *  or an id item's URL as markup names it (a feature video); null if none. */
 let byPathname;
 export function blobItemForUrl(url) {
-  byPathname ??= new Map([...items().values()].map((item) => [item.pathname, item]));
+  byPathname ??= new Map(Object.entries(theManifest().items).filter(([, item]) => item.pathname).map(([id, item]) => [item.pathname, { id, ...item }]));
   return byPathname.get(String(url).split(/[?#]/)[0].replace(/^[a-z]+:\/\/[^/]+/, '').replace(/^\//, '')) ?? null;
+}
+
+/** The Blob store's origin (https://<store>.public.blob.vercel-storage.com), the one every uploaded item's URL shares
+ *  (blob-media manifestProblems holds it to one); null before the first upload. */
+let origin;
+export function blobOrigin() {
+  if (origin === undefined) {
+    const url = Object.values(theManifest().items).find((item) => item.url)?.url;
+    origin = url ? new URL(url).origin : null;
+  }
+  return origin;
 }
 
 /** The site path `url` stands for: itself when it is a /media/ path, a path item's path when it is that item's family or
@@ -125,8 +140,9 @@ export function mediaTopFolders() {
   return [...names].sort();
 }
 
-/** A local file with the path's bytes, for a tool that reads them (a decoder, a thumbnail cutter): public/ for a small
- *  file, the staging folder for a big one (an Error when it is on Blob and not staged on this machine). */
+/** A local file with the path's bytes, for a tool that reads them (a decoder, a thumbnail cutter, an encoder): public/
+ *  for a small file or any non-media site path, the staging folder for a big one (an Error when it is on Blob and not
+ *  staged on this machine). */
 export function mediaSource(path) {
   const found = mediaFile(path);
   if (found?.where === 'public') return found.file;

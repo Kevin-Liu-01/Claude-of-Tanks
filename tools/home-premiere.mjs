@@ -9,12 +9,13 @@
 //
 //   node tools/home-premiere.mjs           check (exit 1 when a block is stale)
 //   node tools/home-premiere.mjs --write   rewrite the blocks
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readTankAssets } from './tank-assets-store.mjs';
 import { iconMarkup } from '../src/presentation/publicShell.ts';
 import { heroLqip } from './hero-lqip.mjs';
+import { mediaExists } from './media-files.mjs';
 import { MEDIA_PAUSE_ICON } from '../src/presentation/mediaPlayer.ts';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import '../src/vehicles/tankFactory.ts';
@@ -100,7 +101,7 @@ function ladder(clip) {
   const files = [clip.wide && { ...clip.wide, rung: 'wide' }, clip.vp9 && clip.av1, clip.vp9, clip.film,
     clip.mobileVp9 && clip.mobileAv1 && { ...clip.mobileAv1, rung: 'phone' }, clip.mobileVp9 && { ...clip.mobileVp9, rung: 'phone' },
     clip.mobile && { ...clip.mobile, rung: 'phone' }].filter(Boolean);
-  for (const file of files) if (!existsSync(join(ROOT, 'public', file.path))) throw new Error(`home-premiere: ${file.path} is not in public/`);
+  for (const file of files) if (!mediaExists(file.path)) throw new Error(`home-premiere: ${file.path} ships from neither public/ nor Blob`);
   // an AV1 file's type names its codec in quotes (video/webm; codecs="av01..."): escaped, so the attribute holds whole
   return files.map((file) => `<source data-src="${file.path}" type="${esc(file.type ?? (file.path.endsWith('.mp4') ? 'video/mp4' : 'video/webm'))}"`
     + `${file.rung ? ` data-rung="${file.rung}"` : ''}>`).join('');
@@ -313,7 +314,7 @@ function bentoRungs(rungs, lead) {
 function bentoPicture(rungs, lead) {
   const sorted = bentoRungs(rungs, lead);
   const base = sorted.find((rung) => rung.width === 1920);
-  for (const rung of sorted) if (!existsSync(join(ROOT, 'public', rung.path))) throw new Error(`home-premiere: ${rung.path} is not in public/`);
+  for (const rung of sorted) if (!mediaExists(rung.path)) throw new Error(`home-premiere: ${rung.path} ships from neither public/ nor Blob`);
   const sizes = lead ? '(width < 768px) 100vw, (width < 1100px) 66vw, 900px' : '(width < 768px) 50vw, (width < 1100px) 33vw, 450px';
   return `<img src="${base.path}" srcset="${sorted.map((rung) => `${rung.path} ${rung.width}w`).join(', ')}" sizes="${sizes}"`
     + ` width="1920" height="1080" alt="" loading="lazy" decoding="async">`;

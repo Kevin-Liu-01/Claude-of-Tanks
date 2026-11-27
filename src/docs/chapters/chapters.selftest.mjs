@@ -3,10 +3,11 @@
 // battlefields chapter shows every map; and every chapter's numbers print clean, with every picture it names on disk.
 // Copyright © 2026 Kevin B. Liu.
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import '../../ui/i18nCatalog.ts';
+import { mediaExists } from '../../../tools/media-files.mjs';
 import { setLocale } from '../../ui/i18n.ts';
 import { richSections } from './index.ts';
 import { fleetTanks } from './fleet.ts';
@@ -34,7 +35,7 @@ for (const slug of rich) {
   assert.doesNotMatch(text, /\{[a-zA-Z]+\}/, `${slug}: every placeholder is filled`);
   assert.doesNotMatch(text, /\b(docs|equipment|garage|hud|map|nation)\.[a-z][A-Za-z]+\.[A-Za-z.]+/, `${slug}: no raw catalog key`);
   for (const [, src] of html.matchAll(/\s(?:src|srcset)="(\/[^"?\s]+)/g)) {
-    assert.ok(existsSync(join(ROOT, 'public', src)), `${slug}: ${src} is in public/`);
+    assert.ok(mediaExists(src), `${slug}: ${src} ships (public/ or Blob)`);
   }
 }
 

@@ -5,7 +5,7 @@
 // sums). Not a selftest itself. Markup is scanned with the same attribute grammar as tools/bundle-budget.mjs; the topic
 // pages' headers and figures, which src/docs/topics.ts writes at load, come from its exported data.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { mediaExists, mediaFile } from './media-files.mjs';
+import { blobOrigin, mediaExists, mediaFile, mediaPathOf } from './media-files.mjs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,11 +28,15 @@ export function tagAttributes(tag) {
   return attributes;
 }
 
-/** A site path for a URL the page names (its own origin's absolute URLs included); null for anything else. */
+/** A site path for a URL the page names (its own origin's absolute URLs included); null for anything else. A URL on the
+ *  Blob store (media-blob-279) reads as its path item's /media/ path, or stays the URL for an id item (a film the
+ *  markup names by its Blob URL, which has no path: media-files resolves it by its pathname). */
 export function sitePath(url) {
   if (!url) return null;
   const trimmed = url.trim().replace(/&amp;/g, '&');
   if (trimmed.startsWith(SITE_ORIGIN)) return trimmed.slice(SITE_ORIGIN.length).split(/[?#]/)[0] || null;
+  const store = blobOrigin();
+  if (store && trimmed.startsWith(`${store}/`)) return mediaPathOf(trimmed.split(/[?#]/)[0]) ?? trimmed.split(/[?#]/)[0];
   return trimmed.startsWith('/') && !trimmed.startsWith('//') ? trimmed.split(/[?#]/)[0] : null;
 }
 
