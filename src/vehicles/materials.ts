@@ -3391,6 +3391,50 @@ export function copyVehicleMaterial<T extends THREE.Material>(source: T): T {
 }
 
 /**
+ * (far-hull-273) The far hull's one material (farHullDraw.ts): a copy of `carrier`, one of the visual's own materials,
+ * joined to its registration family (its own cascade entry and sky-light scale) under the carrier's whole compile chain
+ * as it stands (the profile patches, the burn mask a battle's prewarm put on, the unlit tag) and then `patch`, under the
+ * carrier's program key and `keySuffix`. Unlike copyVehicleMaterial the carrier may carry its visual's disarmed burn
+ * hook: the copy belongs to the same visual and draws only while it is intact (the far LOD never shows on a wreck), so it
+ * takes the same burn driver (applyBurnHook then finds it owned, and wraps nothing again). Null outside a family (a
+ * renderer stub's material), where a copy would take the carrier's cascade entry over.
+ */
+export function farHullVehicleMaterial<T extends THREE.Material>(
+  carrier: T, patch: (shader: MaterialShader) => void, keySuffix: string,
+): T | null {
+  const source = programVariantOrigin(carrier) as T;
+  const family = VEHICLE_REGISTRATION.get(source)?.family;
+  if (!family) return null;
+  const burnU = source.userData.__burnU;
+  const clone = source.clone() as T;
+  delete clone.userData.__burnU;
+  // (274) a paint whose searchlight lens is in its own mesh carries the night mask; the far draw lights that lens in
+  // its own emission slot, so the copy skips the mask (engine/nightEmissionMaterial.ts) and the lamps never drive it
+  if (clone.userData.nightEmissionMask === true) clone.userData.nightEmissionMask = false;
+  const defines = (source as { defines?: Record<string, unknown> }).defines;
+  if (defines) (clone as { defines?: Record<string, unknown> }).defines = { ...defines };
+  const chain = source.onBeforeCompile, key = `${source.customProgramCacheKey()}${keySuffix}`;
+  family.setup(clone);
+  clone.onBeforeCompile = function (this: THREE.Material, shader, renderer) {
+    const outer = vehicleCompileTarget;
+    // oxlint-disable-next-line typescript/no-this-alias
+    vehicleCompileTarget = this;
+    try { chain.call(this, shader, renderer); }
+    finally { vehicleCompileTarget = outer; }
+    patch(shader);
+  };
+  clone.customProgramCacheKey = () => key;
+  if (burnU) clone.userData.__burnU = burnU;
+  if (UNLIT_VEHICLE_TAGGED.has(source)) UNLIT_VEHICLE_TAGGED.add(clone);
+  return clone;
+}
+
+/** The image-based-light scale a vehicle material's own program applies (vehicleEnvScaleUniform's reading). */
+export function vehicleEnvScaleOf(material: THREE.Material): number {
+  return vehicleEnvScaleUniform(material).value;
+}
+
+/**
  * A cloned visual's hold on its vehicle's shared camouflage textures (the entry createTankMaterials acquires): taken
  * at the clone's texture quality, so a closer clone promotes the entry in place as a fresh build would, and released
  * with the clone.

@@ -980,6 +980,75 @@ Vehicle portraits, silhouettes, and diagrams are generated ahead of time.
 The garage does not need to reconstruct armor diagrams by reading pixels from
 live tank frames.
 
+## Far hulls: one draw each (2026-11-14, far-hull-273)
+
+The world-pools census put 14 allies past the far LOD at 439 colour-pass draws over 172 materials, every material one
+vehicle's own, and couch split screen redraws them per pane. Past FAR_LOD_ENTER_M a battle build now draws what its far
+LOD shows as one mesh (`src/vehicles/farHullDraw.ts`, `farLodHullDraw` on the vehicle's root), built in a frame of its
+own after the stand-ins (one far build at a time, `claimFarLodBuild`):
+
+- **What it carries**: the far hull's stand-ins, the far running gear, and every other plain draw still showing at that
+  range (the hull's and turret's plates, which damage edits; the track bands; the bores; the fittings; the lamps'
+  lenses). The live draws are vertex-clustered as the stand-ins are (5 cm, a long thin part at its own cell) and parked
+  while the draw shows; a live draw's edit or swapped geometry clusters it again and rebuilds the draw, and its visibility
+  is a flag in its record.
+- **One material**: a copy of the vehicle's armour paint under its whole compile chain (the cascade registration, the
+  readability floors, the field dust, the disarmed burn mask with the scoped armour paint) and one patch. Each piece has a
+  record row in a small float texture: map, roughness, metalness and normal weights, sky-light share, clearcoat, specular,
+  armour-paint mode, the four vehicle switches (as branches), the weapon finish's settled dust and grime (its edge wear
+  resolves to nothing at this range), the lens's emission slot, its owner and its far coplanar depth. A part's own texture
+  set (weapon steel, rubber, track links, a kit's paint) draws as its linear mean; the camouflage keeps its map.
+- **Articulation**: each piece names its owner (hull, turret, gun pitch frame, station); the owners' matrices relative to
+  the root are a uniform array refreshed before the draw, and the program's model, model-view and normal matrices are the
+  owner's (three's vertex chunks expanded first, so every chunk and hook reads them). A part with a transform of its own is
+  baked into its parent's frame; a mirrored frame winds its triangles the other way.
+- **Coplanar order**: each piece's far depth offset (coplanarDepth.ts) in clip space, one depth-buffer unit per unit.
+- **Left out, counted** (`root.userData.farLod.hullDraw.fallbacks`): transparent or alpha-tested draws (the markings, the
+  camouflage nets), the ghillie leaves' own program, instanced and batched draws, a 25th owner. The far LOD never shows on a
+  wreck, so the burn, the dents and the wreck's swaps stay with the detail. Shadows are the articulated shadow batch's
+  already: one caster draw a hull a cascade, unchanged.
+
+`?farHullDraw=0` (or `window.__FAR_HULL_DEBUG.set(false)`) draws the far LOD as before; `__FAR_HULL_DEBUG.exclude(test)`
+draws the pieces a material test picks their own way (the in-page bisection, `tools/far-hull-truth.mjs --bisect`).
+
+Measured (desktop High 1920x1080 and the phone tier 1280x720, 14 v 14 pinned, bots frozen and shown, `tools/draw-census.mjs
+--bots`): colour-pass draws charged to vehicles, base 407b1714b9 against this change.
+
+| tier · map | far-allies vehicle draws | far-allies main-pass draws | chase main-pass draws |
+| --- | ---: | ---: | ---: |
+| desktop · Verdant | 437 → 71 | 692 → 326 | 383 → 383 |
+| desktop · Monsoon | 448 → 49 | 706 → 307 | 472 → 472 |
+| desktop · Autumn | 459 → 175 | 700 → 416 | 371 → 376 |
+| phone · Verdant | 435 → 69 | 652 → 286 | 346 → 376 |
+| phone · Monsoon | 444 → 47 | 651 → 254 | 409 → 409 |
+| phone · Autumn | 454 → 173 | 653 → 372 | 346 → 379 |
+
+The overview pose (centre-far) draws no vehicle on either build. The chase rows' differences are one SEPv2 standing inside
+the dual merge's 27-30 m band, whose draws depend on how it came there: the same build history gives the same draws on
+both trees at every distance from near and from far (a node ladder over 20-120 m). Pieces carried: 1,215 of 1,272 over 42
+vehicle loads (95.5%) before the last carries (static emission, double-sided canvas, baked transforms); 33/33 and 30/30 on
+the SEPv3 and T-90M receipts. Couch split screen (`tools/couch-panes.browser.mjs --layouts=1,2,4 --measure`, Verdant):
+draws 536 → 475 at one pane, 848 → 767 at two, 2,106 → 1,857 at four; the panes' cameras ride their seats, so few
+vehicles stand far there. Memory per map (a browser a map): the draws' own buffers 11.5 MB for 14 far hulls (0.82 MB a
+hull); the browser tree 4.39-4.72 GB on both builds, inside its map-to-map spread. The far LOD's first build per vehicle
+took 11-16 ms median on base and 28-41 ms with the draw built in the same frame; it is now built in a frame of its own.
+
+Rendered proof (`tools/far-hull-truth.mjs`: fixed far cameras, the temporal AA held, the clouds frozen, the wind clock
+set, the same scene state drawn both ways in one page task): the A/A floor is 0 px at every pose; the one draw against
+the far LOD's draws, at most 61 px over 8/255 of 1.44 M (Verdant far-allies), 0 px at six of the nine poses, the changed
+vehicle pixels within 2.5 % of the far LOD's mean colour. A blind A/B (registration written before the frames,
+`tools/far-hull-ab.mjs`: 36 vehicle crops from the nine poses, 6 before-against-before controls, three fresh critics):
+after won 58 of 108, one-sided p = 0.81 for "after loses"; pass (the rule: no loss at p < 0.10). The sim is untouched:
+`tools/sim-determinism-audit.mjs` (Verdant, seed 7, 3,600 ticks) IDENTICAL on both trees, final 33703c13935a04a6. Boot
+requests unchanged (game 146 → 146, `npm run check:bundle`), the game page +6.9 KB brotli. Render-path CPU time (thread
+time, `tools/frame-thread-cpu.mjs --bots --view=far-allies --warm --load-gate=10`, its rule written before the run, four
+pairs each A/A and A/B, PASS only past 2S): inconclusive, so no speedup is claimed. Every A/B pair ran faster on the one
+draw (−1.15 to −1.61 ms a frame, median −1.39) against an A/A spread 2S of 1.92 ms (2026-11-26, Verdant, 11 far
+hulls, draws 744/755 → 427/442); no regression by any pair. Phone GPU (`tools/phone-entry-gpu.mjs --scenario=solo
+--maps=monsoon --settle=30 --far-census`, the control `?farHullDraw=0` on the same build, A B B A, its rule written before
+the run: growth at most 2 % of the entry peak): the entry peak 308.3 MB on both arms (+0.0 MB) and +2.1 MB live after a
+30 s settle with 3 far hulls built (about 0.7 MB a hull, as on desktop); PASS.
+
 ## World reuse
 
 Generated worlds can be cached by map. Re-entry restores visibility and resets
