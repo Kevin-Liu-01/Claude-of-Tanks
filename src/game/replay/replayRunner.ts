@@ -1,8 +1,8 @@
 /**
  * The local driver's replayer (replay-system-275, docs/REPLAY.md §4): a recording re-simulated headless, a step at a time.
  * tools/replay-verify.mjs runs it in Node; the viewer's indexer Worker (P2) runs it off the page. It never renders:
- * every hull wears a stub visual (the shot leaves the simulated barrel, sim/gunPose.ts), the contact footprints come from
- * the recording, and the stored choices setup read (loadout, difficulty, arrangement, brains, paint, consumables) come
+ * every hull wears a stub visual (the shot leaves the simulated barrel, sim/gunPose.ts; the track contact is the spec's
+ * receipt, 275), and the stored choices setup read (loadout, difficulty, arrangement, brains, paint, consumables) come
  * from the recording's storage map through a localStorage stand-in installed for the run.
  *
  * Before each step k: the recorded actions before it, then each seat's controls (sim/seatControl.ts applySeatControl),
@@ -25,7 +25,6 @@ import { transitionAppPhase, type AppPhase } from '../appLifecycle.ts';
 import { useSoloConsumable } from '../soloConsumables.ts';
 import { replayStateDigest } from './replayChecksum.ts';
 import { replayRefusal } from './replayBuild.ts';
-import { FOOTPRINT_ACTION } from './replayRecorder.ts';
 import { replaySeatAction } from './seatActions.ts';
 import { isBattleAction, replayBattleAction } from './battleActions.ts';
 import { installRecordedStorage, rosterMismatch, runRecordedSetup } from './replaySetup.ts';
@@ -35,7 +34,7 @@ import { ensureAuthorityFleet, requireAuthorityFleet } from '../../vehicles/auth
 type RunGame = ReturnType<typeof createGameState> & Record<string, RuntimeValue>;
 type RunWorld = Parameters<typeof setupBattle>[2];
 type RunHull = { id: string; specId: string; team: string; state: object | null; combat: object | null; input: object; spec: object;
-  visual?: object | null; contactGeom?: object | null; specialAction?: object | null };
+  visual?: object | null; specialAction?: object | null };
 
 export class ReplayMismatch extends Error {
   readonly code: 'refused' | 'roster' | 'checksum' | 'seat';
@@ -72,14 +71,6 @@ const BATTLE_RULES = { cueTrainingActor, setTrainingCheckpoint, finishTrainingBa
 
 function stubVisual(): object {
   return { root: new Group(), setVisible() {}, syncFromState() {}, dispose() {}, recoilKick() {}, setDestroyed() {}, resetDestroyed() {} };
-}
-
-function applyFootprint(game: RunGame, action: ReplayAction): void {
-  const [index, halfLenM, halfWidM, zCenterM, bottomYM, panYM, dzM, frontM, rearM] = action.args as Array<number | null>;
-  const hull = (game.tanks as unknown as RunHull[])[index ?? -1];
-  if (!hull) throw new ReplayMismatch('roster', `replay: no hull at roster index ${index}`, action.tick);
-  hull.contactGeom = { halfLenM, halfWidM, zCenterM, bottomYM, panYM: panYM ?? null,
-    endRise: dzM == null ? null : { dzM, frontM, rearM } };
 }
 
 /** A dedicated collision world given the page's spawn points, exactly as world/map.ts derives them from the layout. */
@@ -156,8 +147,6 @@ export function createReplayRun(recording: ReplayRecording, world: RunWorld, hoo
     const end = recording.end;
     const lastTick = Math.min(recording.seatSteps.length, end.stagedAtTick != null ? end.stagedAtTick - 1 : Infinity);
     let mismatch: ReplayMismatch | null = null;
-    // actions noted after setup (a footprint the lent player visual published) precede step 1
-    for (const action of actionsByTick.get(0) ?? []) if (action.kind === FOOTPRINT_ACTION) applyFootprint(game, action);
     return {
       game,
       bus,
@@ -168,8 +157,7 @@ export function createReplayRun(recording: ReplayRecording, world: RunWorld, hoo
         if (mismatch || game.tick >= lastTick) return false;
         const k = game.tick + 1;
         for (const action of actionsByTick.get(k) ?? []) {
-          if (action.kind === FOOTPRINT_ACTION) applyFootprint(game, action);
-          else if (isBattleAction(action.kind)) replayBattleAction(action, game, BATTLE_RULES as never);
+          if (isBattleAction(action.kind)) replayBattleAction(action, game, BATTLE_RULES as never);
           else replaySeatAction(action, seats[action.seat] as never, { rules: RULES, bus, timeS: game.timeS });
         }
         const row = recording.seatSteps[k - 1]!;

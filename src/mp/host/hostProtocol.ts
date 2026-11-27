@@ -1,5 +1,5 @@
 import type { NewModeCheckpoint } from '../../sim/authoritativeMatch.ts';
-import type { BotDrive } from '../../game/ai.ts';
+import type { BotBrain, BotDrive } from '../../game/ai.ts';
 /**
  * The browser host (P2 client lane, 2026-09-28; docs/MULTIPLAYER-V2.md §13): the vocabulary between the main thread
  * (`matchHost.ts`: the room, the WebRTC acceptor, the host's own loopback client) and the Worker that runs the match
@@ -71,26 +71,42 @@ export interface MigrationEntityExtras {
   consumables?: { readyIn?: number[]; charges: (number | null)[]; activeFor?: Record<string, number> };
   /** Lights, the roof gun's switch and rounds, the smoke kit's charges and cooldown left; absent while the kit is as a fresh host builds it. */
   auxiliary?: { lights: -1 | 0 | 1; gunOn: boolean; smokeCharges: number; smokeReadyIn: number; shots: number; nextShotIn: number; stations?: [shots: number, nextShotIn: number][] };
-  /** A live hull's drive as its integrator holds it and no row carries (gaps 274, G3): the engine's torque spool (0..1)
-   *  and the hull's turn rate (rad/s); absent at rest (both 0), as a fresh host builds it. */
-  motion?: [spool: number, yawRate: number];
   /** Turbo's cooldown left (s; turbo-spin-275); absent when ready or the mode has none. */
   turboReadyIn?: number;
-  /** The air spin turning (turbo-spin-275; movementPredictionState.ts encodeAirSpin); absent when none. */
-  airSpin?: number;
-  /** The rate that spin turns at on its axis (rad/s, the attitude spring's; thrust-flips-277: the turn rides the hull's
-   *  angular momentum under its thrusters' burn); absent with no spin or at rest. */
-  airSpinRate?: number;
   /** The air spin's cooldown left (s; flip-boost-276); absent when ready or the mode has none. */
   airSpinReadyIn?: number;
-  /** The flight's dodge spent (flip-boost-276; movement.ts `_flipUsed`); absent when unspent. */
-  flipUsed?: true;
+  /**
+   * A live hull exact (276; migrationState.ts packHull): what its row rounds (the pose, the hp) or does not carry (the
+   * movement prediction checkpoint: movementPredictionState.ts, the one owner of the integrator state a pose cannot
+   * rebuild: the spool, the turn rate, the gun's bloom and limit flags, the spring, the ride, the support, the rock, a flip
+   * or roll still turning and the flight's spent dodge (turbo-spin-275, flip-boost-276); what
+   * the last step left beside it: the rollover's countdown, the contact and slope block a bot's brain reads, the fall
+   * ledger and a landing's bounces; the roof guns' slew, the special action's toggle and the held input). base64url: the
+   * layout, the checkpoint's version and flags, the flags, the further roof stations' count, a mask of the non-zero
+   * numbers and those numbers as Float64s, exact (migrationHull.selftest's census). It replaces gaps 274's spool and turn rate
+   * (`motion`), 275's hand-picked integrator parts (`integrator`) and the spin's own extras (`airSpin`, `airSpinRate`,
+   * `flipUsed`; turbo-spin-275 to thrust-flips-277): a fight from a keyframe alone still parted by tens
+   * of metres on the rows' rounding and the gun's limit flag (the CTF probe: 23 m in 10 s; none now).
+   */
+  hull?: string;
   /** A live bot's way (game/ai.ts BotDrive; gaps 274, G3): its route, cursor, mission and progress watchdog. */
   way?: BotDrive;
   /** A bot down when the keyframe is sealed (gaps 274 fix-up r2): its brain's two seeded streams' positions alone (the
    *  controller's, the planner's), which its next life draws on from on the old host; its way is no life it drives again. */
   streams?: BotDrive['streams'];
+  /** A bot's brain beside its way (game/ai.ts BotBrain; 275), live or down: what it decides on from tick to tick, where
+   *  it differs from the brain's construction. A down bot's is the brain its next life drives on from. Its numbers and
+   *  ability clocks packed (MigrationBrain: base64url doubles, exact). */
+  brain?: MigrationBrain;
 }
+
+/**
+ * A brain record as a keyframe carries it (275; migrationState.ts packBrain): BotBrain with its numbers packed, `n` the
+ * base64url of a little-endian u16 mask length, the mask of the numbers present and their Float64 values, and `a` the
+ * ability clocks' Float64s. JSON's shortest round-trip text ran 18-20 characters a number, the packed form 10.7, and a
+ * full field's keyframe (42 hulls, CTF, 60 s) came to 61 of the 64 chunks with them as text.
+ */
+export type MigrationBrain = Omit<BotBrain, 'n' | 'a'> & { n?: string; a?: string };
 
 /** The retained state a newly elected host boots from (decrypted on the main thread with the host secret). */
 export interface HostResumeState {
@@ -120,6 +136,11 @@ export interface HostResumeState {
   /** The old host's authority clock (s) at `keyframeTick`, the clock a row's auxiliary times count on. Absent on an older keyframe. */
   timeS?: number;
   /**
+   * The old host's battle clock (s) at `tick`, exact (275; AuthoritativeMatch.battleS, gone on to a newer frame by its
+   * steps): the new authority's battle clock starts from it (MatchActorResume.battleS). Absent: `battleTimeMs` alone.
+   */
+  battleS?: number;
+  /**
    * The hulls a mode revived between the keyframe and their newer rows, by wire id (audit M1, review round 2): the
    * keyframe's row has them destroyed, the newer row alive. Their extras describe the life they left.
    */
@@ -129,6 +150,26 @@ export interface HostResumeState {
    * of a hull that was alive (a Turbo Ball goal's kick-off) leaves both its rows alive.
    */
   respawnTicks?: [id: string, tick: number][];
+  /**
+   * The window between the keyframe and the seat's newest frame, to be played again (276; migrationState.ts
+   * replayWindow): present when a newer frame overlays the keyframe and the two can be stepped between. The actor is
+   * built on the keyframe's clocks (resumeClocksOf), restored from the keyframe's own frame, and stepped `steps` times;
+   * the state's frame (the keyframe's rows with the seat's newer rows over them) corrects the play.
+   */
+  replay?: HostResumeReplay;
+}
+
+/** What a replay reads beside the merged state (HostResumeState.replay; 276). */
+export interface HostResumeReplay {
+  /** The keyframe's own frame: its rows, meta, mode view, props and destruction at its tick. */
+  frame: SnapshotFrame;
+  /** The keyframe's battle clock (ms) and the old host's exact float clock (s) at its tick. */
+  battleTimeMs: number;
+  battleS: number;
+  /** The old host's steps from the keyframe to the seat's newest frame (by the two battle clocks). */
+  steps: number;
+  /** The seat's own hull (its frame's viewer, by wire id): the mode view the frame shows is the one served it. */
+  viewerEntityId: number | null;
 }
 
 export interface HostBootConfig {

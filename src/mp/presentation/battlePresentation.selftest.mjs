@@ -82,7 +82,7 @@ assert.deepEqual(textureWarms.map((args) => [args[4], args[2]]), [['summer', 'hi
 assert.ok(visuals.every((visual) => !visual.visible), 'prepared visuals stay hidden at the staging origin');
 assert.equal(presentation.actors.size, 3);
 assert.equal(presentation.ownActor.id, 'me');
-assert.equal(presentation.ownActor.contactGeom, null, 'movement uses the spec-derived contact footprint');
+assert.ok(!('contactGeom' in presentation.ownActor), 'no actor carries a drawn footprint: movement reads the spec\'s (275)');
 assert.equal(game.player, null, 'the game state is untouched until the first frame');
 await presentation.applyRoster(roster, context);
 assert.equal(visuals.length, 3, 'applyRoster is idempotent');

@@ -30,6 +30,14 @@ export interface CrushPressLedger {
   press(record: object, hullId: string, timeS: number, dt: number): boolean;
   /** Forget every press (a new battle). */
   clear(): void;
+  /**
+   * Every press held, for a migration keyframe (279): [the record's id by `idOf`, the hull, when it last pressed, how long
+   * without a gap], each record's presses in their chain's order. A record `idOf` cannot name (no stable id) is left out.
+   */
+  capture(idOf: (record: object) => number | undefined): [recordId: number, hullId: string, lastS: number, pressedS: number][];
+  /** A migrated host's presses: the old host's, whole, onto the records `recordOf` finds, each chain in its captured order;
+   *  an entry malformed or naming no record is left out. */
+  restore(entries: readonly (readonly [number, string, number, number])[], recordOf: (id: number) => object | null | undefined): void;
   /** The pressed records held (a receipt reads it). */
   readonly size: number;
 }
@@ -52,6 +60,30 @@ export function createCrushPressLedger(): CrushPressLedger {
       return entry.pressedS >= CRUSH_PRESS_S;
     },
     clear() { presses.clear(); },
+    capture(idOf) {
+      const out: [number, string, number, number][] = [];
+      for (const [record, head] of presses) {
+        const id = idOf(record);
+        if (id === undefined) continue;
+        for (let entry: PressEntry | null = head; entry; entry = entry.next) {
+          if (Number.isFinite(entry.lastS)) out.push([id, entry.hullId, entry.lastS, entry.pressedS]);
+        }
+      }
+      return out;
+    },
+    restore(entries, recordOf) {
+      presses.clear();
+      const tails = new Map<object, PressEntry>();
+      for (const entry of Array.isArray(entries) ? entries : []) {
+        if (!Array.isArray(entry) || !Number.isInteger(entry[0]) || typeof entry[1] !== 'string' || !Number.isFinite(entry[2]) || !Number.isFinite(entry[3])) continue;
+        const record = recordOf(entry[0]);
+        if (!record) continue;
+        const press: PressEntry = { hullId: entry[1], lastS: entry[2], pressedS: entry[3], next: null };
+        const tail = tails.get(record);
+        if (tail) tail.next = press; else presses.set(record, press);
+        tails.set(record, press);
+      }
+    },
     get size() { return presses.size; },
   };
 }

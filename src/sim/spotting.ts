@@ -155,8 +155,28 @@ interface ConcealmentSnapshot {
   spotted: boolean;
 }
 
+/**
+ * What a migration keyframe carries of a match's spotting (275; authoritativeMatch.ts NewModeCheckpoint.spotting): the
+ * rolls' stream and each hull's record, its times in seconds from the capture's clock. A migrated host's spotting began
+ * empty: every pair checked afresh on a new stagger, every sighting and its linger forgotten, so its bots saw (and their
+ * side's hunt led them) otherwise than the old host's (an Endless Horde wave fielded on the new host parted 51 m in 9 s).
+ */
+export interface SpottingCheckpoint {
+  /** The rolls' stream position (null: not a readable stream). */
+  stream: number | null;
+  /** id, life ended, fired at, next check, fire loss (null: none), then per team (the system's order): spotted, the last
+   *  pass, spotted at, the spotter [id, x, z, share range] or null. */
+  records: [id: string, lifeEnded: boolean, firedAtS: number, nextCheckS: number, fireLoss: number | null,
+    teams: [spotted: boolean, lastPassS: number, spottedAtS: number, spotter: [string, number, number, number] | null][]][];
+}
+
 export interface SpottingSystem {
   update(dt: number, timeS: number): SpottingEvent[];
+  /** The spotting for a migration keyframe (275), its times less `timeS` (0: as they stand, on the clock it runs on). */
+  capture(timeS: number): SpottingCheckpoint;
+  /** A migrated host's spotting as the old host's had it (275), its times plus `timeS`; a record that is not one is skipped,
+   *  a checkpoint that is not one changes nothing. */
+  restore(saved: SpottingCheckpoint, timeS: number): void;
   forceCheck(timeS: number): SpottingEvent[];
   isSpotted(id: string, team: string, receiver?: SpottingTank | null): boolean;
   notifyFired(id: string, timeS: number, caliberMm?: number | null): void;
@@ -1052,6 +1072,47 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
     get raycastCalls() { return raycastCalls; },
 
     reset(): void { recs.clear(); },
+
+    capture(timeS: number): SpottingCheckpoint {
+      const rel = (value: number): number => value - timeS;
+      const records: SpottingCheckpoint['records'] = [];
+      for (const [id, record] of recs) {
+        records.push([id, record.lifeEnded, rel(record.firedAtS), rel(record.nextCheckS), record.fireLoss ?? null,
+          teams.map((team) => {
+            const state = record.byTeam[team]!;
+            const spotter = state.spotter;
+            return [state.spotted, rel(state.lastPassS), rel(state.spottedAtS), spotter ? [spotter.id, spotter.x, spotter.z, spotter.shareM] : null];
+          })]);
+      }
+      const stream = (rng as unknown as { state?: unknown }).state;
+      return { stream: typeof stream === 'number' ? stream : null, records };
+    },
+
+    restore(saved: SpottingCheckpoint, timeS: number): void {
+      if (!saved || !Array.isArray(saved.records)) return;
+      recs.clear();
+      const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+      for (const entry of saved.records) {
+        if (!Array.isArray(entry) || typeof entry[0] !== 'string' || !finite(entry[2]) || !finite(entry[3])
+          || !(entry[4] === null || finite(entry[4])) || !Array.isArray(entry[5]) || entry[5].length !== teams.length) continue;
+        const byTeam = makeTeamState();
+        let fits = true;
+        teams.forEach((team, i) => {
+          const carried = entry[5][i];
+          const spotter = carried?.[3];
+          if (!Array.isArray(carried) || !finite(carried[1]) || !finite(carried[2])
+            || !(spotter === null || (Array.isArray(spotter) && typeof spotter[0] === 'string' && finite(spotter[1]) && finite(spotter[2]) && finite(spotter[3])))) { fits = false; return; }
+          const state = byTeam[team]!;
+          state.spotted = carried[0] === true; state.lastPassS = timeS + carried[1]; state.spottedAtS = timeS + carried[2];
+          state.spotter = spotter ? { id: spotter[0], x: spotter[1], z: spotter[2], shareM: spotter[3] } : null;
+        });
+        if (!fits) continue;
+        recs.set(entry[0], { lifeEnded: entry[1] === true, firedAtS: timeS + entry[2], nextCheckS: timeS + entry[3],
+          ...(entry[4] !== null ? { fireLoss: entry[4] } : {}), byTeam });
+      }
+      const stream = rng as unknown as { state?: unknown };
+      if (Number.isInteger(saved.stream) && typeof stream.state === 'number') stream.state = saved.stream;
+    },
   };
 
   function bushNearby(p: SpottingVector3): boolean {

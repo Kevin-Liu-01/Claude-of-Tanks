@@ -111,27 +111,38 @@ const STALL_MS = 5_000;
     destroyed: [], destruction: [], entities: [], shells: [], viewer: null, modeStateJson: null };
   pair.main.post({ type: 'boot', config: { roomId: 'HOLD01', matchId: 'm1-00h0ld00', generation: 2, mapId: 'verdant', mode: 'standard', seed: 3, seats, bots: [], countdownS: 0, battleLimitS: 600, hostSecret, manifestBase: null,
     resume: { tick: 300, battleTimeMs: 5000, phase: 'playing', frame, entities: [], resumeTick: 300, holdForSeats: ['alice', 'bob'] } } });
-  const settle = async (rounds = 40) => { for (let n = 0; n < rounds; n++) await new Promise((resolve) => setImmediate(resolve)); };
-  for (let n = 0; n < 400 && !core.actor; n++) await settle(1);
+  const settle = async (rounds) => { for (let n = 0; n < rounds; n++) await new Promise((resolve) => setImmediate(resolve)); };
+  // What must come true waits on the condition, up to a wall bound, and is then asserted as before (2026-11-19). The core
+  // checks each HELLO's seat token (verifySeatTokenWeb) and derives its migration key at boot with WebCrypto, on the libuv
+  // threadpool: under load a fixed count of setImmediate rounds ran out first (40 rounds failed 2 of 46 runs). Port
+  // messages arrive in a microtask and a link's close is synchronous, so what must stay false keeps a fixed settle.
+  const settleUntil = async (ready, boundMs = 5_000) => {
+    const deadline = performance.now() + boundMs;
+    while (!ready() && performance.now() < deadline) await settle(1);
+  };
+  await settleUntil(() => !!core.actor);
   assert.ok(core.actor, 'the core booted');
   const send = (peer, bytes) => pair.main.post({ type: 'link_frame', peer, bytes: bytes.slice().buffer });
   pair.main.post({ type: 'link_open', peer: 1, label: 'alice', playerId: 'alice' });
   send(1, hello(seats[0]));
-  await settle();
+  await settleUntil(() => core.stats().resumeHold.arrived === 1);
   assert.equal(core.stats().resumeHold.arrived, 1, 'alice is back and held');
   pair.main.post({ type: 'link_close', peer: 1 });
   await settle(4);
   assert.equal(core.stats().resumeHold.arrived, 0, 'alice\'s link closed: she is no longer back');
   pair.main.post({ type: 'link_open', peer: 2, label: 'bob', playerId: 'bob' });
   send(2, hello(seats[1]));
-  await settle();
+  // bob's token checked and bob held before the check below, so it proves the hold waited for alice, not that bob's
+  // verification was still pending
+  await settleUntil(() => core.stats().resumeHold.arrived === 1);
+  assert.equal(core.stats().resumeHold.arrived, 1, 'bob is back and held');
   for (let n = 0; n < 100; n++) send(2, ping);
   await settle(4);
   assert.equal(core.stats().resumeHold.released, null, 'the hold waits for alice (before: released on "seats" for a seat that had gone)');
   assert.equal(core.actor.loop.running, false, 'the world is still held');
   pair.main.post({ type: 'link_open', peer: 3, label: 'alice', playerId: 'alice' });
   send(3, hello(seats[0]));
-  await settle();
+  await settleUntil(() => core.stats().resumeHold.released !== null);
   assert.equal(core.stats().resumeHold.released, 'seats', 'alice back on a new link: the hold releases');
   assert.equal(core.stats().resumeHold.arrived, 2);
   assert.equal(core.actor.loop.running, true);

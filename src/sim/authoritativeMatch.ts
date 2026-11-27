@@ -56,6 +56,7 @@ import { tankPoseFromState, traceTank } from './armor.ts';
 import type { ArmorIntersection } from './armor.ts';
 import {
   createCombatState,
+  gunDispersionScale,
   isHeClass,
   resolveHeBurst,
   resolveShellHit,
@@ -101,7 +102,7 @@ import type { EquipmentCombatState } from './equipmentRules.ts';
 import { applyPendingBotNews } from '../game/ai.ts';
 import { createBotController, createOpeningPlan, openingRoute } from '../game/botConstruction.ts';
 import type { BotMatch } from '../game/botConstruction.ts';
-import type { AiDifficulty, BotDrive } from '../game/ai.ts';
+import type { AiDifficulty, BotBrain, BotDrive } from '../game/ai.ts';
 import {
   collectNavigationWrecks, createBotNavigationGrid, syncNavigationWrecks, type NavigationWreck,
 } from './botRoutePlanner.ts';
@@ -148,7 +149,7 @@ import type {
 import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
 import { createFortifiedCoverLedger, isFortifiedCoverRecord } from './fortifiedCover.ts';
-import { createCrushPressLedger } from './crushPress.ts';
+import { CRUSH_PRESS_GAP_S, createCrushPressLedger } from './crushPress.ts';
 import { botShotClear, deliverShellHit, deliverShotFired } from './botEvents.ts';
 import type {
   DestructionLogEntry, StructureBreachEvent, StructureStageEvent, TerrainCraterEvent,
@@ -160,6 +161,7 @@ import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, ty
 import { structureRubbleHeightM } from './structureDamage.ts';
 import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../world/mapCraters.ts';
 import { fellConcealersAt } from './spotting.ts';
+import type { SpottingCheckpoint } from './spotting.ts';
 import { botCamoRoll, camoSelectionBonus } from './camoPaint.ts';
 import { hullReachM, shellMayReachHull } from './shellHullReach.ts';
 import type { BotCamo } from './camoPaint.ts';
@@ -221,7 +223,8 @@ interface AIFriendlyRisk {
 }
 
 interface AuthoritativeAIController {
-  update(dt: number, timeS: number): void;
+  /** One tick on the battle clock; `hullTimeS` the authority's own, the hull's timers' (game/ai.ts update; 275). */
+  update(dt: number, timeS: number, hullTimeS?: number): void;
   setWaypoints(points: readonly BotRoutePoint[], options?: { loop?: boolean }): void;
   notifyShellResult(event: HitEvent): void;
   notifyUnderFire(entity: AuthoritativeEntity, info?: { selfHit?: boolean; damaging?: boolean; kind?: string }): void;
@@ -237,6 +240,9 @@ interface AuthoritativeAIController {
   /** A down bot's brain streams alone, for a migration keyframe and a migrated host's brain (gaps 274 fix-up r2). */
   captureStreams?(): BotDrive['streams'];
   takeStreams?(streams: BotDrive['streams']): void;
+  /** The brain's own state for a migration keyframe, and a migrated host's brain taking it up (game/ai.ts BotBrain; 275). */
+  captureBrain?(): BotBrain | null;
+  takeBrain?(brain: BotBrain, sinceS: number, hullOf: (id: string) => AuthoritativeEntity | null | undefined): void;
 }
 
 export interface AuthoritativeEntity {
@@ -368,6 +374,36 @@ export interface NewModeCheckpoint {
   flights: { id: string; flight: AerialCheckpoint }[];
   /** The pillboxes' booked points by prop index (audit M1, 2026-11-02: a half-broken pillbox came back whole). */
   fortified?: Array<[propIdx: number, points: number]>;
+  /**
+   * The authority's own match state beside the mode's (275): the combat rolls' stream (dispersion, shell hits, fire
+   * ticks), the fire tick's accumulator, the route push's next moments and each bot's last pushed target, the wreck
+   * grid's tick count (its re-test phase) and the spotting (sim/spotting.ts SpottingCheckpoint). Its times are on the
+   * battle clock, as they are (the route push and the spotting run on it); `atS` is the battle clock at the capture. A
+   * migrated host's were its construction's: its spotting began empty, its rolls from the seed, and every bot was pushed
+   * on its first step. Absent (an older host): those.
+   */
+  host?: {
+    atS: number;
+    stream: number | null;
+    fireTickS: number;
+    routeDue: [alpha: number, bravo: number];
+    targets: [id: string, x: number, z: number][];
+    wreckTicks: number;
+    spotting: SpottingCheckpoint;
+    /** (279) Who set each burning hull alight (sim/fireCredit.ts): a hull that burns out after the migration is its
+     *  starter's kill, as on the old host. Absent: none burning, or an older keyframe. */
+    fireStarters?: [targetId: string, starterId: string][];
+    /** (279) Each hull's last damaging enemy and when, on the battle clock: a crew that scuttles just after a migration
+     *  still hands its kill to the enemy that hurt it last (SCUTTLE_CREDIT_S). Absent: none, or an older keyframe. */
+    recentDamage?: [targetId: string, attackerId: string, atS: number][];
+    /** (279) Each press under way on a crushable record (sim/crushPress.ts), by the record's index in the world's static
+     *  obstacles (the destroyed list's index), on the battle clock: a press begun on the old host fells the record on its
+     *  tick on the new. Absent: none, or an older keyframe. */
+    crushPresses?: [obstacleIndex: number, hullId: string, lastS: number, pressedS: number][];
+    /** (279) Each ram pair's last ram on the battle clock (RAM_PAIR_COOLDOWN_S): a pair cooling on the old host stays cooling
+     *  on the new. Absent: none, or an older keyframe. */
+    ramPairs?: [pairKey: string, atS: number][];
+  };
 }
 
 export interface AuthoritativeMatchOptions {
@@ -384,7 +420,10 @@ export interface AuthoritativeMatchOptions {
   battleLimitS?: number;
   /**
    * (272) The battle time a resumed match starts from (a host migration: the newest frame's battle time, the HUD's
-   * clock); 0 for a fresh match. The mode controller and the clock limit both run on `timeS + resumedAtS`.
+   * clock); 0 for a fresh match. The mode controller and the clock limit both run on the battle clock (`battleS`), which
+   * starts here and takes every step's dt as `timeS` does. A migration that carried the old host's own clock (275: its
+   * float sum, MigrationKeyframe.battleS) passes that, so the battle clock goes on as the old host's would have, bit for
+   * bit; the newest frame's millisecond value (the fallback) parted a tick at a clock edge.
    */
   resumedAtS?: number;
   countdownS?: number;
@@ -420,6 +459,12 @@ export interface AuthoritativeMatch {
   readonly requiredPeerIds: string[];
   readonly heightField: HeightField;
   readonly timeS: number;
+  /**
+   * The battle clock (275): the mode controller's and the clock limit's, `timeS` on a fresh match, and on a resumed one
+   * the old host's own clock gone on (resumedAtS plus this host's steps, summed as the old host summed them). A migration
+   * keyframe carries it (MigrationKeyframe.battleS).
+   */
+  readonly battleS: number;
   readonly result: MatchResult | null;
   readonly resultReason: string | null;
   /** Sim time of the verdict; the ruleset's post-verdict hold (endingHoldS) counts from here. */
@@ -466,9 +511,11 @@ export interface AuthoritativeMatch {
   /**
    * A resumed match (destruction, docs/DESTRUCTION.md §8.3): the previous authority's destruction log laid down without
    * events — stages and collapses (records, heaps, the route grid), later breaches and craters — and kept as this
-   * match's log, so every peer's settled reading converges. Returns the entries this world applied.
+   * match's log, so every peer's settled reading converges. Returns the entries this world applied. `renumber` (276): deeds
+   * a migrated host's replay of the window did not make, laid beside its own under its own numbers
+   * (destructionMatch.ts restore).
    */
-  restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number };
+  restoreDestruction(entries: readonly DestructionLogEntry[], renumber?: boolean): { applied: number };
   /**
    * A resumed match the previous authority had already decided (audit M1, 2026-11-02): its verdict stands, without an
    * event (every seat was told), and its ending hold counts as spent, so the field stays still and the match ended. A
@@ -587,15 +634,19 @@ function sharedTerrain(mapId: string, assaultTrenches = false): SharedTerrain {
   return cached;
 }
 
-function mulberry32(seed: number): Rng {
-  let state = seed >>> 0;
-  return () => {
-    state |= 0;
+/** The match's combat rolls (ARCHITECTURE.md §1.4's mulberry32), its position readable and settable in `state` (275: a
+ *  migration keyframe carries it, NewModeCheckpoint.host.stream). */
+function mulberry32(seed: number): Rng & { state: number } {
+  const next = (() => {
+    let state = next.state | 0;
     state = (state + 0x6D2B79F5) | 0;
+    next.state = state;
     let value = Math.imul(state ^ (state >>> 15), 1 | state);
     value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
     return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
-  };
+  }) as Rng & { state: number };
+  next.state = seed >>> 0;
+  return next;
 }
 
 function finite(value: RuntimeValue, fallback = 0): number {
@@ -873,7 +924,10 @@ export function createAuthoritativeMatch({
     tankAlong: (origin, direction, maxDist, ownerId) => droneTankAlong(entities, origin, direction, maxDist, ownerId),
   };
   let timeS = 0;
-  const modeTimeOffsetS = Math.max(0, finite(resumedAtS, 0));
+  // the battle clock (275; resumedAtS): every step adds its dt as it does to timeS, so a fresh match's is timeS itself
+  // and a resumed one's is the old host's sum gone on (`timeS + offset` read a tick off at a clock edge: a Horde trickle
+  // every 90 ticks against the old host's 91)
+  let battleS = Math.max(0, finite(resumedAtS, 0));
   let fireTickAcc = 0;
   let result: MatchResult | null = null;
   let resultReason: string | null = null;
@@ -886,7 +940,7 @@ export function createAuthoritativeMatch({
   // damage-taken, reload, ammunition and equipment at spawn / revive, gravity at the muzzle, the clock.
   const ruleset: MatchRuleset = rulesetOption && rulesetOption.mode === normalizedGameMode
     ? rulesetOption : matchRulesetFor(normalizedGameMode);
-  // ONE clock (272, improve-271 plan 010): the limit and the mode controller both read `timeS + modeTimeOffsetS`,
+  // ONE clock (272, improve-271 plan 010): the limit and the mode controller both read the battle clock (battleS),
   // the battle time (a resumed match's offset is the newest frame's battle time, the HUD's clock, never the older
   // keyframe's), against the FULL limit: an explicit battleLimitS (any value, 900 included), else the ruleset's
   // (null = no clock). The mode steps first in a tick, so at the limit its own verdict wins over time_limit.
@@ -1149,9 +1203,11 @@ export function createAuthoritativeMatch({
     if (type === 'tank_destroyed') {
       fireCredit.clear(String(payload.id)); // a wreck's fire credits no later death (death-flow-275 R8)
       recentDamage.clear(String(payload.id));
-      // the turret flies (a cook-off) or comes off its ring (any other death), seeded by the kill
+      // the turret flies (a cook-off) or comes off its ring (any other death), seeded by the kill's step on the battle clock
+      // (276: the authority's own restarts at 0 on a migrated host, so a turret a replayed window threw, or any thrown
+      // after a migration, flew otherwise than the old host's; a fresh match's battle clock is its own)
       const dead = entityById.get(String(payload.id));
-      if (dead) wreckTurrets.launch(dead, String(payload.cause ?? ''), Math.round(timeS / SIM_DT));
+      if (dead) wreckTurrets.launch(dead, String(payload.cause ?? ''), Math.round(battleS / SIM_DT));
     }
     if (type === 'tank_destroyed' && destruction.enabled) {
       // a cook-off or a fuel fire bursts on the structures beside the hull (never on the tanks)
@@ -1207,10 +1263,13 @@ export function createAuthoritativeMatch({
     bindSpecialActionState(tank);
     // a fresh life: no crash of the last one carries into its first blow (sim/impact.ts, the solo step's revive too)
     resetHullCrashMemory(tank);
+    // nor its fire's starter or its last attacker (death-flow-275 R7, R8: a revived hull forgets them; the solo revive too)
+    fireCredit.clear(tank.id);
+    recentDamage.clear(tank.id);
     if (!isGunship(tank)) for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
     // the same brain drives the new life: what it measures between ticks restarts from the hull at its spawn
     // (game/ai.ts resume, on the battle's clock; round 2 U18), so the wreck-to-spawn move is no tick of progress
-    tank.aiCtl?.resume?.(timeS);
+    tank.aiCtl?.resume?.(battleS);
   }
 
   const modeController = createMatchModeController<AuthoritativeEntity>({
@@ -1313,7 +1372,8 @@ export function createAuthoritativeMatch({
     // crushing them)
     if (Math.abs(entity.input.throttle || 0) <= 0.35 && Math.abs(entity.input.steer || 0) <= 0.35) return false;
     // this match's press of this hull on this record (sim/crushPress.ts, the solo step's ledger; 2026-11-02 audit M6)
-    return crushPress.press(obstacle, entity.id, timeS, SIM_DT);
+    // on the battle clock (279): the ledger rides a migration, and a migrated host's own clock restarts at 0
+    return crushPress.press(obstacle, entity.id, battleS, SIM_DT);
   }
 
   function queueCrushedObstacle(
@@ -1607,7 +1667,8 @@ export function createAuthoritativeMatch({
 
   function ramPairCooling(key: string): boolean {
     const last = ramPairTime.get(key);
-    return last != null && timeS - last < RAM_PAIR_COOLDOWN_S;
+    // on the battle clock (279): the cooldown rides a migration
+    return last != null && battleS - last < RAM_PAIR_COOLDOWN_S;
   }
 
   function recordRamDestructions(
@@ -1639,7 +1700,7 @@ export function createAuthoritativeMatch({
     // a wreck rams nothing, and a teammate contact is reported with no damage, module hit or kill credit: 2026-11-02 audit M6)
     const dealt = resolveRamPairDamage(ruleset.physics, contact);
     if (!dealt) return;
-    ramPairTime.set(key, timeS);
+    ramPairTime.set(key, battleS);
     const { damageA, damageB, bWasDestroyed, aModulesHit, bModulesHit } = dealt;
     const ram = emit('tank_ram', {
       aId: a.id,
@@ -1704,11 +1765,11 @@ export function createAuthoritativeMatch({
     world: worldCollision,
     // (FX lane 2026-10-17) on its map's wind; the drift crosses the wire with the screen
     wind: smokeWind,
-    supply: (entity, kind) => modeController.requestSupply(entity.id, kind, timeS + modeTimeOffsetS),
+    supply: (entity, kind) => modeController.requestSupply(entity.id, kind, battleS),
     // Air Support: a call-in at the crew's aim point (the strike view's reticle)
     strike: (entity, kind) => {
       const aim = entity.input.aimPoint;
-      if (aim) modeController.airSupport?.requestStrike(entity.id, kind, aim.x, aim.z, timeS + modeTimeOffsetS);
+      if (aim) modeController.airSupport?.requestStrike(entity.id, kind, aim.x, aim.z, battleS);
     },
     smokeLaunched: (_entity, screen) => {
       auxiliarySmokeScreens.push(screen);
@@ -1731,7 +1792,8 @@ export function createAuthoritativeMatch({
     // (death-flow-275 R7) the crew scuttles its tank: the enemy that hurt it last within SCUTTLE_CREDIT_S has the kill
     scuttle: (entity) => {
       if (entity.combat.destroyed || entity.aerial?.kind === 'gunship') return;
-      const credited = entityById.get(recentDamage.creditFor(entity.id, timeS, SCUTTLE_CREDIT_S) ?? '');
+      // on the battle clock (279): the ledger rides a migration, and a migrated host's own clock restarts at 0
+      const credited = entityById.get(recentDamage.creditFor(entity.id, battleS, SCUTTLE_CREDIT_S) ?? '');
       const killer = credited && credited.team !== entity.team ? credited : null;
       entity.combat.hp = 0;
       entity.combat.destroyed = true;
@@ -1834,7 +1896,8 @@ export function createAuthoritativeMatch({
     const gun = gunWorldPose(entity, shellSpec, cannonMuzzle);
     if (isGunship(entity)) { gun.muzzle.copy(entity.state.pos); gun.direction.copy(entity.input.aimPoint).sub(gun.muzzle).normalize(); }
     _gunDir.copy(gun.direction);
-    const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
+    // a yellow gun's doubled σ, the solo step's rule (sim/damage.ts gunDispersionScale; 275: left out here before)
+    const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200 * gunDispersionScale(combat);
     applyDispersion(_gunDir, sigma, rng);
     const firedSlot = combat.shellSlot;
     if (!consumeAmmunition(combat, firedSlot)) return;
@@ -1854,7 +1917,7 @@ export function createAuthoritativeMatch({
     selectFallbackAfterShot(entity, firedSlot);
     const launchScale = entity.bot ? 1 : (entity.modeRecoilLaunchScale ?? 1); // crews only, as in the solo sim
     fireRecoil(entity.state, entity.spec, shellSpec, launchScale > 1 ? { scale: launchScale, dirX: _gunDir.x, dirY: _gunDir.y, dirZ: _gunDir.z } : null);
-    spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
+    spotting.notifyFired(entity.id, battleS, shellSpec.caliberMm);
     // the other side's brains within earshot hear it (sim/botEvents.ts, the solo step's delivery)
     deliverShotFired(entities, entity);
     emitShellFired(entity, shell, shellSpec, gun.muzzle, _gunDir, firedSlot, cannonMuzzle);
@@ -1919,7 +1982,7 @@ export function createAuthoritativeMatch({
       state: module.newState,
       source: 'hit',
     });
-    if ((hit.hpRemoved || 0) > 0 || (hit.modulesHit?.length ?? 0) > 0) recentDamage.record(target.id, hit.attackerId, timeS);
+    if ((hit.hpRemoved || 0) > 0 || (hit.modulesHit?.length ?? 0) > 0) recentDamage.record(target.id, hit.attackerId, battleS);
     if (hit.fireStarted) {
       fireCredit.ignite(target.id, hit.attackerId);
       emit('tank_fire', { id: target.id, burning: true });
@@ -2112,7 +2175,7 @@ export function createAuthoritativeMatch({
   function recordCrashWreck(shell: DamageShell, x: number, groundY: number, z: number): void {
     const strikeId = (shell as { strikeId?: number }).strikeId;
     if (typeof strikeId !== 'number' || shell.spec.reloadGroup !== 'air-crash') return;
-    modeController.airSupport?.recordWreck(strikeId, x, groundY, z, timeS + modeTimeOffsetS);
+    modeController.airSupport?.recordWreck(strikeId, x, groundY, z, battleS);
   }
 
   function knockTargetFromShell(target: AuthoritativeEntity, shell: DamageShell): void {
@@ -2190,7 +2253,7 @@ export function createAuthoritativeMatch({
       // Air Support: a round through an enemy aircraft's hit sphere is spent on it (sim/airSupport.ts tryHitAircraft)
       // (air-support-275) at the time its shooter saw the aircraft: the aircraft's run is a function of the clock, so this
       // rewind is the tanks' lag compensation for an aircraft, with no history to keep
-      if (modeController.airSupport?.tryHitAircraft(shell, timeS + modeTimeOffsetS - (shellRewind?.rewindS?.(shell) ?? 0), dt)) continue;
+      if (modeController.airSupport?.tryHitAircraft(shell, battleS - (shellRewind?.rewindS?.(shell) ?? 0), dt)) continue;
       // mp v2 lag compensation: the sweep and its resolution read the poses the shooter saw
       shellRewind?.begin(shell);
       try {
@@ -2236,9 +2299,11 @@ export function createAuthoritativeMatch({
 
   function updateVisibility(): void {
     const started = profile ? profile.clock() : 0;
-    for (const event of spotting.update(SIM_DT, timeS)) {
+    // the spotting's checks and lingers on the battle clock (275: a migrated host's goes on from the old host's, so its
+    // records carry over as they are and a check that falls on a tick's edge falls on the old host's tick)
+    for (const event of spotting.update(SIM_DT, battleS)) {
       emit('tank_spotted', { ...event });
-      modeController.airSupport?.recordSpot(event.spotterId, event.id, timeS + modeTimeOffsetS);
+      modeController.airSupport?.recordSpot(event.spotterId, event.id, battleS);
     }
     if (profile) profile.spottingMs += profile.clock() - started;
   }
@@ -2258,7 +2323,7 @@ export function createAuthoritativeMatch({
   }
 
   function determineModeResult(): void {
-    if (timeS + modeTimeOffsetS < clockLimitS) return;
+    if (battleS < clockLimitS) return;
     const score = modeController.state.score;
     const winner = winnerFromScores(score.alpha, score.bravo);
     // a level score resolves by the ruleset: Standard rules draw, a campaign sortie is lost by the attackers
@@ -2279,7 +2344,7 @@ export function createAuthoritativeMatch({
     const alpha = survivingTeams.alpha;
     const bravo = survivingTeams.bravo;
     const eliminated = alpha === 0 || bravo === 0;
-    if (!eliminated && timeS + modeTimeOffsetS < clockLimitS) return;
+    if (!eliminated && battleS < clockLimitS) return;
     // death-flow-275 R1/R2, the solo step's law (game/state.ts applyEliminationResult): a side wiped out loses, both
     // wiped in one tick is a draw, and the clock resolves by the ruleset (a draw; a sortie timed to defeat is lost by
     // the attackers), never by the survivors' headcount
@@ -2310,8 +2375,10 @@ export function createAuthoritativeMatch({
   }
 
   /** The mode route push, one for both drivers (268, sim/modeRoutePush.ts). */
+  // the route push on the battle clock (275: on this host's own clock a migrated host's pushes fell a tick late at every
+  // push on a tick's edge, the delay adding up: a staged attacker went in a push early or late)
   function refreshModeBotRoutes(): void {
-    pushModeRoutes(entities, normalizedGameMode, ruleset, timeS, nextModeRouteS, (entity) => modeController.botTarget(entity));
+    pushModeRoutes(entities, normalizedGameMode, ruleset, battleS, nextModeRouteS, (entity) => modeController.botTarget(entity));
   }
 
   // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (the solo step too)
@@ -2333,7 +2400,9 @@ export function createAuthoritativeMatch({
     for (const entity of entities) {
       if (entity.modeActive === false) continue;
       if (entity.bot) {
-        applyBotInput(entity, dt, timeS);
+        // the brain on the battle clock (275: a migrated host's goes on from the old host's, so the brain's windows and
+        // its match-time reads, the opening push and the deployment, carry over as they are), its hull's timers on ours
+        applyBotInput(entity, dt, battleS, timeS);
       } else {
         applyPlayerInput(entity, inputs.get(entity.id), emit);
       }
@@ -2517,13 +2586,13 @@ export function createAuthoritativeMatch({
       if (strikeDrone(carrier, chance)) emit('drone_down', { id: carrier.id, killerId: shooter.id, shellId: droneShellId(carrier) });
     },
     // Air Support's counter-air: the stations engage the other side's aircraft (sim/airSupport.ts)
-    ...(modeController.airSupport ? { counterAir: counterAirFor(() => timeS + modeTimeOffsetS) } : {}),
+    ...(modeController.airSupport ? { counterAir: counterAirFor(() => battleS) } : {}),
   };
   /** The shell a roof station just fired (auxiliaryShot). */
   function fireAuxiliaryShot(entity: AuthoritativeEntity): void {
     const shell:DamageShell=createShell(auxiliaryShot.shell,entity.id,!entity.bot,auxiliaryShot.origin,auxiliaryShot.direction,nextShellId++);
     shell.gravityMps2*=entity.modeGravityScale??1;shell.roofStation=true;shells.push(shell);
-    spotting.notifyFired(entity.id,timeS,auxiliaryShot.shell.caliberMm);
+    spotting.notifyFired(entity.id,battleS,auxiliaryShot.shell.caliberMm);
   }
   function advanceWeapons(dt: number): void {
     for(let i=auxiliarySmokeScreens.length-1;i>=0;i--)if(timeS-auxiliarySmokeScreens[i]!.born>18)auxiliarySmokeScreens.splice(i,1);
@@ -2531,6 +2600,12 @@ export function createAuthoritativeMatch({
       if (entity.modeActive === false || entity.combat.destroyed) continue;
       tickReload(entity.combat, dt);
       tryFire(entity);
+    }
+    // the roof stations once every main gun has fired, as the solo step runs stepAuxiliarySystems after stepReloadAndFire
+    // (275, driverStepParity's Mars fight): a station laid on a hull that fired this tick reads it after its recoil on both
+    // drivers, and the rounds take their ids in the same order (interleaved here, the M41's shot parted the M1A1's M2)
+    for (const entity of entities) {
+      if (entity.modeActive === false || entity.combat.destroyed) continue;
       if (!result && stepRoofGun(entity,timeS,dt,auxContext)) fireAuxiliaryShot(entity);
       // VH.02: a multi-station vehicle's later roof stations (the M551A1 TTS's M2 beside its 30 mm), in station order
       if (!result) for (let station=1,stations=roofStationCount(entity.spec);station<stations;station++)
@@ -2580,14 +2655,15 @@ export function createAuthoritativeMatch({
     // past the ruleset's post-verdict hold the field stands still (snapshots keep publishing the frozen state)
     if (endingHoldExpired(ruleset, resultTimeS, timeS)) return;
     timeS += dt;
+    battleS += dt;
     // the match's ground on the match's clock: a collapsed structure's heap rises over RUBBLE_GROW_S (terrainDeformation)
     ground.setTime(timeS);
     refreshModeBotRoutes();
     updateEntityControls(dt, inputs);
-    for (const entity of entities) stepAerial(entity, timeS + modeTimeOffsetS, dt, nextAerialShellId, launchAerialShell, aerialWorld);
+    for (const entity of entities) stepAerial(entity, battleS, dt, nextAerialShellId, launchAerialShell, aerialWorld);
     // Air Support: the airstrikes' rounds leave on the mode's clock, into the normal shells (sim/airSupportFire.ts)
     const airSupport = modeController.airSupport;
-    if (airSupport?.strikes.length) stepAirSupportFire(airSupport, timeS + modeTimeOffsetS - dt, timeS + modeTimeOffsetS, airFireContext);
+    if (airSupport?.strikes.length) stepAirSupportFire(airSupport, battleS - dt, battleS, airFireContext);
     advanceTankMovement(dt);
     advanceTankContacts(dt);
     advanceRollover(dt);
@@ -2597,7 +2673,7 @@ export function createAuthoritativeMatch({
     advanceRepairs(dt);
     advanceDestruction();
     updateVisibility();
-    determineResult(modeController.step(dt, timeS + modeTimeOffsetS));
+    determineResult(modeController.step(dt, battleS));
   }
 
   /** The turret bodies after the hulls moved and before any shell is traced; each hull's row reads its turret's pose. */
@@ -2798,6 +2874,7 @@ export function createAuthoritativeMatch({
     // the supplied (or shared) field itself; the match's own ground, the overlay on top of it, stays inside
     heightField: baseHeightField,
     get timeS() { return timeS; },
+    get battleS() { return battleS; },
     get result() { return result; },
     get resultReason() { return resultReason; },
     get resultTimeS() { return resultTimeS; },
@@ -2955,9 +3032,51 @@ export function createAuthoritativeMatch({
       const flightStates: NewModeCheckpoint['flights'] = [];
       for (const entity of entities) { const flight = captureAerial(entity); if (flight) flightStates.push({ id: entity.id, flight }); }
       const pillboxes = fortified.capture();
-      return { mode: modeController.captureCheckpoint(timeS + modeTimeOffsetS), flights: flightStates, ...(pillboxes.length ? { fortified: pillboxes } : {}) };
+      // the authority's own (275): its streams, clocks and the bots' last pushed targets, times from the battle clock's now
+      const targets: [string, number, number][] = [];
+      for (const entity of entities) {
+        if (Number.isFinite(entity._modeTargetX) && Number.isFinite(entity._modeTargetZ)) targets.push([entity.id, entity._modeTargetX!, entity._modeTargetZ!]);
+      }
+      const host: NonNullable<NewModeCheckpoint['host']> = { atS: battleS, stream: Number.isInteger(rng.state) ? rng.state : null, fireTickS: fireTickAcc,
+        routeDue: [nextModeRouteS.alpha, nextModeRouteS.bravo], targets, wreckTicks: navigationWreckTicks, spotting: spotting.capture(0) };
+      // the kill credits' ledgers (death-flow-275 R7, R8; 279): absent when empty, as a fresh host's are
+      const starters = fireCredit.capture(), damaged = recentDamage.capture();
+      if (starters.length) host.fireStarters = starters;
+      if (damaged.length) host.recentDamage = damaged;
+      // and the presses under way and the ram pairs cooling (279), absent when none. Only the live ones: a press past its
+      // gap starts over and a pair past its cooldown rams, as with no entry (neither ledger is pruned, and a match's every
+      // pair would ride the keyframe)
+      const presses = crushPress.capture((record) => obstacleIndex.get(record as AuthoritativeObstacle))
+        .filter(([, , lastS]) => battleS - lastS <= CRUSH_PRESS_GAP_S);
+      if (presses.length) host.crushPresses = presses;
+      const cooling = [...ramPairTime].filter(([, atS]) => battleS - atS < RAM_PAIR_COOLDOWN_S);
+      if (cooling.length) host.ramPairs = cooling;
+      return { mode: modeController.captureCheckpoint(battleS), flights: flightStates, ...(pillboxes.length ? { fortified: pillboxes } : {}), host };
     },
     restoreModeCheckpoint(checkpoint) {
+      // the authority's own first (275), its clocks the battle's as they are: the mode's restore reads the spotting (a
+      // hunt's quarries when it takes up a wave's arrivals and re-plans them)
+      const host = checkpoint.host;
+      if (host && Number.isFinite(host.atS)) {
+        if (Number.isInteger(host.stream)) rng.state = host.stream!;
+        if (Number.isFinite(host.fireTickS)) fireTickAcc = Math.max(0, host.fireTickS);
+        if (Array.isArray(host.routeDue) && Number.isFinite(host.routeDue[0]) && Number.isFinite(host.routeDue[1])) {
+          nextModeRouteS.alpha = host.routeDue[0]; nextModeRouteS.bravo = host.routeDue[1];
+        }
+        for (const entry of Array.isArray(host.targets) ? host.targets : []) {
+          const entity = Array.isArray(entry) ? entityById.get(entry[0]) : undefined;
+          if (entity && Number.isFinite(entry[1]) && Number.isFinite(entry[2])) { entity._modeTargetX = entry[1]; entity._modeTargetZ = entry[2]; }
+        }
+        if (Number.isInteger(host.wreckTicks) && host.wreckTicks >= 0) navigationWreckTicks = host.wreckTicks;
+        if (host.spotting) spotting.restore(host.spotting, 0);
+        fireCredit.restore(host.fireStarters ?? []);
+        recentDamage.restore(host.recentDamage ?? []);
+        crushPress.restore(host.crushPresses ?? [], (index) => staticObstacles[index] ?? null);
+        ramPairTime.clear();
+        for (const entry of Array.isArray(host.ramPairs) ? host.ramPairs : []) {
+          if (Array.isArray(entry) && typeof entry[0] === 'string' && Number.isFinite(entry[1])) ramPairTime.set(entry[0], entry[1]);
+        }
+      }
       // the mode clock stays on the battle clock (resumedAtS): the checkpoint's elapsedS is the sealed keyframe's,
       // up to a keyframe interval older than the newest frame the match resumed from
       modeController.restoreCheckpoint(checkpoint.mode);
@@ -2965,8 +3084,8 @@ export function createAuthoritativeMatch({
       if (Array.isArray(checkpoint.fortified)) fortified.restore(checkpoint.fortified);
     },
     restoreDestroyedObstacles,
-    restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number } {
-      return { applied: destruction.restore(entries) };
+    restoreDestruction(entries: readonly DestructionLogEntry[], renumber = false): { applied: number } {
+      return { applied: destruction.restore(entries, renumber) };
     },
     restoreVerdict(nextResult, reason) {
       if (result || (nextResult !== TEAM_ALPHA && nextResult !== TEAM_BRAVO && nextResult !== 'draw')) return;

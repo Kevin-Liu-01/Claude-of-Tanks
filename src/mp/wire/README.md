@@ -258,7 +258,7 @@ never reach the `internal` code.
 
 ### Weapon-module snapshot revision (2026-10-01)
 
-Current `WIRE_VERSION` is 13 and `PROTOCOL_VERSION` is 15 (src/mp/wire/constants.ts is the record). Viewer module health
+Current `WIRE_VERSION` is 13 and `PROTOCOL_VERSION` is 18 (src/mp/wire/constants.ts is the record). Viewer module health
 uses a 32-bit word, preserving the first seven indices and appending missile
 rack, weapon feed, roof gun, autoloader, ammo rack, fuel, radio and optics.
 This adds two bytes per viewer record. Older peers fail the version check;

@@ -39,6 +39,9 @@ export interface BotAbilityContext {
   safeTurbo?: boolean;
   /** Seconds until the hull in flight meets the ground (0 on the ground), from its height and climb. */
   flightS?: number;
+  /** The hull's own clock, its smoke kit's readyAt's (275: a migrated authority's restarts at 0 while the brain's goes
+   *  on from the old host's battle clock); absent: the brain's. */
+  hullS?: number;
 }
 
 /** An enemy aircraft this close mans the roof gun (the stations' counter-air reach, a 30 mm's 300 m x 1.5). */
@@ -77,7 +80,8 @@ export function createBotAbilityPlanner(spec: { id: string }) {
   /** Turbo would be pressed now but for its landing probe (the caller's, into context.safeTurbo). */
   function turboEligible(entity: AbilityEntity, timeS: number, context: BotAbilityContext): boolean {
     if (!entity.modeTurbo || !entity.combat || entity.combat.destroyed || entity.modeActive === false) return false;
-    if (timeS < nextThinkS || turboReadyIn(entity, timeS) > 0 || entity.state._body?.autoRighting === true) return false;
+    // Turbo's cooldown runs on the hull's clock, as its smoke's does (275: a migrated authority's restarts at 0)
+    if (timeS < nextThinkS || turboReadyIn(entity, context.hullS ?? timeS) > 0 || entity.state._body?.autoRighting === true) return false;
     const chaseM = context.chaseM ?? Infinity;
     if (context.retreating || !(chaseM >= BOT_TURBO.groundMinM)) return false;
     if (tankAirborne(entity.state)) {
@@ -128,7 +132,7 @@ export function createBotAbilityPlanner(spec: { id: string }) {
       }
     }
     if (screensThreat && entity.state.grounded && (aux?.smokeCharges ?? 3) > 0
-        && timeS >= (aux?.smokeReadyAt ?? 0) && timeS >= nextSmokeS) {
+        && (context.hullS ?? timeS) >= (aux?.smokeReadyAt ?? 0) && timeS >= nextSmokeS) {
       bits |= PLAYER_ACTION_BITS.SMOKE;
       nextSmokeS = timeS + SMOKE_COOLDOWN_S;
     }
@@ -137,5 +141,15 @@ export function createBotAbilityPlanner(spec: { id: string }) {
     if (airSpinDue(entity, context)) bits |= PLAYER_ACTION_BITS.AIR_SPIN;
     return bits;
   }
-  return { update, jumpEligible, turboEligible };
+  /** The planner's clocks, on the brain's clock (275: a migration keyframe carries them with the brain, game/ai.ts
+   *  BotBrain): the next think, smoke, jump and roof-gun switch, and the last contact. */
+  function clocks(): number[] {
+    return [nextThinkS, nextSmokeS, nextJumpS, lastContactS, nextGunToggleS];
+  }
+  /** The old host's clocks taken up (275); a list that is not five numbers changes nothing. */
+  function setClocks(values: readonly number[]): void {
+    if (!Array.isArray(values) || values.length !== 5 || !values.every((value) => typeof value === 'number' && !Number.isNaN(value))) return;
+    [nextThinkS, nextSmokeS, nextJumpS, lastContactS, nextGunToggleS] = values;
+  }
+  return { update, jumpEligible, turboEligible, clocks, setClocks };
 }

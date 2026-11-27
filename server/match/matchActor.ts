@@ -108,6 +108,13 @@ export interface MatchActorResume {
   tick: number;
   battleTimeMs: number;
   /**
+   * The old host's battle clock at `tick`, exact (275: AuthoritativeMatch.battleS as the old host summed it, carried by
+   * the keyframe and gone on to the newest frame: migrationState.ts resumeStateFromRetained). The authority's battle clock
+   * starts from it, so the mode's clocks fall on the old host's ticks; within 2 ms of `battleTimeMs` or ignored. Absent
+   * (an older host's keyframe): `battleTimeMs`.
+   */
+  battleS?: number;
+  /**
    * When `tick` was due on the old host's timeline, on this actor's clock (`now`). The loop then starts on that timeline,
    * the ticks the world stood still meanwhile (the new host loading its world, the resume hold) skipped (267): every
    * client's clock carries the old host's time, and a loop started at `tick` later than that ran behind it by the delay,
@@ -543,6 +550,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   // clock continues from the newest frame's time (the HUD's): the authority runs its mode clock and its full clock limit
   // on that one clock (272, improve-271 plan 010).
   const resumedBattleTimeMs = resume ? Math.round(resume.battleTimeMs) : 0;
+  // the old host's own sum (275) when it was carried and agrees with the frame's milliseconds, else the frame's
+  const resumedBattleS = resume && typeof resume.battleS === 'number' && Number.isFinite(resume.battleS) && resume.battleS >= 0
+    && Math.abs(resume.battleS * 1000 - resume.battleTimeMs) <= 2 ? resume.battleS : resumedBattleTimeMs / 1000;
   const resumedVerdict = resume?.phase === 'ended' && resume.verdict ? resume.verdict : null;
   const countdownS = resume ? (resume.phase === 'countdown' ? (resume.countdownMs ?? 0) / 1000 : 0) : options.countdownS ?? 5;
 
@@ -597,7 +607,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     const bound: { hook: LagCompensation | null } = { hook: null };
     authority = createAuthoritativeMatch({
       players, mapId, seed, countdownS, gameMode: mode, ruleset,
-      ...(battleLimitS != null ? { battleLimitS } : {}), resumedAtS: resumedBattleTimeMs / 1000,
+      ...(battleLimitS != null ? { battleLimitS } : {}), resumedAtS: resumedBattleS,
       worldCollision: collision,
       shellRewind: { begin: (shell) => bound.hook?.begin(shell), end: (shell) => bound.hook?.end(shell) },
       ...(profile ? { profile } : {}),

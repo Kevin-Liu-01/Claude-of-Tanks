@@ -20,7 +20,7 @@
  * restored host stamp the same bits), logged, and handed back as a TerrainCraterEvent. Smaller bursts are marks: the
  * presentation draws them from `munition:blast`.
  */
-import type { CollisionRecord } from '../world/collision.ts';
+import { STRUCTURE_HOLES_PER_SECTION, type CollisionRecord } from '../world/collision.ts';
 import type {
   DestructionLogEntry, DestructionRules, MunitionClass, StructureBreachEvent, StructureStage, StructureStageEvent,
   TerrainCraterEvent,
@@ -112,8 +112,10 @@ export interface DestructionMatch {
   /** Breaches opened live but left out of the log by its wire budget (DESTRUCTION_LOG_BUDGET_BYTES). */
   readonly unloggedBreaches: number;
   /** Lay a previous authority's log down without events (a resumed host): kept verbatim, its stages and collapses
-   * applied at once; returns the entries this world applied. */
-  restore(entries: readonly DestructionLogEntry[]): number;
+   * applied at once; returns the entries this world applied. `renumber` (276): deeds this authority's own log runs beside
+   * (a replay's play did not make them), each under this authority's next number (a crater the next id, a hole its
+   * section's next free slot), so the log, the ground and the walls agree and later numbers run past every one a peer holds. */
+  restore(entries: readonly DestructionLogEntry[], renumber?: boolean): number;
 }
 
 /** A crater's shape seed (0..65535) from its quantized centre: the same on every peer. */
@@ -322,13 +324,26 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
       craterOutbox.length = 0;
       return count;
     },
-    restore(entries) {
-      // the previous authority's log is kept verbatim (its revision continues); what this world can apply, it applies
+    restore(entries, renumber = false) {
+      // the previous authority's log is kept verbatim (its revision continues); what this world can apply, it applies.
+      // `renumber` (276): deeds this authority's own log runs beside (a migrated host's replay of the window did not make
+      // them), each under this authority's next number: a crater the next id, a hole its section's next free slot
       let applied = 0;
       restoring = true;
       try {
-        for (const entry of entries) {
-          log.push({ ...entry });
+        for (const source of entries) {
+          if (renumber && source.kind === 'breach' && !source.sectionDown && structures) {
+            // the lowest slot the section takes is its next free one (a filled slot is refused)
+            let slot = 0;
+            while (slot < STRUCTURE_HOLES_PER_SECTION && structures.restoreBreach(source.structureId, source.section, slot,
+              source.x, source.y, source.z, source.radiusM, false) < 0) slot++;
+            if (slot < STRUCTURE_HOLES_PER_SECTION) applied++;
+            log.push(slot < STRUCTURE_HOLES_PER_SECTION ? { ...source, hole: slot } : { ...source });
+            breachBytes += BREACH_ENTRY_BYTES;
+            continue;
+          }
+          const entry = renumber && source.kind === 'crater' ? { ...source, craterId: craterCount } : { ...source };
+          log.push(entry);
           if (entry.kind === 'breach') breachBytes += BREACH_ENTRY_BYTES;
           if (entry.kind === 'stage' && structures?.restoreStage(entry.structureId, entry.stage as StructureStage)) applied++;
           if (entry.kind === 'breach' && structures && structures.restoreBreach(entry.structureId, entry.section, entry.hole,
