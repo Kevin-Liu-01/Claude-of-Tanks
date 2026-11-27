@@ -5056,11 +5056,11 @@
       "bWins": 3,
       "draws": 6,
       "aScore": 0.5,
-      "averageDurationS": 22.58,
-      "averageAEndHp": 43.75,
-      "averageBEndHp": 43.75,
-      "averageADamage": 2406.25,
-      "averageBDamage": 2406.25
+      "averageDurationS": 23.48,
+      "averageAEndHp": 53,
+      "averageBEndHp": 53,
+      "averageADamage": 2397,
+      "averageBDamage": 2397
     },
     {
       "id": "moving-mirror-control",
@@ -5150,8 +5150,8 @@
       "id": "nextgen-abrams-peer",
       "purpose": "next-generation US peer ceiling",
       "band": [
-        0.75,
-        0.75
+        0.667,
+        0.667
       ],
       "aId": "m1a3",
       "bId": "abramsx",
@@ -5164,15 +5164,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 9,
-      "bWins": 3,
+      "aWins": 8,
+      "bWins": 4,
       "draws": 0,
-      "aScore": 0.75,
-      "averageDurationS": 31.63,
-      "averageAEndHp": 419.92,
-      "averageBEndHp": 139.25,
-      "averageADamage": 2610.75,
-      "averageBDamage": 2330.08
+      "aScore": 0.667,
+      "averageDurationS": 31.54,
+      "averageAEndHp": 457.33,
+      "averageBEndHp": 284.42,
+      "averageADamage": 2465.58,
+      "averageBDamage": 2292.67
     },
     {
       "id": "t90-export-step",
@@ -5198,8 +5198,8 @@
       "aScore": 0.083,
       "averageDurationS": 22.97,
       "averageAEndHp": 34.08,
-      "averageBEndHp": 612.5,
-      "averageADamage": 1987.5,
+      "averageBEndHp": 653.08,
+      "averageADamage": 1946.92,
       "averageBDamage": 2515.92
     },
     {
@@ -5252,11 +5252,11 @@
       "bWins": 5,
       "draws": 0,
       "aScore": 0.583,
-      "averageDurationS": 30.26,
-      "averageAEndHp": 524.25,
+      "averageDurationS": 28.31,
+      "averageAEndHp": 601.33,
       "averageBEndHp": 137,
       "averageADamage": 2263,
-      "averageBDamage": 2175.75
+      "averageBDamage": 2098.67
     },
     {
       "id": "k2-tier9-mobile-peer",
@@ -5276,15 +5276,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 5,
-      "bWins": 7,
+      "aWins": 4,
+      "bWins": 8,
       "draws": 0,
-      "aScore": 0.417,
-      "averageDurationS": 29.54,
-      "averageAEndHp": 180.33,
-      "averageBEndHp": 313.33,
-      "averageADamage": 1986.67,
-      "averageBDamage": 2519.67
+      "aScore": 0.333,
+      "averageDurationS": 31.01,
+      "averageAEndHp": 170.67,
+      "averageBEndHp": 450.58,
+      "averageADamage": 1849.42,
+      "averageBDamage": 2529.33
     },
     {
       "id": "k2b-cross-tier",
@@ -5309,10 +5309,10 @@
       "draws": 0,
       "aScore": 0.667,
       "averageDurationS": 21.02,
-      "averageAEndHp": 551.5,
+      "averageAEndHp": 606.58,
       "averageBEndHp": 45.75,
       "averageADamage": 2354.25,
-      "averageBDamage": 2048.5
+      "averageBDamage": 1993.42
     },
     {
       "id": "proryv-tier10-peer",
@@ -5336,18 +5336,18 @@
       "bWins": 1,
       "draws": 0,
       "aScore": 0.917,
-      "averageDurationS": 42.83,
-      "averageAEndHp": 880.08,
+      "averageDurationS": 41,
+      "averageAEndHp": 1248,
       "averageBEndHp": 91.25,
       "averageADamage": 2608.75,
-      "averageBDamage": 2019.92
+      "averageBDamage": 1652
     },
     {
       "id": "olifant-tier3-peer",
       "purpose": "Tier III Olifant Mk 2 against the Centurion Mk 5/2 it was cloned from",
       "band": [
-        0.75,
-        0.75
+        0.667,
+        0.667
       ],
       "aId": "olifant_mk2",
       "bId": "centurion5_2",
@@ -5360,15 +5360,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 9,
-      "bWins": 3,
+      "aWins": 8,
+      "bWins": 4,
       "draws": 0,
-      "aScore": 0.75,
-      "averageDurationS": 25.89,
-      "averageAEndHp": 241,
-      "averageBEndHp": 71.58,
-      "averageADamage": 1828.42,
-      "averageBDamage": 1809
+      "aScore": 0.667,
+      "averageDurationS": 25.78,
+      "averageAEndHp": 188,
+      "averageBEndHp": 84.17,
+      "averageADamage": 1815.83,
+      "averageBDamage": 1862
     },
     {
       "id": "merkava-tier7-peer",
@@ -5640,11 +5640,11 @@
       "bWins": 8,
       "draws": 0,
       "aScore": 0.333,
-      "averageDurationS": 29.05,
-      "averageAEndHp": 248.17,
-      "averageBEndHp": 664.42,
-      "averageADamage": 1985.58,
-      "averageBDamage": 2476.83
+      "averageDurationS": 31.77,
+      "averageAEndHp": 209.17,
+      "averageBEndHp": 620.67,
+      "averageADamage": 2029.33,
+      "averageBDamage": 2515.83
     },
     {
       "id": "leopard-tier9-peer",
