@@ -997,6 +997,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // docs-refresh-279: the site's large media lives on Vercel Blob: the manifest, no media bytes in the repository, the
     // posters, the CSP, and the index's feature videos loading nothing before play
     'tools/blob-media.selftest.mjs',
+    // media-blob-279: all the big media is on Vercel Blob and only there: no big file in public/media, every row referenced
+    // and every reference shipping, the family maps, and the build's rewrite with its refusals
+    'tools/blob-media-cutover.selftest.mjs',
     // 2026-11-02 audit S5: site-loops writes each format whole or not at all, and resumes only from whole takes
     'tools/media-r5/site-loops-resume.selftest.mjs',
     // 2026-11-02 audit S4: the media lane's payback to the normal band, one rule for the lab and the finals

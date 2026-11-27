@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Big output (every film, any other file of 256 KB or more) belongs on Vercel Blob: after this tool, run `node tools/blob-media.mjs adopt --sweep` and `families --write` (media-blob-279; tools/blob-media-cutover.selftest.mjs fails while a big file is in public/media).
 // tools/quality-previews.mjs — the Settings screen's graphics-quality previews, one per level on both ladders
 // (texture-diet-277; Kevin 2026-11-25: "add the previews for the quality levels for all levels").
 //

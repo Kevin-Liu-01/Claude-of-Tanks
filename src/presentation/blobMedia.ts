@@ -15,8 +15,12 @@
 import manifest from './blobMedia.json' with { type: 'json' };
 
 export interface BlobMediaItem {
-  /** The local file the item was staged from (the encode's name; tools/blob-media.mjs --dir finds it). */
+  /** The local file the item was staged from: an id item's under `--dir`, a path item's under the staging folder
+   *  (`--staging`, ~/cot-media-staging), where it sits at its old place under /media/. */
   readonly file: string;
+  /** A path item's old site path (`/media/…`, media-blob-279): the page markup, the runtime JSON and the code write this
+   *  path, and the build rewrites it to `url` (tools/blob-media.mjs rewrite). Absent on an id item (the docs films). */
+  readonly path?: string;
   /** The pathname in the store: `<prefix>/<id>-<sha256 first 16>.<ext>`. */
   readonly pathname: string;
   /** The public URL, once uploaded; null before. */
@@ -41,6 +45,8 @@ export interface BlobMediaManifest {
 }
 
 export const BLOB_MEDIA: BlobMediaManifest = manifest as BlobMediaManifest;
+
+export { idForPath, PATHNAME_PREFIX, pathnameFor } from './blobMediaPath.ts';
 
 /** A local test fixture's host (tools/blob-media.mjs fixture): plain http, on this machine only. The committed manifest's
  *  host is the store's (blob-media.selftest.mjs). */

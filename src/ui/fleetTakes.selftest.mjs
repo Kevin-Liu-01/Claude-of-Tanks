@@ -5,6 +5,7 @@
 // the poster when a loop fails. The fixture index is fake and lives only here; its files are the site fifty's s21.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+import { mediaExists } from '../../tools/media-files.mjs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFakeDom, settle } from './fleetTakes.test-support.mjs';
@@ -30,7 +31,7 @@ const S21 = {
   poster: '/media/site50-r14/loops/s21-fields-assault.jpg',
   scene: '/media/site50-r14/scenes/s21-fields-assault.scene.json',
 };
-for (const file of [S21.loop, S21.poster, S21.scene]) assert.ok(existsSync(join(ROOT, 'public', file)), `the fixture's ${file} ships`);
+for (const file of [S21.loop, S21.poster, S21.scene]) assert.ok(mediaExists(file), `the fixture's ${file} ships`);
 const FIXTURE = {
   collection: 'site50-r14',
   vehicles: {
@@ -166,7 +167,7 @@ assert.equal(video.paused, false, 'and resumes');
 
 // Another vehicle: the old source is released at once and the new poster follows; none releases the frame.
 const other = { ...take, vehicle: 'other', take: 's62-other', loop: '/media/site50-r14/loops/s05-barn-advance-960.webm', poster: '/media/site50-r14/loops/s05-barn-advance.jpg' };
-for (const file of [other.loop, other.poster]) assert.ok(existsSync(join(ROOT, 'public', file)), `the fixture's ${file} ships`);
+for (const file of [other.loop, other.poster]) assert.ok(mediaExists(file), `the fixture's ${file} ships`);
 player.show(other);
 assert.equal(video.src, other.loop, 'the next vehicle\'s loop replaces the last');
 assert.equal(video.poster, other.poster);
@@ -209,7 +210,7 @@ assert.equal(control.hidden, true, 'with no control for a loop that cannot play'
 player.show(other);
 assert.equal(video.src, other.loop, 'another take still tries its own loop');
 const third = { ...take, vehicle: 'third', take: 's63-third', loop: '/media/site50-r14/loops/s04-column-under-fire.webm', poster: '/media/site50-r14/loops/s04-column-under-fire.jpg' };
-for (const file of [third.loop, third.poster]) assert.ok(existsSync(join(ROOT, 'public', file)), `the fixture's ${file} ships`);
+for (const file of [third.loop, third.poster]) assert.ok(mediaExists(file), `the fixture's ${file} ships`);
 dom.state.playRejection = Object.assign(new Error('autoplay refused'), { name: 'NotAllowedError' });
 player.show(third);
 await settle();
@@ -266,7 +267,7 @@ if (existsSync(shipped)) {
   for (const entry of takes.values()) {
     assert.ok(production.has(entry.vehicle), `${entry.vehicle}: a production vehicle (src/docs/reference.generated.json)`);
     for (const file of [entry.loop, entry.poster, entry.scene]) {
-      assert.ok(existsSync(join(ROOT, 'public', file)), `${entry.vehicle}: ${file} ships`);
+      assert.ok(mediaExists(file), `${entry.vehicle}: ${file} ships`);
     }
     const scene = JSON.parse(readFileSync(join(ROOT, 'public', entry.scene), 'utf8'));
     assert.equal(scene.map, entry.map, `${entry.vehicle}: the index names its scene's map`);

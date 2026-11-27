@@ -37,6 +37,7 @@ import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 import { sharedWorkerChunks } from './tools/viteSharedWorkers.ts';
 import { glslMinify } from './tools/viteGlslMinify.ts';
 import { cssInTsMinify } from './tools/viteCssInTsMinify.ts';
+import { blobMedia } from './tools/viteBlobMedia.ts';
 import { BOOT_RUNTIME_MODULES, i18nPageCatalogs, VITE_PRELOAD_HELPER } from './tools/viteI18nPageCatalogs.ts';
 import { i18nStudioCatalog } from './tools/viteI18nStudioCatalog.ts';
 import { optimizerReloadReport } from './tools/viteOptimizerReload.ts';
@@ -275,6 +276,9 @@ export default defineConfig({
     // TS literals (the HUD, menus, settings, end screen and kill cam sheets ensureStyle() injects); strings,
     // interpolation edges and the CSS token stream stay exactly as written (the build fails otherwise).
     cssInTsMinify(),
+    // 2026-11-26 (media-blob-279, tools/viteBlobMedia.ts): the big media is on Vercel Blob; the pages' moved paths become
+    // their URLs at build, and the dev server redirects them
+    blobMedia(dirname(fileURLToPath(import.meta.url))),
     { name: 'cot-public-build-env', apply: 'build', configResolved(config) { assertPublicBuildEnv(config.env); } },
     {
       name: 'cot-app-version',

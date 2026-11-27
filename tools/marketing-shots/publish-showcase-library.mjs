@@ -1,3 +1,4 @@
+// Big output (every film, any other file of 256 KB or more) belongs on Vercel Blob: after this tool, run `node tools/blob-media.mjs adopt --sweep` and `families --write` (media-blob-279; tools/blob-media-cutover.selftest.mjs fails while a big file is in public/media).
 // Publish the canonical, owner-approved Claude of Tanks showcase library.
 //
 // The 4K campaign masters remain under shots/ (gitignored). This command

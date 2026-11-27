@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Big output (every film, any other file of 256 KB or more) belongs on Vercel Blob: after this tool, run `node tools/blob-media.mjs adopt --sweep` and `families --write` (media-blob-279; tools/blob-media-cutover.selftest.mjs fails while a big file is in public/media).
 // The owner's loading-screen gallery as one collection, public/media/gallery-r1 (owner 2026-11-04: "for loading screens we
 // need to use these elevated scenes"; 2026-11-11: "only need 1-16 for the loading screen", then "we can also add all 78 to
 // the galleries and other image areas"). tools/media-r5/site-media/picks.json `gallery` names its 78 stills in the

@@ -14,10 +14,11 @@
 // or has a reason in tools/media-library/sources.mjs, the committed library is what the builder plans from the
 // manifests, and every linked picture is the file its thumbnail was cut from (a re-render in place re-cuts it).
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, openSync, readSync, closeSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, openSync, readSync, closeSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { census, differences, entriesOf, lockOf, planLibrary, readLibrary, readLock } from '../media-library/library.mjs';
+import { mediaBytes, mediaExists, mediaFile } from '../media-files.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const LIB = join(ROOT, 'public/media/library-r3');
@@ -89,8 +90,12 @@ for (const summary of top.collections) {
   const dir = join(LIB, summary.key);
   const collection = JSON.parse(readFileSync(join(dir, 'index.json'), 'utf8'));
   assert.equal(collection.key, summary.key);
+  // (media-blob-279) a big sheet or pack is on Vercel Blob: its size and bytes are the Blob manifest's row, and a pack's
+  // ranges are read only where its bytes are in the tree (tools/media-library/build.mjs reads them when it cuts a pack)
+  const site = (name) => `/media/library-r3/${summary.key}/${name}`;
   const sheetSizes = collection.sheets.map(([name, w, h]) => {
-    const size = webpSize(headAt(join(dir, name)));
+    const blob = mediaFile(site(name))?.where === 'blob' ? mediaFile(site(name)) : null;
+    const size = blob ? [blob.width, blob.height] : webpSize(headAt(join(dir, name)));
     assert.deepEqual(size, [w, h], `${summary.key}/${name}: the sheet is the size its index states`);
     sheets++;
     return size;
@@ -111,7 +116,7 @@ for (const summary of top.collections) {
         for (const [src, type, rung] of clip.sources) {
           assert.equal(type, /\.mp4$/.test(src) ? 'video/mp4' : 'video/webm', `${what}: ${src} is typed by its file`);
           assert.ok(rung === undefined || rung === 'phone' || rung === 'wide', `${what}: ${src}'s rung`);
-          assert.ok(existsSync(join(ROOT, 'public', src)), `${what}: ${src} is published`);
+          assert.ok(mediaExists(src), `${what}: ${src} is published`);
           clipFiles++;
         }
         clips++;
@@ -133,20 +138,22 @@ for (const summary of top.collections) {
       const [sw, sh] = sheetSizes[sheet];
       assert.ok(x >= 0 && y >= 0 && tw > 0 && th > 0 && x + tw <= sw && y + th <= sh, `${summary.key}/${set.key}/${name}: the thumbnail is inside its sheet`);
       if (typeof ref[0] === 'string') {
-        assert.ok(existsSync(join(ROOT, 'public', ref[0])), `${summary.key}/${set.key}/${name}: the published file ${ref[0]} exists`);
+        assert.ok(mediaExists(ref[0]), `${summary.key}/${set.key}/${name}: the published file ${ref[0]} exists`);
         links++;
       } else {
         const [pack, offset, length] = ref;
         assert.equal(offset, covered[pack], `${summary.key}/${set.key}/${name}: ranges run end to end`);
         covered[pack] += length;
-        assert.deepEqual(webpSize(headAt(join(dir, collection.packs[pack]), offset)), [w, h], `${summary.key}/${set.key}/${name}: its range is a WebP of ${w}x${h}`);
+        if (existsSync(join(dir, collection.packs[pack]))) {
+          assert.deepEqual(webpSize(headAt(join(dir, collection.packs[pack]), offset)), [w, h], `${summary.key}/${set.key}/${name}: its range is a WebP of ${w}x${h}`);
+        }
         ranges++;
       }
       count++;
     }
   }
   collection.packs.forEach((pack, k) => {
-    const size = statSync(join(dir, pack)).size;
+    const size = mediaBytes(site(pack));
     assert.equal(covered[k], size, `${summary.key}/${pack}: every byte belongs to one picture`);
     assert.ok(size <= 24 * 1024 * 1024, `${summary.key}/${pack}: at most 24 MB`);
     bytes += size;

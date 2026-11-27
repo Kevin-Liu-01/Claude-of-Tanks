@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Big output (every film, any other file of 256 KB or more) belongs on Vercel Blob: after this tool, run `node tools/blob-media.mjs adopt --sweep` and `families --write` (media-blob-279; tools/blob-media-cutover.selftest.mjs fails while a big file is in public/media).
 // The Tank Gallery's per-tank share cards (og-r2, the owner 2026-11-01: "we need better og images and og videos, for
 // cot.kevinliu.studio and all its associatd links"). A link to one tank, /gallery?id=<id> or its /cn twin, shares that
 // tank's name and, when the media lane has filmed its take, a card of that take (<id>-card.jpg: a file named by a bare

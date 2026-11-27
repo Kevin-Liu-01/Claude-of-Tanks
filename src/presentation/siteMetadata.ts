@@ -24,28 +24,29 @@ type ShareVideo = { readonly path: string; readonly width: number; readonly heig
  * Battlefields, whose banner is a still, plays the battlefields montage.
  * localizedHtml.ts writes it into every public page; seoMetadata.selftest.mjs reads each file's own size and limits.
  */
-const shareClip = (take: string): ShareVideo => ({ path: `/media/share-r1/${take}.mp4`, width: 1280, height: 720 });
+// (media-blob-279) each clip's whole path is written here, so the build rewrites it to its Vercel Blob URL
+const shareClip = (path: string): ShareVideo => ({ path, width: 1280, height: 720 });
 const SHARE_VIDEOS: Readonly<Partial<Record<PublicRouteRecord['id'], ShareVideo>>> = {
   game: { path: '/media/home-r2/vs03-reservoir-k2-vt4a1-1280.mp4', width: 1280, height: 720 },
   gallery: { path: '/media/home-r2/fleet-montage.mp4', width: 1280, height: 720 },
-  studio: shareClip('s33-water-tower'),
-  docs: shareClip('verdant-challenger3-t80u'),
-  docsModes: shareClip('s21-fields-assault'),
-  docsControls: shareClip('s26-minaret-fire'),
-  docsStart: shareClip('frontier-t90m-leo2a6'),
-  docsTanks: shareClip('s05-barn-advance'),
-  docsFleet: shareClip('s227-oasis-duel'),
-  docsCombat: shareClip('s29-fjord-road-kill'),
-  docsBattlefields: shareClip('battlefields-montage'),
-  docsBuild: shareClip('s23-village-crossroads'),
-  docsModels: shareClip('verdant-challenger3-t80u'),
-  docsAi: shareClip('s04-column-under-fire'),
-  docsAudio: shareClip('s01-main-street-push'),
-  docsSimulation: shareClip('s226-church-duel'),
-  docsRendering: shareClip('s20-road-return-fire'),
-  docsMultiplayer: shareClip('s18-street-knockout'),
-  docsStudio: shareClip('s33-water-tower'),
-  docsFilming: shareClip('s07-lake-shellfire'),
+  studio: shareClip('/media/share-r1/s33-water-tower.mp4'),
+  docs: shareClip('/media/share-r1/verdant-challenger3-t80u.mp4'),
+  docsModes: shareClip('/media/share-r1/s21-fields-assault.mp4'),
+  docsControls: shareClip('/media/share-r1/s26-minaret-fire.mp4'),
+  docsStart: shareClip('/media/share-r1/frontier-t90m-leo2a6.mp4'),
+  docsTanks: shareClip('/media/share-r1/s05-barn-advance.mp4'),
+  docsFleet: shareClip('/media/share-r1/s227-oasis-duel.mp4'),
+  docsCombat: shareClip('/media/share-r1/s29-fjord-road-kill.mp4'),
+  docsBattlefields: shareClip('/media/share-r1/battlefields-montage.mp4'),
+  docsBuild: shareClip('/media/share-r1/s23-village-crossroads.mp4'),
+  docsModels: shareClip('/media/share-r1/verdant-challenger3-t80u.mp4'),
+  docsAi: shareClip('/media/share-r1/s04-column-under-fire.mp4'),
+  docsAudio: shareClip('/media/share-r1/s01-main-street-push.mp4'),
+  docsSimulation: shareClip('/media/share-r1/s226-church-duel.mp4'),
+  docsRendering: shareClip('/media/share-r1/s20-road-return-fire.mp4'),
+  docsMultiplayer: shareClip('/media/share-r1/s18-street-knockout.mp4'),
+  docsStudio: shareClip('/media/share-r1/s33-water-tower.mp4'),
+  docsFilming: shareClip('/media/share-r1/s07-lake-shellfire.mp4'),
 };
 
 /** A public route's share clip: its own, else the game's (the landing and the 404 share the game's). */

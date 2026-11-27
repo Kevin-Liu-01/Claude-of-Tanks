@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+import { mediaExists } from '../../tools/media-files.mjs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { typeTokenCss, TYPE_STACK } from '../ui/typeFaces.ts';
@@ -167,7 +168,7 @@ assert.ok(!existsSync(join(ROOT, 'public/brand/nav')) && !existsSync(join(ROOT, 
   'the retired product-mark folders stay out of the shipped tree');
 
 for (const film of ['trailer.webm', 'trailer.mp4', 'trailer.jpg', 'reel.mp4', 'reel.jpg']) {
-  assert.ok(existsSync(join(ROOT, 'public/media/site50-r14/films', film)), `missing film: ${film}`);
+  assert.ok(mediaExists(`/media/site50-r14/films/${film}`), `missing film: ${film}`);
 }
 
 console.log('public copy selftest passed');

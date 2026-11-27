@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import '../../src/vehicles/tankFactory.ts';
 import { PRODUCTION_TANK_IDS } from '../../src/vehicles/specs.ts';
 import { resolveTankId } from '../../src/vehicles/tankIdAliases.ts';
 import { TANK_SPECS } from '../../src/vehicles/specs.ts';
+import { mediaBytes, mediaExists, mediaFolder } from '../media-files.mjs';
 
 // The fleet's panel media (owner 2026-10-12: "make a special video for all tanks ... and use that everywhere"; the
 // coordinator's budget, 2026-10-13): public/media/site50-r14/fleet holds, for each production vehicle whose own take is
@@ -38,15 +39,16 @@ for (const [vehicle, entry] of vehicles) {
   for (const [kind, max] of [['loop', LOOP_MAX], ['poster', POSTER_MAX], ['loop1280', RUNG_1280_MAX], ['loop1280Mp4', RUNG_1280_MAX]]) {
     if (kind.startsWith('loop1280') && !entry[kind]) continue;
     const file = entry[kind]?.replace(/^\/media\/site50-r14\/fleet\//, '');
-    assert.ok(file && existsSync(join(DIR, file)), `${vehicle}: its ${kind} exists (${entry[kind]})`);
-    assert.ok(statSync(join(DIR, file)).size <= max, `${vehicle}: its ${kind} is ${statSync(join(DIR, file)).size} B, at most ${max}`);
+    // (media-blob-279) a loop ships from Vercel Blob, a poster from public/: tools/media-files.mjs answers for both
+    assert.ok(file && mediaExists(entry[kind]), `${vehicle}: its ${kind} exists (${entry[kind]})`);
+    assert.ok(mediaBytes(entry[kind]) <= max, `${vehicle}: its ${kind} is ${mediaBytes(entry[kind])} B, at most ${max}`);
     named.add(file);
   }
   assert.ok(entry.take && entry.title?.en && entry.title?.zh && entry.scene, `${vehicle}: its take, titles and scene`);
   // the Gallery and the Garage open a take in the Studio from its scene, so the scene ships with the take
   assert.ok(existsSync(join(ROOT, 'public', entry.scene)), `${vehicle}: its scene ships (${entry.scene})`);
 }
-const files = readdirSync(DIR);
+const files = mediaFolder('/media/site50-r14/fleet/');
 assert.deepEqual(files.filter((f) => !named.has(f)), [], 'every file in the fleet folder belongs to an entry');
 // the 1280 rung's encode, from the collection's manifest
 const site = JSON.parse(readFileSync(join(ROOT, 'public/media/site50-r14/manifest.json'), 'utf8'));
@@ -70,8 +72,9 @@ const surface = (file) => readFileSync(join(ROOT, file), 'utf8');
 assert.match(surface('src/ui/garage.ts'), /const take = fleetIndex\?\.get\(vehicleId\) \?\? null;/, 'the Garage looks up the selected tank\'s own take');
 assert.match(surface('src/gallery/inAction.ts'), /\.get\(/, 'the Gallery looks a take up by the vehicle');
 assert.match(surface('src/docs/referenceTakes.ts'), /\(await module\.loadFleetTakes\(\)\)\.get\(vehicle\)/, 'the manual looks up the record\'s own vehicle');
-const total = files.reduce((sum, f) => sum + statSync(join(DIR, f)).size, 0);
-const total640 = files.filter((f) => !/-1280\.\w+$/.test(f)).reduce((sum, f) => sum + statSync(join(DIR, f)).size, 0);
+const sizeOf = (f) => mediaBytes(`/media/site50-r14/fleet/${f}`);
+const total = files.reduce((sum, f) => sum + sizeOf(f), 0);
+const total640 = files.filter((f) => !/-1280\.\w+$/.test(f)).reduce((sum, f) => sum + sizeOf(f), 0);
 assert.ok(total640 <= PER_VEHICLE * Math.max(1, vehicles.length) + 64 * 1024,
   `the fleet folder's 640 takes are ${(total640 / 1048576).toFixed(1)} MB for ${vehicles.length} vehicles, at most 0.55 MB a vehicle`);
 console.log(`fleet-media.selftest: ${vehicles.length} vehicles, ${(total / 1048576).toFixed(1)} MB (loops ≤ 0.6 MB, posters ≤ 120 KB); `
