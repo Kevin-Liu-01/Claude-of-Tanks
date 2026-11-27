@@ -9,7 +9,8 @@
 // This metric therefore reads the RENDERED rest band of each side (its gearTrackBand cells) against that side's actual
 // outer road wheel and the ideal wrap built from it:
 //   seat circle   centre = the side's axle, radius seatR = axle height − the loop's own ground run (the flat run seats
-//                 the tire into the band by an authored amount; kit courses: tire + half a band)
+//                 the tire into the band by an authored amount; kit courses: tire + half a band); an outer wheel
+//                 authored above the common seat keeps that seated reach about its own raised axle (outerWheelLiftM)
 //   end circle    centre = the receipt's idler / sprocket, radius read off the course (median distance of the cells
 //                 beyond the end centre)
 //   ideal course  seat arc from the foot (180°) to the common external tangent, then the tangent to the end circle
@@ -19,8 +20,18 @@
 //                 ramp that leaves early / late, or a wrap laid about a station where no wheel is
 // 'ground-level' ends (dead-track rigs whose drive / idler wrap crosses the ground run) carry no wheel wrap and are
 // reported without numbers, as tools/track-wrap-review.mjs does.
+import { endRoadWheels } from '../src/vehicles/tankFactoryCore.ts';
+
 const D2R = Math.PI / 180;
 const EPS = 1e-6;
+
+/** How far (m) this end's outer road wheel stands above the common seat: the build's own endRoadWheels liftM (the one
+ * definition tankFactoryCore.roadWheelWrap wraps the band by), read from the receipt's stations; 0 at the seat. */
+export function outerWheelLiftM(receipt, end) {
+  const { wheelZs, wheelY, wheelR, wheelYs } = receipt;
+  if (!Array.isArray(wheelYs)) return 0;
+  return endRoadWheels(wheelZs, wheelY, wheelR, wheelYs)?.[end].liftM ?? 0;
+}
 
 /** Band centreline cells (point f0 of every 24-vertex cell: the midpoint of its outer (2) and inner (6) duplicates). */
 export function bandCentrelineCells(band) {
@@ -66,7 +77,11 @@ export function measureEndWrap(receipt, cells, side, end) {
   const axleZ = stations[idx], axleY = wheelYs?.[idx] ?? wheelY;
   const offsetMm = +((axleZ - wheelZs[idx]) * 1000).toFixed(1);
   const botY = Math.min(...cells.map(([, y]) => y));
-  const seatR = axleY - botY;
+  // an outer wheel authored above the common seat (per-station wheelYs over wheelY: the T-90AM/SM front +59.5 mm, rear
+  // +16.9 mm) keeps its tire: its seat circle is the seated wheels' reach, centred on its own raised axle, the radius
+  // tankFactoryCore.roadWheelWrap wraps it at (endRoadWheels liftM). Reading the raised axle's reach down to the ground
+  // run instead would demand the band hang that lift below the tire: the daylight trackGlitchSimulation forbids.
+  const seatR = axleY - outerWheelLiftM(receipt, end) - botY;
   const ends = [receipt.sprocket, receipt.idler].filter(Boolean);
   if (ends.length !== 2) return { status: 'no-end', offsetMm };
   const endC = end === 'front' ? (ends[0].z > ends[1].z ? ends[0] : ends[1]) : (ends[0].z > ends[1].z ? ends[1] : ends[0]);
