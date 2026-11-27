@@ -72,10 +72,12 @@ async function worldBuilders() {
  * is packed (the drift receipt's drawn-geometry shape check); it must not change it.
  */
 export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, vegetationSeed = 2001, propsSeed = 2002, variant = null, inspect } = {}) {
-  const { maps, terrain, vegetation, props, fleet, mapCraters, kits } = await worldBuilders();
+  const { terrain, vegetation, props, fleet, mapCraters, kits } = await worldBuilders();
   await betweenBuilds(); // the previous map's world is free to go (build-loop-yield.mjs)
   if (variant !== null && variant !== 'assault-trenches') throw new Error(`unknown battlefield variant ${variant}`);
-  const config = variant ? { ...maps.getMapConfig(mapId), assaultTrenches: true } : maps.getMapConfig(mapId);
+  // the live world's config (src/world/worldBuildConfig.ts), loaded after the fixture as the builders are
+  const { worldBuildConfig } = await import('../src/world/worldBuildConfig.ts');
+  const config = worldBuildConfig(mapId, variant);
   // the wreck cast bakes real hull geometry: its demand-loaded builders must be resident first
   const wreckIds = config.props?.tankWrecks?.ids ?? [];
   if (wreckIds.length) await fleet.ensureTankBuilders(wreckIds);

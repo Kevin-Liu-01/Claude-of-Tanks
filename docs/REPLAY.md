@@ -435,3 +435,15 @@ and top middle and notifications", and "be able to export it as a mp4". Approved
   and a plate's clip-path slant is drawn square (v1).
 - Measured (UI-flow path D, through the dialog, this build): 30 s at 1920x1080@60, H.264 High, 41-48 MB clean and
   46-48 MB with the HUD (the battle's picture sets it), each exported in 29-36 s on this Mac (about real time).
+
+## A replay steps on its mode's battlefield (replay-receipts-279, 2026-11-27)
+
+Live 276-278, every Frontline Assault replay stopped at 0:10 ("the battle played out differently here"). The indexer
+Worker built its height field from the map alone, while the battle stepped on its mode's variant (Frontline Assault's
+`assault-trenches`: trenches carved into the field). Every world a replay builds now takes its variant from the
+recording's mode (`replaySetup.ts recordedTerrainVariant`, the live battle's rule: `terrainVariantFor`), and every
+battle-world config is `world/worldBuildConfig.ts` (the Worker, `tools/replay-world.mjs`, the dedicated shards, the
+browser host, the authority's shared terrain, the capture and the wreck-bake plan). The recording, its format and the
+wire are unchanged: only the viewer was wrong, so a 279 viewer plays 279 Frontline recordings. Receipt:
+`replayTerrainVariant.selftest.mjs` (MANUAL 'sims'): every mode with a variant replays headless and through the
+Worker's job, its track the battle's byte for byte; the Worker's old flat field drifts at step 600 (the control).

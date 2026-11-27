@@ -363,6 +363,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/replay/replayPageOnly.selftest.mjs',
     // replay-system-275: a solo battle recorded and replayed on the page's own step (MANUAL 'sims': a page import and a world)
     'src/game/replay/replayRoundTrip.selftest.mjs',
+    // replay-receipts-279: every mode with a battlefield variant (Frontline Assault's trenches) replays on its variant,
+    // headless and through the indexer Worker's job; the Worker's old flat field drifts at step 600 (MANUAL 'sims')
+    'src/game/replay/replayTerrainVariant.selftest.mjs',
     'tools/first-party-concept-policy.selftest.mjs',
     'src/vehicles/arieteModernSpecs.selftest.mjs',
     'src/vehicles/suppliedSourceArmorRegistration.selftest.mjs',

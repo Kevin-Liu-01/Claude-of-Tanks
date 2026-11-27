@@ -6,7 +6,7 @@
  * `createDedicatedWorldCollision` step for step, minus the disk. Runs in the Worker (and in Node for the receipt).
  */
 import { createHeadlessCollisionWorld } from '../../world/headlessCollisionWorld.ts';
-import { getMapConfig } from '../../world/maps/index.ts';
+import { worldBuildConfig } from '../../world/worldBuildConfig.ts';
 import { createHeightField } from '../../world/terrain.ts';
 import { compileWorldKernels, type WorldKernelModule } from '../../world/wasmWorldKernels.ts';
 import { collisionManifestEntry, readCollisionManifestIndex, validateCollisionManifestCounts } from '../../../server/collisionManifestFormat.ts';
@@ -75,8 +75,7 @@ async function loadCollisionManifest(mapId: string, base: string, { fetchImpl, d
 export async function loadCollisionWorld(mapId: string, base: string, options: LoadOptions = {}): Promise<ActorWorldCollision> {
   const { manifest, terrainSeed } = await loadCollisionManifest(mapId, base, options);
   // a variant's field is built from its own config (Frontline's trenches carved), as every client's world builds it
-  const config = getMapConfig(mapId);
-  const heightField = createHeightField(terrainSeed, options.variant === 'assault-trenches' ? { ...config, assaultTrenches: true } : config);
+  const heightField = createHeightField(terrainSeed, worldBuildConfig(mapId, options.variant));
   const world = createHeadlessCollisionWorld({ mapId, heightField, manifest, kernels: options.kernels ?? null });
   return Object.assign(world, { release: () => { /* nothing leased: the Worker's world dies with the match */ } });
 }

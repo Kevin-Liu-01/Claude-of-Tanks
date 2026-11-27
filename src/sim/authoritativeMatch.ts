@@ -24,6 +24,7 @@ import { stockCamoPatternIdFor } from '../vehicles/camoPolicy.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getMapConfig } from '../world/maps/index.ts';
+import { worldBuildConfig } from '../world/worldBuildConfig.ts';
 import type { BattlefieldMapConfig } from '../world/maps/index.ts';
 import { createHeightField, createLayout } from '../world/terrain.ts';
 import type { HeightField, TerrainLayout } from '../world/terrain.ts';
@@ -565,8 +566,8 @@ function sharedTerrain(mapId: string, assaultTrenches = false): SharedTerrain {
     terrainCache.set(key, cached);
     return cached;
   }
-  const baseConfig = getMapConfig(String(mapId || 'verdant'));
-  const config = assaultTrenches ? { ...baseConfig, assaultTrenches: true } : baseConfig;
+  // the live world's config (world/worldBuildConfig.ts: the page's world, the replay's and the dedicated shards' build it)
+  const config = worldBuildConfig(String(mapId || 'verdant'), assaultTrenches ? 'assault-trenches' : null);
   // The rendered battlefields use seed 1337 unless explicitly overridden.
   // Height fields are immutable after construction, so dedicated matches can
   // safely share this expensive 1 km terrain bake while keeping combat state

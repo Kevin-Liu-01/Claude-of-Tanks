@@ -108,11 +108,11 @@ async function recordTier(tier, ids) {
       if (saved === undefined) delete globalThis.window; else globalThis.window = saved;
     }
   }
-  const [mapsMod, terrain, vegetation, props, fleet, models, wrecks, wire, quality, factsMod] = await Promise.all([
-    import('../src/world/maps/index.ts'), import('../src/world/terrain.ts'), import('../src/world/vegetation.ts'),
+  const [terrain, vegetation, props, fleet, models, wrecks, wire, quality, factsMod, { worldBuildConfig }] = await Promise.all([
+    import('../src/world/terrain.ts'), import('../src/world/vegetation.ts'),
     import('../src/world/props.ts'), import('../src/vehicles/fleetFactory.ts'), import('../src/world/propsModelStore.ts'),
     import('../src/world/wrecks.ts'), import('../src/world/wreckBakeWire.ts'), import('../src/engine/quality.ts'),
-    import('../src/world/wreckBakeFacts.ts'),
+    import('../src/world/wreckBakeFacts.ts'), import('../src/world/worldBuildConfig.ts'),
   ]);
   if (quality.getDeviceTier() !== tier) throw new Error(`the ${tier} child resolved the ${quality.getDeviceTier()} tier`);
   await models.preloadPropModels();
@@ -134,8 +134,7 @@ async function recordTier(tier, ids) {
     for (const assault of [false, true]) {
       await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
       const t0 = Date.now();
-      const base = mapsMod.getMapConfig(mapId);
-      const config = assault ? { ...base, assaultTrenches: true } : base;
+      const config = worldBuildConfig(mapId, assault ? 'assault-trenches' : null); // the live world's config
       const field = terrain.createHeightField(1337, config);
       const flora = await vegetation.createVegetationAsync(field, engine, 2001, config, null, false);
       // (wreck-bake-after-reveal-278) and what placement read of each bake, and each placed hulk's drawn footprint: the

@@ -31,7 +31,7 @@ try {
   process.exit(2);
 }
 await ensureReplayFleet(recording);
-const world = await createReplayWorldFor(recording.header.setup.mapId);
+const world = await createReplayWorldFor(recording);
 const trace = createReplayTrace();
 const run = createReplayRun(recording, world, { beforeSimStep: (game, tick) => { if (tick === 1) trace.begin(game); } });
 while (run.step()) trace.afterStep(run.game);
