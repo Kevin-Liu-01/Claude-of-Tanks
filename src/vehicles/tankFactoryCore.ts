@@ -10256,11 +10256,17 @@ function* buildTankCoreSteps(
     // A settled mesh draws its own copy, as a seated one does: the camo re-projects what moved (`sourceOf` maps each copied
     // vertex to the built one it came from) and the spans follow the copy. A foot-split copy keeps no slab table (its
     // vertex count grew: slabQuadTable), so the settle never turns a quad the split cut.
+    // The geometry a settled mesh drew before is released when this build owns it and no mesh draws it any more (the
+    // settle runs before the first frame: it never reached the GPU, only the heap).
     if (slabDiagonalSettle) {
       const census = settleSlabDiagonals(root, disposables, (built, settled, sourceOf) => {
         const camoScale = built.userData.camoFaceProjection as number | undefined;
         if (camoScale) reprojectMovedFaceBoxUV(built, settled, camoScale, (built.userData.camoUvRemap as CamoUvRemap | undefined) ?? null, sourceOf);
         followSeat(built, settled);
+        const owned = disposables.indexOf(built);
+        let drawn = false;
+        root.traverse((object) => { if ((object as THREE.Mesh).geometry === built) drawn = true; });
+        if (owned >= 0 && !drawn) { disposables.splice(owned, 1); built.dispose(); }
       });
       if (census.pairs.length) root.userData.slabDiagonalSettle = Object.freeze({ pairs: census.pairs.length });
     }

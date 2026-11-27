@@ -79,7 +79,7 @@
     "src/vehicles/profiles/t90X.ts": {"start":1912,"bumps":[{"to":1930,"why":"t90-lamps-279-r2 merge 303339453d (integ/279, per 279-MERGE-NOTES ratchet rule)"}]},
     "src/vehicles/profiles/uk.ts": {"start":2028},
     "src/vehicles/spareTrackSeat.ts": {"start":1648},
-    "src/vehicles/tankFactoryCore.ts": {"start":12985,"bumps":[{"to":13086,"why":"fleet-debt-279 merge (integ/279, per 279-MERGE-NOTES ratchet rule)"},{"to":13181,"why":"gear-alloc-279-r2 + turret-foot-seat-279-r2 merges (integ/279, per 279-MERGE-NOTES ratchet rule)"},{"to":13335,"why":"far-hull-279 merge (integ/279, per 279-MERGE-NOTES ratchet rule)"}]},
+    "src/vehicles/tankFactoryCore.ts": {"start":12985,"bumps":[{"to":13086,"why":"fleet-debt-279 merge (integ/279, per 279-MERGE-NOTES ratchet rule)"},{"to":13181,"why":"gear-alloc-279-r2 + turret-foot-seat-279-r2 merges (integ/279, per 279-MERGE-NOTES ratchet rule)"},{"to":13335,"why":"far-hull-279 merge (integ/279, per 279-MERGE-NOTES ratchet rule)"},{"to":13359,"why":"slab-mirror-279: the end-of-build slab settle (slabDiagonalSettle.ts) and its follower hook beside the turret seat's (+24)"}]},
     "src/vehicles/turretRingWell.ts": {"start":2501},
     "src/world/collision.ts": {"start":2563},
     "src/world/horizonPanorama.ts": {"start":2338},
