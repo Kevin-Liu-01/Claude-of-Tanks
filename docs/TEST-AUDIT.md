@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1942 | 426.0 |
+| KEEP | 1950 | 427.0 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 681 | 1195.9 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2624 | 1622.3 | 275.9 |
-| After: the default tier | 1942 | 426.0 | 69.7 |
+| Before: every receipt (npm test without the tiers) | 2632 | 1623.2 | 276.0 |
+| After: the default tier | 1950 | 427.0 | 69.9 |
 
-Default tier: 26.3 % of the whole registry's CPU; 46.5 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 50.9 min pool, 18.6 min browser receipts.
+Default tier: 26.3 % of the whole registry's CPU; 46.6 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 51.0 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -830,7 +830,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/game/ai.watchResumeLevels.selftest.mjs` | 1.1 | MANUAL (bots) | bots: bot behaviour played out on the authority (every mode, objectives, levels, approaches), 1.1 s: 2026-11-02 audit M7 (round 6 V4): the hand-back's cases that repeat ai.watchResume's, split off it, and the wa | test:heavy -- bots; test:recommend flags it when its inputs change |
 | `src/vehicles/fleetBattleBuilds.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: The battle fleet pass (roster-errors-279, 2026-11-26; manual `fleet` suite): every roster id built as a battle | test:heavy -- fleet; test:recommend flags it when its inputs change |
 
-## KEEP (1942)
+## KEEP (1950)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -938,6 +938,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/alphaCutShadow.selftest.mjs` | 36 | KEEP | alpha-cut shadows of netted tanks (vehicle core) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/jagdpanzerE100XArmor.selftest.mjs` | 36 | KEEP | Jagdpanzer E100 armour (must-keep: armour sample) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/tankFactoryDeferredAssembly.selftest.mjs` | 36 | KEEP | deferred assembly equals the eager build (vehicle core) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/host/migrationTwins.selftest.mjs` | 35 | KEEP | multiplayer wire, session or host, 35 s: 275 (migration drift), 276 (the window): a migrated host plays on as the old host would have, to the bit from | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/host/hostKernelsFetch.selftest.mjs` | 35 | KEEP | multiplayer wire, session or host, 35 s: 2026-11-02 audit round 5 Q1 (review r2): the host's fetch of the world kernels has a bound (HOST_KERNELS_FETCH | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/session/matchSessionP2p.selftest.mjs` | 35 | KEEP | peer-to-peer session rules (must-keep: authority) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/longweiFamily.selftest.mjs` | 35 | KEEP | vehicle rule, 35 s: release 264: the Longwei family, four hosts' hulls under the Longwei turret with their own kits | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1198,6 +1199,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/ui/watchBattleReport.selftest.mjs` | 9.9 | KEEP | interface contract, 9.9 s: (watch-mode-243) a watched battle's HUD frame and its neutral report: the sides by name, the ridden tank highl | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/browser-launch.selftest.mjs` | 9.9 | KEEP | tool contract, 9.9 s: 2026-10-26 (item 244): the browser guard trips on a hog page (tree killed, lock released, exit 86), and every | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/whip-rods.selftest.mjs` | 9.9 | KEEP | tool contract, 9.9 s: 267 (Main 2026-10-31): whips found by their geometry (a thin rod whose tip stands clear) carry the antenna rol | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/host/windowReplay.selftest.mjs` | 9.8 | KEEP | multiplayer wire, session or host, 9.8 s: 276: a resume replays its window on the keyframe's clocks to the old host's (or reads it as 275 did past MAX_R | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/pad/padLobbyResume.selftest.mjs` | 9.7 | KEEP | contract, 9.7 s: round 8 Y5 s3-07/s3-08: the real lobby and actor in memory: a TV blink keeps a joined lobby, a setOpen while a | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/capture-lock-reentry.selftest.mjs` | 9.7 | KEEP | tool contract, 9.7 s: 2026-11-02 audit S4: one acquire per instance (no leaked render slot, no wait on its own pid) and nested holds | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/selftest-process-groups.selftest.mjs` | 9.7 | KEEP | test, gate or release tooling, 9.7 s: Every receipt leads its own process group, and nothing in it outlives the receipt (266, Main: three `for (;;) | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1322,6 +1324,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-media.selftest.mjs` | 6.0 | KEEP | tool contract, 6.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/media-r5/tank-share.selftest.mjs` | 6.0 | KEEP | tool contract, 6.0 s: og-r2: a tank link shares its tank (the table, the cards, the rewrite) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/selftest-cache-dir.selftest.mjs` | 6.0 | KEEP | test, gate or release tooling, 6.0 s | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/host/modeWindowMigration.selftest.mjs` | 6.0 | KEEP | multiplayer wire, session or host, 6.0 s: 275: the window read as 275 reads it (276 replays it where it can): the battle clock exact from the keyframe o | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/toggleSettle.selftest.mjs` | 5.9 | KEEP | audio contract, 5.9 s: 276: a toggle's sound settles on its final state (scope, zoom steps, auto-aim, lights) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/gallery/anatomyViewLinkDispose.selftest.mjs` | 5.8 | KEEP | site, manual or app contract, 5.8 s: 2026-11-02 audit R6 (round 2 U35): no Gallery anatomy scene is disposed mid-link, so every prepare settles | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/ai.layGunFirst.selftest.mjs` | 5.8 | KEEP | game flow, 5.8 s: 269 (Main item 11): a bot with a shot open turns its hull within its share of the turret's traverse and lays i | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1482,6 +1485,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `server/match/unseenShellMarks.selftest.mjs` | 2.5 | KEEP | match authority, 2.5 s: 2026-11-02 audit A13 (round 3): a viewer's unseen rounds stay within the wire's 256, ascending, every departur | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/ai.huntRunIn.selftest.mjs` | 2.5 | KEEP | game flow, 2.5 s: round 3 (the critic's M2/M3): the hunt's run-in beside its quarry and the orbit rings spread by the pack | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/ai.missionOwnership.selftest.mjs` | 2.5 | KEEP | game flow, 2.5 s: A labelled mission owns its waypoints (gameplay-modes-228, study-bots 2.5). On integ/228 the 25 s no-contact s | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/host/migrationHull.selftest.mjs` | 2.5 | KEEP | multiplayer wire, session or host, 2.5 s: 276: every number and flag of a live hull (pose, integrator, the step's contact and damage reading, below 0.5 | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/voiceLines.selftest.mjs` | 2.4 | KEEP | audio contract, 2.4 s: (crew-lines-269) every mode's crew calls, the AC-130 crew's, the team counts by deathsAreFinal | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/weaponCensus.selftest.mjs` | 2.4 | KEEP | audio contract, 2.4 s: gun-reports-269: the weapon census (every key the fleet fires has a row; loader makes from the layouts) is the | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/builderLoadFailure.selftest.mjs` | 2.4 | KEEP | vehicle rule, 2.4 s: 2026-11-02 audit R6: a failed interior-fill, turret-ring or prebuild chunk is asked again; the builder predica | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1605,6 +1609,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/ui/topMaskEntryKick.selftest.mjs` | 1.8 | KEEP | interface contract, 1.8 s: battle-spikes-253: the panel's mask programs link from the covered warm's start | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/civic/civicFurniture.selftest.mjs` | 1.8 | KEEP | world rule, 1.8 s: civicFurniture.selftest.mjs — the civic kit's furniture and its memorial column at the props r2 bar (the maps | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/mode-aggression-stand.selftest.mjs` | 1.8 | KEEP | tool contract, 1.8 s: round 8 Y10 s6-07: the aggression harness's stand read at each sample's tick from one speed (no edge sample ga | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/game/ai.brainRecord.selftest.mjs` | 1.7 | KEEP | game flow, 1.7 s: 275 (migration drift): every createAI field is carried by the brain record or named with its reason; the recor | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/cloudField.selftest.mjs` | 1.7 | KEEP | renderer contract, 1.7 s: clouds-269 (2026-11-04): the cloud field without rows or a lattice, the cumulus domed, the phones' deck unrepe | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/shadowDebugGlobal.selftest.mjs` | 1.7 | KEEP | renderer contract, 1.7 s: (local-fps-266) __SHADOW_DEBUG held as the window's own property: the per-caster shadow hooks' reads skip the | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/ai.hiddenRetarget.selftest.mjs` | 1.7 | KEEP | game flow, 1.7 s: (landmark-lanes-278) a target behind cover gives way to a spotted one in the gun's line after HIDDEN_RETARGET_ | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1654,6 +1659,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/ui/tokens/settingsColours.selftest.mjs` | 1.2 | KEEP | interface contract, 1.2 s: item 259 (owner: "color code settings so its easier"): one CVD-checked colour per Settings category, glyphs an | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/build-loop-census.selftest.mjs` | 1.2 | KEEP | tool contract, 1.2 s: build-loop-yield-277: every Node loop that builds tank after tank or world after world awaits betweenBuilds() | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/starvation-meter.selftest.mjs` | 1.2 | KEEP | tool contract, 1.2 s: 267: the soak's starvation meter on driven clocks | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/host/pressAndRamMigration.selftest.mjs` | 1.2 | KEEP | multiplayer wire, session or host, 1.2 s: 279: a crush press under way (by the record's static obstacle index) and a ram pair's cooldown ride a migratio | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/app/mainFlowPorts.selftest.mjs` | 1.1 | KEEP | site, manual or app contract, 1.1 s: 2026-11-02 audit F2/F3: main's own flow-port bindings, run from its compositions | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/armorLivePen.selftest.mjs` | 1.1 | KEEP | game flow, 1.1 s: 274 (the owner: "update on enemy tanks when we're scoped on them based on their actual penetrability ... same | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/couchCamera.selftest.mjs` | 1.1 | KEEP | game flow, 1.1 s: couch-mode-268: the shared camera frames every seat | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1668,6 +1674,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/battle-spike-census.selftest.mjs` | 1.1 | KEEP | tool contract, 1.1 s: battle-spikes-253: the streamed trace's splitter, the census's arguments | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/foreign-gpu.selftest.mjs` | 1.1 | KEEP | tool contract, 1.1 s: tree-breakdown-277: foreign GPU outside the probe's own process tree at any depth, the quiet-GPU gate, tainted | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/with-capture-lock.selftest.mjs` | 1.1 | KEEP | tool contract, 1.1 s: 2026-11-02 audit U38 (round 2): the hold CLI, one normal-ticket hold per command whose tools nest in it; exit | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/host/killCreditMigration.selftest.mjs` | 1.1 | KEEP | multiplayer wire, session or host, 1.1 s: 279: a migration keeps who set a fire and who hurt a hull last (death-flow-275 R7, R8): a burn-out and a scutt | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/battlePacingRun.selftest.mjs` | 1.0 | KEEP | server service, 1.0 s: the shards' partition, report check, merge and hand-over, on fixtures | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/collisionManifestLoader.selftest.mjs` | 1.0 | KEEP | server service, 1.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/githubStars.selftest.mjs` | 1.0 | KEEP | server service, 1.0 s | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2752,7 +2759,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/probe-sample-clock.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: tree-breakdown-277: every frame-budget sample keeps its clock and the machine's thermal state at each end | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/terrain-texture-tiers.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: texture-diet-277: the terrain's tier WebPs match their ledger and sources (tools/terrain-texture-tiers.mjs); b | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/timing-gate.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: 277: heavy work outside the lock waits while a timing hold runs (prebuild, test:lane's tanks tier, tank:regen: | default tier (npm test, the release gate; lane mode by its closure) |
-| `tools/viteOptimizerReload.selftest.mjs` | 0.0 | KEEP | tool contract, 0.0 s: roster-errors-279: a dependency re-bundle mid-session (a second three) is reported; each checkout's own optimi | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/mp/host/authorityStateMigration.selftest.mjs` | 0.0 | KEEP | multiplayer wire, session or host, 0.0 s: 279: every let and stateful const of createAuthoritativeMatch is carried to a migrated host (with its receipt) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/gpuResetReport.selftest.mjs` | 0.0 | KEEP | renderer contract, 0.0 s: mobile-gpu-reset-277: one field record per graphics reset (stage, preset, tier, mode, whether it came back) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/fx/aircraftFxPort.selftest.mjs` | 0.0 | KEEP | effects contract, 0.0 s: aircraft-hit-fire-278: an aircraft in flight is drawn a one-shot burst, never a hull's burning column left in | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/game/armourOverlayDefault.selftest.mjs` | 0.0 | KEEP | game flow, 0.0 s: 273: armour colours on for everyone, once, and the one-time tip (Kevin 2026-11-12) | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2776,6 +2783,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/build-loop-yield.selftest.mjs` | 0.0 | KEEP | tool contract, 0.0 s: roadlife-retention-277: a WeakRef target built in an await-only loop stays alive until betweenBuilds() ends th | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/hud-chase-bands-drift.selftest.mjs` | 0.0 | KEEP | tool contract, 0.0 s: guidance-pointers-276: the recorded chase bands' stale check (a fresh capture within a few px, or --check fail | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/viteBattleChunkPrefetch.selftest.mjs` | 0.0 | KEEP | tool contract, 0.0 s: entry-cpu-278: the game document lists the solo battle's chunks for the Garage's idle preload | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/viteOptimizerReload.selftest.mjs` | 0.0 | KEEP | tool contract, 0.0 s: roster-errors-279: a dependency re-bundle mid-session (a second three) is reported; each checkout's own optimi | default tier (npm test, the release gate; lane mode by its closure) |
 
 ## Tank-generation checks (40, not receipts)
 
