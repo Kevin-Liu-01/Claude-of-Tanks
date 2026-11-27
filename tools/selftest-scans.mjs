@@ -78,6 +78,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/fx/hullThrusterPlumesLazy.selftest.mjs': tracked('src/**/*.ts'),
   'src/fx/retiredTracers.selftest.mjs': lists('src/**/*.{ts,mjs,js,md,json,html,css}', 'tools/**/*.{ts,mjs,js,md,json,html,css}',
     'docs/**/*.{ts,mjs,js,md,json,html,css}'),
+  // (battle-retention-279) every source module, for a game-keyed cache made outside state.ts battleCache
+  'src/game/battleCachesRelease.selftest.mjs': lists('src/**/*.ts'),
   // (264, premiere-battle) every source module, for a function key acted on with no row or a synthetic KeyboardEvent
   'src/game/keybindingCensus.selftest.mjs': lists('src/**/*.{ts,mjs,js}'),
   // (improve-271 plan 035) every source module, for a browser store keyed by a tank id the rename migration misses

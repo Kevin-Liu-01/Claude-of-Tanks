@@ -781,6 +781,19 @@ export function loadEquipment(specId: string): string[] | null {
   return arr.length ? arr : null;
 }
 
+/**
+ * (battle-retention-279) The per-battle caches keyed by the page's one game: every one is made here and resetBattleSession
+ * drops each one's entry for the game, so none keeps a battle's world or bus past the next battle's setup (the hull
+ * actions' host and Air Support's fire context kept the last battle's world: live 278, a released world alive at the
+ * Garage). battleCachesRelease.selftest fails on a game-keyed WeakMap or Map made anywhere else in src.
+ */
+const battleCaches: WeakMap<SoloGameState, unknown>[] = [];
+function battleCache<V>(): WeakMap<SoloGameState, V> {
+  const cache = new WeakMap<SoloGameState, V>();
+  battleCaches.push(cache);
+  return cache;
+}
+
 function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): void {
   for (const shell of game.shells) {
     if (_shellPool.length < 64) _shellPool.push(shell);
@@ -796,7 +809,8 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   game._crushPress?.clear();
   game._ramPairT?.clear();
   game.auxiliarySmokeScreens = [];
-  auxiliaryContexts.delete(game);
+  // (battle-retention-279) every per-battle cache keyed by the game goes with the battle (battleCache above)
+  for (const cache of battleCaches) cache.delete(game);
   game.fireTickAcc = 0;
   // (268, item 7) one seed per battle, every stream of it reading it (rosterState soloMatchSeed: a random battle's the base
   // plus the battles before it, a staged roster's the fixed base); counted before this battle's ordinal
@@ -2643,7 +2657,7 @@ function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld):
 }
 
 /** The solo battle's side of a hull's actions (sim/hullActions.ts), one per battle state: its bus, world and screens. */
-const soloActionHosts = new WeakMap<SoloGameState, { host: HullActionsHost<SoloEntity>; ref: { bus: EventBus; world: SoloWorld } }>();
+const soloActionHosts = battleCache<{ host: HullActionsHost<SoloEntity>; ref: { bus: EventBus; world: SoloWorld } }>();
 function soloActionsHost(game: SoloGameState, bus: EventBus, world: SoloWorld): HullActionsHost<SoloEntity> {
   let entry = soloActionHosts.get(game);
   if (!entry) {
@@ -3154,7 +3168,7 @@ function stepReloadAndFire(
 }
 
 const auxiliaryRay = new THREE.Vector3();
-const auxiliaryContexts=new WeakMap<SoloGameState, Parameters<typeof stepRoofGun>[3]>();
+const auxiliaryContexts=battleCache<Parameters<typeof stepRoofGun>[3]>();
 function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventBus): void {
   if (game.result) return;
   let context=auxiliaryContexts.get(game);
@@ -3453,7 +3467,7 @@ function createAerialCallbacks(game: SoloGameState): NonNullable<SoloGameState['
 /** The step's world and bus, refreshed on every call: a later battle on the same page game aims at its own ground and
  *  announces on its own bus (improve-271 plan 032; the first battle's closures kept its world and bus). */
 interface AirFireRef { world: SoloWorld; bus: EventBus }
-const _airFireContexts = new WeakMap<SoloGameState, { context: AirSupportFireContext<SoloEntity>; ref: AirFireRef }>();
+const _airFireContexts = battleCache<{ context: AirSupportFireContext<SoloEntity>; ref: AirFireRef }>();
 function airSupportFireContext(game: SoloGameState, bus: EventBus, world: SoloWorld): AirSupportFireContext<SoloEntity> {
   let entry = _airFireContexts.get(game);
   if (!entry) {

@@ -276,30 +276,35 @@ export function bindHorizonForestImpostors(
     if (!bucket) { bucket = []; buckets.set(key, bucket); }
     bucket.push(i);
   }
-  // The same lighting and distance-based scene fog as the playable forest.
-  const material = new THREE.MeshStandardMaterial({
+  // world-pools-272: one pool for every species and mirror (a pool each drew up to eight), the cell per instance
+  let total = 0;
+  for (const bucket of buckets.values()) total += bucket.length;
+  // The same lighting and distance-based scene fog as the playable forest. (battle-retention-279) Made and registered
+  // with the shadow rig only for a pool that draws it: the world's release unregisters what its group draws
+  // (worldBuildCoordinator releaseRoot), and a material registered with every tree adopted held the released world
+  // through its program key's closure (hinterland/trees.ts, the same law)
+  const material = total > 0 ? new THREE.MeshStandardMaterial({
     map: library.albedo.texture, vertexColors: true, alphaTest: TREE_IMPOSTOR_ALPHA_TEST, alphaToCoverage: true,
     side: THREE.DoubleSide, roughness: 1.0, metalness: 0.0,
-  });
-  material.envMapIntensity = HORIZON_FOREST_IMPOSTOR_SKY_FILL;
-  material.customProgramCacheKey = () => HORIZON_FOREST_IMPOSTOR_PROGRAM_KEY;
-  const hook: MaterialShaderHook = (shader) => {
-    library.applyProgram(shader);
-    applyCanopyDiffuseWrap(shader, HORIZON_FOREST_IMPOSTOR_WRAP, true, HORIZON_FOREST_IMPOSTOR_THIN);
-  };
-  options.setupMaterial(material, hook);
+  }) : null;
+  if (material) {
+    material.envMapIntensity = HORIZON_FOREST_IMPOSTOR_SKY_FILL;
+    material.customProgramCacheKey = () => HORIZON_FOREST_IMPOSTOR_PROGRAM_KEY;
+    const hook: MaterialShaderHook = (shader) => {
+      library.applyProgram(shader);
+      applyCanopyDiffuseWrap(shader, HORIZON_FOREST_IMPOSTOR_WRAP, true, HORIZON_FOREST_IMPOSTOR_THIN);
+    };
+    options.setupMaterial(material, hook);
+  }
   // the quads: one pool per species and mirror, the row per instance
   const matrix = new THREE.Matrix4(), quaternion = new THREE.Quaternion(), scale = new THREE.Vector3(), position = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0), color = new THREE.Color();
   const rimTint = new THREE.Color(...(options.rimTreeTint ?? [1, 1, 1]));
   const speciesCounts: Record<string, number> = {};
   let draws = 0;
-  // world-pools-272: one pool for every species and mirror (a pool each drew up to eight), the cell per instance
-  let total = 0;
-  for (const bucket of buckets.values()) total += bucket.length;
-  const geometry = total > 0 ? library.poolGeometry(total) : null;
+  const geometry = material ? library.poolGeometry(total) : null;
   const rows = new THREE.InstancedBufferAttribute(new Float32Array(total), 1);
-  const mesh = geometry ? new THREE.InstancedMesh(geometry, material, total) : null;
+  const mesh = geometry && material ? new THREE.InstancedMesh(geometry, material, total) : null;
   if (geometry && mesh) {
     geometry.setAttribute('aImpRow', rows);
     mesh.name = 'horizon-forest-impostors';
