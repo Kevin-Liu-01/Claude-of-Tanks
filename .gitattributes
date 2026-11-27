@@ -1,0 +1,2 @@
+# Generated sources: GitHub collapses them in diffs and leaves them out of language stats (practice audit 2026-11-26).
+*.generated.ts linguist-generated=true

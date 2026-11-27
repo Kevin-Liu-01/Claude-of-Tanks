@@ -265,6 +265,10 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/media-production/lease-exit.selftest.mjs': tracked('{api,scripts,server,src,tools}/**', '**/*.md'),
   'tools/local-import-integrity.selftest.mjs': tracked('{api,server,src,tools}/**'),
   'tools/object3d-assert-lint.mjs': tracked('**/*.selftest.mjs', '**/*.test-support.mjs'),
+  // practice audit 2026-11-26: the /tmp-literal scan reads the tools (its --lanes report lists ~/cot-lanes, outside the
+  // checkout, from the CLI only); the size ratchet measures every tracked source
+  'tools/no-tmp-state.mjs': tracked('tools/**'),
+  'tools/size-ratchet.mjs': tracked('**/*.{ts,tsx,mts,mjs,js,cjs,rs,css,html}'),
   'tools/public-repo-hygiene.selftest.mjs': tracked('**'),
   'tools/selftest-suites.selftest.mjs': tracked('**/*.selftest.mjs'),
   'tools/tool-only-public-files.selftest.mjs': tracked('src/**', 'site/**', 'api/**', 'cloudflare/rooms/src/**',

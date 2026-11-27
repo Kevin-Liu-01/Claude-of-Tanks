@@ -252,9 +252,10 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // 266 re-pin: release priority reads the queue's tickets to name a release ticket and to see one waiting (scheduling)
     // 2026-11-04 re-pin (sm-fix tools-chains, audit S4): the owned lock directory and its tomb, the session mutex and its
     // pid file, a holder's ppid walk and start time, the place stamps: lock state and process state (scheduling)
-    pin: '7ef9007a34037252',
+    // 2026-11-26 re-pin (practice audit 10): --status reads the hold log at ~/Library/Logs and the pre-audit /tmp one (the meter)
+    pin: '2096e831c1f16754',
     reads: [],
-    note: 'reads and writes the machine-wide /tmp/cot-shots.lock and queue (owner, tickets, logs) and runs ps on their holders: scheduling only, never what a step writes',
+    note: 'reads and writes the machine-wide /tmp/cot-shots.lock and queue (owner, tickets) and the hold log (~/Library/Logs/cot-shots.log), and runs ps on their holders: scheduling only, never what a step writes',
   },
   // World steps (WORLD_STEPS).
   'tools/capture-world-collision-manifests.mjs': {
@@ -403,6 +404,16 @@ export const SCHEDULING_ENV = Object.freeze({
   COT_BROWSER_TREE_CAP_MB: 'browser-launch: the guard\'s whole-browser memory limit',
   COT_BROWSER_GUARD_INTERVAL_MS: 'browser-launch: how often the guard samples the browser\'s memory',
   COT_BROWSER_RENDERER_LIMIT: 'browser-launch: how many renderer processes Chrome may start',
+});
+
+/** Environment variables that only mark what kind of process runs (a receipt's child), never what a tool writes. Unlike
+ *  a SCHEDULING_ENV row, which is left out of the key, a marker stays in it as `<unset>` whatever its value, so the keys
+ *  recorded before it was declared still hold (dropping the row would have moved every key that names it).
+ *  Practice audit 2026-11-26 (tooling-practice-279): the receipt runner gives every child a fresh run directory, and
+ *  media-r5/paths.mjs (in the icons closure through master-filter) reads it to tell a receipt's process from a tool run.
+ *  Keyed with its value, every runner pass moved icons on all 313 ids (changed-only/fresh red under the runner on main). */
+export const PROCESS_MARKER_ENV = Object.freeze({
+  COT_SELFTEST_RUN_DIR: 'run-selftests: the run\'s own directory, fresh every run; it marks a receipt\'s process',
 });
 
 /**

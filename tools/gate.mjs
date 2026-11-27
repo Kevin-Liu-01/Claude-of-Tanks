@@ -37,6 +37,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { isStarved } from './selftest-verdict.mjs';
 import { installRefusal } from './changed-only/fingerprint.mjs';
+import { cotEvidencePath } from './durable-paths.mjs';
 
 export const GATE_STEPS = Object.freeze(['typecheck', 'build', 'i18n', 'budget', 'workers', 'receipts', 'preflight']);
 const VERDICTS_BLOCKING = Object.freeze({ regression: true, changed: true, flaky: false, unstable: false, inherited: false });
@@ -455,7 +456,8 @@ export async function runGate(options, { root, planner = planGate, lockFactory }
   const dirty = head ? Boolean(tryGit(root, 'status', '--porcelain=v1', '--untracked-files=no')) : null;
   const shortHead = head?.slice(0, 12) ?? 'no-git';
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
-  const out = options.out ?? join(tmpdir(), 'cot-gate', `${stamp}-${shortHead.slice(0, 9)}`);
+  // gate.json and gate.md are the release's receipt: kept where a reboot does not clear them (practice audit 2026-11-26)
+  const out = options.out ?? cotEvidencePath(join('cot-gate', `${stamp}-${shortHead.slice(0, 9)}`));
   const echo = !options.quiet;
   const plans = planner(options, { root, out });
   if (options.dryRun) {
