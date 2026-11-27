@@ -17,12 +17,12 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 |---|---:|---:|
 | KEEP | 1961 | 428.4 |
 | MERGE | 0 | 0.0 |
-| MANUAL | 681 | 1199.1 |
+| MANUAL | 683 | 1199.1 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2643 | 1627.9 | 276.6 |
+| Before: every receipt (npm test without the tiers) | 2645 | 1627.9 | 276.6 |
 | After: the default tier | 1961 | 428.4 | 70.0 |
 
 Default tier: 26.3 % of the whole registry's CPU; 46.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 51.2 min pool, 18.6 min browser receipts.
@@ -34,13 +34,13 @@ Default tier: 26.3 % of the whole registry's CPU; 46.8 % of the 916 CPU-min the 
 | `balance` | 3 | 1.1 | fleet round-robin duels on the authoritative battle path and the balance tables they hold; then `node tools/balance-matchups.mjs --check` |
 | `pacing` | 14 | 94.2 | whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map |
 | `bots` | 9 | 40.4 | bot behaviour played out on the authority (every mode, objectives, levels, approaches) |
-| `sims` | 14 | 5.6 | drone, missile, escort and counter-drone scenario runs |
+| `sims` | 15 | 5.6 | drone, missile, escort and counter-drone scenario runs |
 | `perf` | 4 | 2.5 | host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code |
 | `fleet` | 65 | 289.0 | fleet-wide vehicle sweeps: every playable tank built (the HIGH, LOW and default fleet passes, the lazy facade, floor clearance, vertex colours, national and fleet-wide fitting sweeps) and the whole-fleet anatomy check (tank:anatomy:check); then `node tools/gen-combat-anatomy.mjs --check --jobs=4`, `node tools/gen-vehicle-marking-seats.mjs --check`, `node tools/module-hit-probe.mjs`, `node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore`, `node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet`, `node tools/interior-fill-exposure.mjs --all --check --jobs=4`, `node tools/hitbox-fit-census.mjs --all --ledger=docs/geometry-gate/hitbox-fit-ledger.json --check` |
 | `tanks` | 415 | 315.4 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
 | `world` | 141 | 408.8 | world-wide map builds: scenery, structure collision, buildings, the wreck bake, the collision shards, civic areas, horizons and map content |
 | `ui` | 10 | 16.0 | heavy interface paint and layout sweeps |
-| `browser` | 4 | 26.0 | strenuous real-battle browser receipts (a GPU and the capture lock each) |
+| `browser` | 5 | 26.0 | strenuous real-battle browser receipts (a GPU and the capture lock each) |
 | `fx` | 1 | 0.0 | the fx-clock stamp census whole: two houses brought down (stages, sections, collapse bodies, the hanging sweep) before the rebase, and every fx-clock site's reach |
 | `media` | 1 | 0.0 | the media lane's fleet backlog: every production vehicle leads a take, and every fleet take clears its battlefield survey (the media lane's local dumps: run it where they are) |
 
@@ -145,7 +145,7 @@ Sim determinism and driver boundaries, the authority rules, armour/ballistics/da
 
 None. Folding receipts saves only process starts (about a second each) and would need a per-assertion coverage review; the CPU is in the receipts that build tanks and maps, which moved to manual suites instead.
 
-## MANUAL (681)
+## MANUAL (683)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -830,6 +830,8 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/fx/fxClockStampCensusFull.selftest.mjs` | 1.4 | MANUAL (fx) | fx: the fx-clock stamp census whole, 1.4 s: 2026-11-02 audit U12 (round 5): the census whole, with the two houses' destruction the default receipt leaves | test:heavy -- fx; test:recommend flags it when its inputs change |
 | `tools/media-r5/fleet-coverage.selftest.mjs` | 1.4 | MANUAL (media) | media: the media lane's fleet backlog, 1.4 s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `src/game/ai.watchResumeLevels.selftest.mjs` | 1.1 | MANUAL (bots) | bots: bot behaviour played out on the authority (every mode, objectives, levels, approaches), 1.1 s: 2026-11-02 audit M7 (round 6 V4): the hand-back's cases that repeat ai.watchResume's, split off it, and the wa | test:heavy -- bots; test:recommend flags it when its inputs change |
+| `src/game/replay/replayTerrainVariant.selftest.mjs` | n/a | MANUAL (sims) | sims: drone, missile, escort and counter-drone scenario runs, n/a s: replay-receipts-279: every mode with a battlefield variant (Frontline Assault's trenches) replays on its varia | test:heavy -- sims; test:recommend flags it when its inputs change |
+| `tools/replay-trace-parity.browser.selftest.mjs` | n/a | MANUAL (browser) | browser: strenuous real-battle browser receipts (a GPU and the capture lock each), n/a s: replay-receipts-279: the page's replay indexer Worker indexes a recording byte for byte as Node's does over th | test:heavy -- browser; test:recommend flags it when its inputs change |
 
 ## KEEP (1961)
 
