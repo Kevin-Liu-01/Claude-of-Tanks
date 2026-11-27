@@ -20,10 +20,19 @@
 //         0.05 m/s), and the nozzle does not light; after touchdown F jumps and the next flight's F boosts again;
 //   (v)   the plumes (fx/hullThrusterPlumes.ts, its scene graph) draw a pair of flames exactly on the steps a burn applies
 //         force, none in the coast after it, a capped burn's shorter than a full one's, and a ground press's two lift
-//         jets while its hop clears the ground.
+//         jets while its hop clears the ground;
+//   (vi)  the ball (Main, r2: flipBoost.selftest's ball strike, kept): in Turbo Ball a hull 9 m beside the ball (outside
+//         its 6.5 m touch), 3 m up, in a boosted flight (one boost spent, its burn over: outside one the sim damps a
+//         sideways drift within 0.5 s) and drifting at it at 5 m/s, fires the side nozzle away from it (A: the ball on its
+//         left); the ball leaves that touch faster than the same flight's with no press by at least half the side shove
+//         the touch carries: 0.5 x matchModes.ts BALL_DRIVE_CARRY x Turbo Ball's sideMps (4.51 m/s), read from the game's
+//         own constants. Both touch the ball, and both carry the boosted flight's flat hit, so the rule reads the force
+//         alone. (A first run at 6 m against a no-boost drift touched on tick 0 and let the cosmetic control through; a
+//         no-boost drift from 9 m never reached the ball; Main ruled this form.)
 // Reverted controls: the 277 burn (the base tree, tools/thrust-boosts-controls.mjs runs this file against it with
 // COT_BOOST_CONTROL_TREE and asserts (i), (ii) and (iii) fail there); planted here: a count of boosts that never grows
-// passes a sixth press (iv), and plumes keyed to the boosted flight instead of the applied force draw in the coast (v).
+// passes a sixth press (iv), plumes keyed to the boosted flight instead of the applied force draw in the coast (v), and a
+// cosmetic boost (the nozzle fires, sideMps 0: no force) fails (vi).
 // Also: the ground press (A on the ground hops, then fires once clear) and Turbo in flight (the butt's burn, no charge
 // spent, nose down); a replay round trip of a boosted flight through the replay's seat-action tap (game/replay/
 // seatActions.ts), tick-identical, whose control (the recorded steer dropped) parts at the side boost; and page/authority
@@ -234,6 +243,57 @@ for (const mode of MODES) {
   assert.ok(x.lit && x.sixthDv > 1, `planted (iv) ${mode}: with the count held at none the sixth press fires (${x.sixthDv.toFixed(2)} m/s), so the rule sees it`);
 }
 
+// ---- (vi) the ball: a side boost strikes it harder than the drift alone; a cosmetic boost does not
+const { createMatchModeController, BALL_DRIVE_CARRY } = await import('./matchModes.ts');
+const { resetTankVerticalState } = await import('./movement.ts');
+const { BOOST_NOZZLES } = await import('./hullFlight.ts');
+// Main's ruling (r2), fixed before the run: half the side shove the touch carries
+const SIDE_MPS = rulesOf('turbo_ball').airSpin.sideMps;
+const STRIKE_EXCESS = 0.5 * BALL_DRIVE_CARRY * SIDE_MPS;
+const DRIFT_MPS = 5, BESIDE_M = 9;
+/** The ball's speed after one touch by a hull drifting at it from its right (the ball on the hull's left), with a side boost
+ *  (A) on the first tick or none, under the boost rules `airSpin` (the ruleset's when null). */
+function strike(boosted, airSpin = null) {
+  const striker = hull('turbo_ball');
+  striker.id = 'striker'; striker.team = 'alpha';
+  striker.combat = { hp: 100, maxHp: 100, destroyed: false, ammo: [1], ammoCapacity: [1] };
+  const other = hull('turbo_ball'); other.id = 'other'; other.team = 'bravo';
+  other.combat = { hp: 100, maxHp: 100, destroyed: false, ammo: [1], ammoCapacity: [1] };
+  other.state.pos.set(0, 0, 200);
+  const match = createMatchModeController({ mode: 'turbo_ball', entities: [striker, other], seed: 42, terrainHeight: () => 0,
+    setActive() {}, revive() {}, emit() {} });
+  if (airSpin) striker.modeAirSpin = airSpin; // the controller stamps the ruleset's; a planted rule goes on after it
+  const ball = match.state.ball;
+  ball.vx = 0; ball.vy = 0; ball.vz = 0;
+  striker.state.pos.set(ball.x - SIDE[0] * BESIDE_M, 3, ball.z - SIDE[2] * BESIDE_M);
+  resetTankVerticalState(striker.state, 3, 0, false);
+  striker.state.yaw = YAW; striker.state.speed = 0;
+  striker.state._spring.recoilVX = SIDE[0] * DRIFT_MPS; striker.state._spring.recoilVZ = SIDE[2] * DRIFT_MPS;
+  // a boosted flight: one boost spent, its burn over (the drift holds in one)
+  striker.state._boostNozzle = BOOST_NOZZLES.UP; striker.state._boostBurnS = 0; striker.state._boostsUsed = 1;
+  clock.t = 0;
+  let nozzle = 0;
+  for (let n = 0; n < 120 && !ball.lastTouchId; n++) {
+    if (boosted && n === 0) { tick(striker, F, { throttle: 0, steer: 1 }); nozzle = striker.state._boostNozzle; }
+    else tick(striker);
+    match.step(SIM_DT, 100 + n * SIM_DT);
+  }
+  assert.equal(ball.lastTouchId, 'striker', `(vi) setup: the striker reaches the ball (${boosted ? 'pressing A' : 'no press'})`);
+  if (boosted) assert.equal(nozzle, BOOST_NOZZLES.LEFT, '(vi) setup: A in the air fires the right side, pushing the hull left at the ball');
+  return Math.hypot(ball.vx, ball.vz);
+}
+{
+  const drift = strike(false), boosted = strike(true);
+  const pass = boosted - drift >= STRIKE_EXCESS;
+  console.log(`(vi) ${pass ? 'PASS' : 'FAIL'} turbo_ball: the side boost strikes the ball at ${boosted.toFixed(2)} m/s, the flight's ${DRIFT_MPS} m/s drift with no press at `
+    + `${drift.toFixed(2)}: ${(boosted - drift).toFixed(2)} m/s more, the threshold ${STRIKE_EXCESS.toFixed(2)} (0.5 x BALL_DRIVE_CARRY ${BALL_DRIVE_CARRY} x sideMps ${SIDE_MPS})`);
+  assert.ok(pass, `(vi) the side boost strikes the ball ${(boosted - drift).toFixed(2)} m/s harder than the flight's drift, at least ${STRIKE_EXCESS.toFixed(2)}`);
+  // planted: a cosmetic boost, the nozzle firing with no force
+  const cosmetic = strike(true, { ...rulesOf('turbo_ball').airSpin, sideMps: 0 });
+  console.log(`planted (vi): a cosmetic boost strikes at ${cosmetic.toFixed(2)} m/s, ${(cosmetic - drift).toFixed(2)} more than the drift`);
+  assert.ok(!(cosmetic - drift >= STRIKE_EXCESS), `planted (vi): a cosmetic boost strikes ${(cosmetic - drift).toFixed(2)} m/s harder than the flight's drift, under ${STRIKE_EXCESS.toFixed(2)}, so the rule sees it`);
+}
+
 // ---- (v) the plumes draw the force applied
 const { createHullThrusterPlumes } = await import('../fx/hullThrusterPlumes.ts');
 const { BOOST_BURN_S } = await import('./hullFlight.ts');
@@ -371,4 +431,4 @@ const dropped = replayFlight(recorded.actions, (a) => ({ ...a, args: [a.args[0],
 const droppedAt = dropped.findIndex((f, n) => f.some((v, k) => v !== recorded.frames[n][k]));
 assert.ok(droppedAt === 210, `control: the replay with the recorded steer dropped parts at the side boost (tick ${droppedAt})`);
 
-console.log('thrustBoosts: (i) five belly boosts climb in steps under the cap, (ii) a side boost drifts away from the firing side and rolls without returning, (iii) two sum, (iv) the sixth does nothing until touchdown, (v) the plumes draw only the force applied; the ground press, Turbo\'s butt burn in flight, a tick-identical replay of a boosted flight; planted controls caught');
+console.log('thrustBoosts: (i) five belly boosts climb in steps under the cap, (ii) a side boost drifts away from the firing side and rolls without returning, (iii) two sum, (iv) the sixth does nothing until touchdown, (v) the plumes draw only the force applied, (vi) a side boost strikes the ball harder than the drift; the ground press, Turbo\'s butt burn in flight, a tick-identical replay of a boosted flight; planted controls caught');

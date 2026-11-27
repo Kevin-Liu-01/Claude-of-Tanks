@@ -76,6 +76,8 @@ const BALL_LINEAR_DRAG = 0.992;
 const BALL_DRAG_TAU_S = -1 / (60 * detMath.log(BALL_LINEAR_DRAG));
 /** A dodge's strike (flip-boost-276): what a hull mid-flip or mid-roll adds along the touch and up, past its velocity's. */
 const BALL_FLIP_STRIKE_MPS = 6;
+/** The share of a hull's ground velocity a touch carries into the ball (thrustBoosts.selftest (vi) reads it). */
+export const BALL_DRIVE_CARRY = 0.82;
 const BALL_FLIP_LIFT_MPS = 3;
 const BALL_GRAVITY_MPS2 = 9.81;
 const PICKUP_RADIUS_M = 7;
@@ -2187,8 +2189,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     // and higher: the boost's own hit
     const flip = entity.state._boostNozzle ? 1 : 0;
     const push = 4 + closing * 0.35 + flip * BALL_FLIP_STRIKE_MPS;
-    ball.vx = ball.vx * 0.42 + driveX * 0.82 + nx * push;
-    ball.vz = ball.vz * 0.42 + driveZ * 0.82 + nz * push;
+    ball.vx = ball.vx * 0.42 + driveX * BALL_DRIVE_CARRY + nx * push;
+    ball.vz = ball.vz * 0.42 + driveZ * BALL_DRIVE_CARRY + nz * push;
     ball.vy = Math.max(ball.vy, 2.5 + closing * 0.12 + flip * BALL_FLIP_LIFT_MPS);
     ball.lastTouchId = entity.id;
     lastBallTouchS = timeS;
