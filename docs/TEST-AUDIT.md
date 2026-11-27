@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1958 | 428.0 |
+| KEEP | 1960 | 428.4 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 681 | 1195.9 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2640 | 1624.3 | 276.1 |
-| After: the default tier | 1958 | 428.0 | 70.0 |
+| Before: every receipt (npm test without the tiers) | 2642 | 1624.7 | 276.2 |
+| After: the default tier | 1960 | 428.4 | 70.0 |
 
-Default tier: 26.4 % of the whole registry's CPU; 46.7 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 51.1 min pool, 18.6 min browser receipts.
+Default tier: 26.4 % of the whole registry's CPU; 46.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 51.2 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -830,7 +830,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/game/ai.watchResumeLevels.selftest.mjs` | 1.1 | MANUAL (bots) | bots: bot behaviour played out on the authority (every mode, objectives, levels, approaches), 1.1 s: 2026-11-02 audit M7 (round 6 V4): the hand-back's cases that repeat ai.watchResume's, split off it, and the wa | test:heavy -- bots; test:recommend flags it when its inputs change |
 | `src/vehicles/fleetBattleBuilds.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: The battle fleet pass (roster-errors-279, 2026-11-26; manual `fleet` suite): every roster id built as a battle | test:heavy -- fleet; test:recommend flags it when its inputs change |
 
-## KEEP (1958)
+## KEEP (1960)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1031,6 +1031,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/wreckTurretDriverLoader.selftest.mjs` | 20 | KEEP | the wreck path stays a lazy chunk (vehicle core: bundle boundary) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/mp-p2p-decline.selftest.mjs` | 20 | KEEP | the decline rule on the real room actor (must-keep: authority) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/tank-sealed-check.selftest.mjs` | 20 | KEEP | the sealed ledger holds every playable id; the rasteriser's controls (generated-output guard) | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/gear-frame-bench.selftest.mjs` | 19 | KEEP | tool contract, 19 s: gear-alloc-279: the running gear's per-frame conform + update allocates nothing of its own (a 4-unit rig in a | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/mp/session/matchSessionBootRace.selftest.mjs` | 19 | KEEP | multiplayer wire, session or host, 19 s: 2026-11-02 audit M2: an election boot a newer election supersedes is no failure | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/trackContact.selftest.mjs` | 19 | KEEP | host and solo read track contact alike (must-keep: parity) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/hudLifecycle.selftest.mjs` | 19 | KEEP | interface contract, 19 s: 2026-11-02 audit F8: one HUD lifecycle; hidden cleanup; one display owner | default tier (npm test, the release gate; lane mode by its closure) |
@@ -1268,6 +1269,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `server/match/forcedKeyframes.selftest.mjs` | 7.8 | KEEP | match authority, 7.8 s: 243 security: forced keyframes from a bucket of 8, refilling at 2/s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/honestHunt.selftest.mjs` | 7.7 | KEEP | simulation rule, 7.7 s: The honest hunt (gameplay-modes-228; the coordinator: "spotting-respecting, no cheating"). The Horde's zombies | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/wasmGroundMirror.selftest.mjs` | 7.7 | KEEP | world rule, 7.7 s: 2026-11-02 audit S2: the kernel's copy of the match's ground is a binding (bound twice, rebound, unbound: each | default tier (npm test, the release gate; lane mode by its closure) |
+| `tools/turret-foot-fit.selftest.mjs` | 7.7 | KEEP | tool contract, 7.7 s: 279 (turret-foot-seat; Main 2026-11-26): the seat's tilt and split foot fits, the 2 % rule, spans that follow | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/garageSmokeTableLoad.selftest.mjs` | 7.6 | KEEP | interface contract, 7.6 s: 2026-11-02 audit R6 (round 2 U35): the consumables' smoke table is asked again under the lazy-chunk policy, ne | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/vehicleFacets.selftest.mjs` | 7.6 | KEEP | vehicle rule, 7.6 s: 2026-10-17 (owner): class, battle role and design status for every playable id, once per facet. | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/wantedLoops.selftest.mjs` | 7.5 | KEEP | audio contract, 7.5 s: 2026-11-02 audit F11: wanted loops (loader, fire alarm, cook-off, heartbeat) start once decoded, never after t | default tier (npm test, the release gate; lane mode by its closure) |

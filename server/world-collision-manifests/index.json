@@ -323,8 +323,8 @@
         "concealers": 219
       },
       "monsoon": {
-        "bytes": 2459108,
-        "sha256": "57244561cefc3d66cd704b40e6d7c994f44bcdee5ef677d20b843a43f5a62b97",
+        "bytes": 2459109,
+        "sha256": "740b216211a84cc53c13a1fa5ab106de1a049e70928448f423b5d950a78726e3",
         "obstacles": 9713,
         "colliders": 10063,
         "concealers": 11375

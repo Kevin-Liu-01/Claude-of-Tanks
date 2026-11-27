@@ -11,10 +11,14 @@
 //
 // Shrink-only ledger (264, Main 2026-10-28: "Put the census --gate in a receipt that's shrink-only fleet-wide"): one row
 // per tank, its pocket plan area in three classes (turret RAISED: roofs 0.25 m or more over the turret's frame, the
-// Leclerc's false roofs; turret BASE: bustle and ring overhangs, measured without the hull; HULL), bound to the tank's
+// Leclerc's false roofs; turret BASE: bustle and ring overhangs; HULL), bound to the tank's
 // hull, turret and gun group digests in docs/references/fleet-geometry-ledger.json. --update re-measures and writes rows
 // and refuses a class that grew past the tolerance (--allow-growth=<ids> re-baselines those on purpose: say why in the
 // commit); --check re-measures and fails on any class that moved past the tolerance or a stale binding.
+// Since 279 (turret-foot-seat) the turret is measured seated on its own hull (tools/roof-pocket.mjs ownerSoups): a slot the
+// hull closes is no pocket, one between the turret's lip and the deck is. --turret-alone measures it without the hull, as
+// before 279, for comparison only (the ledger refuses it). Air within the turret's swept clearance over the hull (the hull's
+// highest top at its radius on any bearing, plus the seat's gap) is no pocket; --no-envelope counts it, for comparison only.
 // tools/roof-pocket-census.selftest.mjs holds the whole fleet against the ledger without building a tank. First-party
 // tooling: Kevin B. Liu (NOTICE.md).
 import { spawn } from 'node:child_process';
@@ -23,7 +27,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import './tank-surface-collect.mjs'; // node canvas shim: builders paint their canvas textures as in the browser
 import { uniqueIds } from './id-list.mjs';
-import { OWNER_RULES, POCKET_CLASSES, POCKET_MIN_AREA_M2, POCKET_MIN_DEPTH_M, RAISED_ROOF_Y, VOXEL_M, ownerSoups, pocketClasses, roofPockets } from './roof-pocket.mjs';
+import { ENVELOPE_GAP_M, OWNER_RULES, POCKET_CLASSES, POCKET_MIN_AREA_M2, POCKET_MIN_DEPTH_M, RAISED_ROOF_Y, VOXEL_M, ownerSoups, pocketClasses, roofPockets } from './roof-pocket.mjs';
 import { betweenBuilds } from './build-loop-yield.mjs';
 
 const args = process.argv.slice(2);
@@ -32,9 +36,10 @@ const flag = (name) => args.includes(`--${name}`);
 const LEDGER_PATH = opt('ledger', '');
 const FLEET_LEDGER_PATH = 'docs/references/fleet-geometry-ledger.json';
 const LEDGER_SETTINGS = Object.freeze({ voxelM: VOXEL_M, minAreaCm2: POCKET_MIN_AREA_M2 * 1e4, minDepthCm: POCKET_MIN_DEPTH_M * 100,
-  raisedRoofY: RAISED_ROOF_Y, toleranceCm2: 40, toleranceFrac: 0.02 });
+  raisedRoofY: RAISED_ROOF_Y, toleranceCm2: 40, toleranceFrac: 0.02, turretWithHull: true, sweptClearanceM: ENVELOPE_GAP_M });
 const CLASSES = POCKET_CLASSES;
 if (LEDGER_PATH && flag('update') === flag('check')) { console.error('roof-pocket ledger: pass exactly one of --update or --check'); process.exit(2); }
+if (LEDGER_PATH && (flag('turret-alone') || flag('no-envelope'))) { console.error('roof-pocket ledger: the ledger measures the turret on its hull, its swept clearance left out; --turret-alone and --no-envelope are for comparison only'); process.exit(2); }
 
 const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
 let ids = flag('all') ? [...ALL_TANK_IDS] : uniqueIds(opt('ids', '').split(',').map((s) => s.trim()).filter(Boolean), 'roof-pocket-census --ids');
@@ -53,8 +58,8 @@ async function measure(list) {
     let tank;
     try {
       tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
-      const soups = ownerSoups(tank), found = [];
-      for (const [owner, soup] of Object.entries(soups)) for (const p of roofPockets(soup.tri, { ...OWNER_RULES[owner], body: soup.body, glass: soup.glass, cells: flag('cells') })) found.push({ owner, ...p });
+      const soups = ownerSoups(tank, { turretWithHull: !flag('turret-alone') }), found = [];
+      for (const [owner, soup] of Object.entries(soups)) for (const p of roofPockets(soup.tri, { ...OWNER_RULES[owner], body: soup.body, glass: soup.glass, cells: flag('cells'), envelope: flag('no-envelope') ? null : soup.envelope })) found.push({ owner, ...p });
       found.sort((a, b) => b.areaM2 - a.areaM2);
       const areaCm2 = found.reduce((t, p) => t + p.areaM2 * 1e4, 0);
       rows.push({ id, pockets: found.length, areaCm2: +areaCm2.toFixed(0), found });
@@ -78,7 +83,7 @@ async function measureParallel(list, jobs) {
   const chunks = Array.from({ length: jobs }, (_, j) => list.filter((_, i) => i % jobs === j)).filter((c) => c.length);
   const runs = chunks.map((chunk, j) => new Promise((done, fail) => {
     const out = join(dir, `part-${j}.json`);
-    const child = spawn(process.execPath, ['--max-old-space-size=4096', 'tools/roof-pocket-census.mjs', `--ids=${chunk.join(',')}`, `--json=${out}`, ...(flag('cells') ? ['--cells'] : [])],
+    const child = spawn(process.execPath, ['--max-old-space-size=4096', 'tools/roof-pocket-census.mjs', `--ids=${chunk.join(',')}`, `--json=${out}`, ...['cells', 'turret-alone', 'no-envelope'].filter(flag).map((f) => `--${f}`)],
       { stdio: ['ignore', 'pipe', 'inherit'] });
     child.stdout.on('data', (b) => process.stdout.write(b));
     child.on('exit', (code) => (code === 0 ? done(JSON.parse(readFileSync(out, 'utf8'))) : fail(new Error(`roof-pocket part ${j} exited ${code}`))));
@@ -99,7 +104,12 @@ if (LEDGER_PATH) {
   const book = existsSync(resolve(LEDGER_PATH)) ? JSON.parse(readFileSync(resolve(LEDGER_PATH), 'utf8'))
     : { schemaVersion: 1, generator: 'tools/roof-pocket-census.mjs --ledger', settings: LEDGER_SETTINGS,
       binding: `hull, turret and gun group digests of ${FLEET_LEDGER_PATH} at high quality`, tanks: {} };
+  // 279: a ledger measured with the turret alone is re-measured whole; --update writes the turret-on-hull standard, and a
+  // row still held at the old standard is re-baselined (its classes are not comparable), never refused
+  const oldStandard = book.settings?.turretWithHull !== true || book.settings?.sweptClearanceM !== ENVELOPE_GAP_M;
+  if (flag('update')) book.settings = { ...book.settings, turretWithHull: true, sweptClearanceM: ENVELOPE_GAP_M };
   const S = book.settings;
+  if (flag('check') && (S.turretWithHull !== true || S.sweptClearanceM !== ENVELOPE_GAP_M)) console.log(`${LEDGER_PATH}: rows measured with the turret alone (before 279): re-measure the fleet with --update --all`);
   const allowGrowth = new Set(uniqueIds(opt('allow-growth', '').split(',').filter(Boolean), 'roof-pocket-census --allow-growth'));
   const slack = (held) => S.toleranceCm2 + S.toleranceFrac * held;
   let problems = 0;
@@ -109,14 +119,15 @@ if (LEDGER_PATH) {
     if (!groups) { console.log(`${r.id}: no ${FLEET_LEDGER_PATH} row (run node tools/fleet-geometry-ledger.mjs --update --ids=${r.id} first)`); problems++; continue; }
     const row = { ...pocketClasses(r.found), pockets: r.pockets, geometry: { hull: groups.hull, turret: groups.turret, gun: groups.gun } };
     const held = book.tanks[r.id];
-    const grew = held ? CLASSES.filter((k) => row[k] > held[k] + slack(held[k])) : [];
+    const grew = held && !oldStandard ? CLASSES.filter((k) => row[k] > held[k] + slack(held[k])) : [];
     if (flag('update')) {
       if (grew.length && !allowGrowth.has(r.id)) {
         console.log(`${r.id}: REFUSED, pockets grew: ${grew.map((k) => `${k} ${held[k]} -> ${row[k]}`).join('; ')} (shrink-only: close them, or re-baseline on purpose with --allow-growth=${r.id})`);
         problems++;
         continue;
       }
-      book.tanks[r.id] = row;
+      // 279: a row the owner ruled real (true stowage recesses, bustle clearance) keeps its ruling across re-measures
+      book.tanks[r.id] = held?.real ? { ...row, real: held.real } : row;
       continue;
     }
     if (!held) { console.log(`${r.id}: no roof-pocket ledger row`); problems++; continue; }
@@ -130,6 +141,9 @@ if (LEDGER_PATH) {
     const body = Object.entries(tanks).map(([id, row]) => `  ${JSON.stringify(id)}: ${JSON.stringify(row)}`).join(',\n');
     writeFileSync(resolve(LEDGER_PATH), `${head},\n "tanks": {\n${body}\n }\n}\n`);
     console.log(`roof-pocket ledger: wrote ${rows.length - problems} row(s) to ${LEDGER_PATH} (${Object.keys(tanks).length} held)${problems ? `; ${problems} refused or unmeasured` : ''}`);
-  } else console.log(`roof-pocket ledger: ${problems ? `FAIL: ${problems} difference(s)` : `PASS: ${rows.length} tank(s) match ${LEDGER_PATH}`}`);
+  } else {
+    if (S.turretWithHull !== true || S.sweptClearanceM !== ENVELOPE_GAP_M) problems++;
+    console.log(`roof-pocket ledger: ${problems ? `FAIL: ${problems} difference(s)` : `PASS: ${rows.length} tank(s) match ${LEDGER_PATH}`}`);
+  }
   if (problems) process.exitCode = 1;
 }

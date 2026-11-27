@@ -58,7 +58,7 @@ import type { TurretRingSeat, createTurretRingPresentation } from './turretRingW
 import { loadTurretRingModule, turretRingModule } from './turretRingLoader.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills, closedInteriorFillGeometry } from './interiorFills.ts';
-import { applyTurretSeatRace, seatTurretOverDeck } from './turretSeatRace.ts';
+import { applyTurretSeatRace, seatTurretOverDeck, staleSeatSpans, turretFootFitFor, turretSeatSplitBuilt, type TurretFootFit } from './turretSeatRace.ts';
 import { ringZonePart, ringZoneViolations, type RingZonePart } from './ringZoneGuard.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
 import { measureNearShadowCasterWork } from './shadowCasterWork.ts';
@@ -1351,6 +1351,9 @@ export interface TankFactoryOptions {
   /** Every live part once the build is done (after size scaling and bucket clears, just before merging), in its
    * bucket's frame: offline censuses that must see the vehicle as shipped (tools/hull-contact-census-lib.mjs). */
   finalPartCensus?: ((bucket: string, part: THREE.BufferGeometry) => void) | null;
+  /** 279: the turret seat's foot fit for this build instead of the id's own (turretSeatRace.ts TURRET_FOOT_FIT): probes
+   *  that measure another fit only. */
+  turretFootFit?: TurretFootFit | null;
 }
 
 interface TankEngineContext {
@@ -8792,6 +8795,7 @@ function* buildTankCoreSteps(
     staticDrawMerge = defaultStaticDrawMerge(),
     partCensus = null,
     finalPartCensus = null,
+    turretFootFit = null,
   } = opts;
   if (materialMode !== 'rendered' && materialMode !== 'geometry-only') {
     throw new TypeError(`Unsupported tank material mode '${String(materialMode)}'`);
@@ -10185,9 +10189,10 @@ function* buildTankCoreSteps(
     // ones a reset restores (else a hit cassette on a seated turret stayed drawn, and a reset laid the built corners back),
     // and so do the equipment lids' and the weapon stock's damage ranges.
     // 253: the seat lifts a camo surface's low corners after faceBoxUV projected them; the camo follows the lifted corner.
-    seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, gunPitchDeg: [spec.gunDepressionDeg, spec.gunElevationDeg], onSeated: (built, seated) => {
-      const camoScale = built.userData.camoFaceProjection as number | undefined;
-      if (camoScale) reprojectMovedFaceBoxUV(built, seated, camoScale, (built.userData.camoUvRemap as CamoUvRemap | undefined) ?? null);
+    // 279: the spans over a seated geometry follow its copy, whether the seat moved its corners (onSeated) or split its
+    // foot faces (onSplit: built vertices kept at their indices, so every span keeps its vertices); the split never cuts a
+    // face a span holds (protectedSpans), and a span left on a split's built buffers fails the build
+    const followSeat = (built: THREE.BufferGeometry, seated: THREE.BufferGeometry): void => {
       const was = built.getAttribute('position'), now = seated.getAttribute('position');
       for (const cluster of destructibleClusters.values()) {
         for (const range of cluster.ranges) {
@@ -10198,7 +10203,41 @@ function* buildTankCoreSteps(
       }
       equipmentDamage.follow(built, seated);
       weaponDamage.follow(built, seated);
-    } });
+    };
+    const splitBuilt: THREE.BufferGeometry[] = [], splitCopies: THREE.BufferGeometry[] = [];
+    seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, gunPitchDeg: [spec.gunDepressionDeg, spec.gunElevationDeg], onSeated: (built, seated) => {
+      const camoScale = built.userData.camoFaceProjection as number | undefined;
+      if (camoScale) reprojectMovedFaceBoxUV(built, seated, camoScale, (built.userData.camoUvRemap as CamoUvRemap | undefined) ?? null);
+      followSeat(built, seated);
+    }, footFit: turretFootFitFor(specId, geometryQuality, turretFootFit ?? undefined),
+    protectedSpans: (geometry) => {
+      const position = geometry.getAttribute('position'), spans: [number, number][] = [];
+      for (const cluster of destructibleClusters.values()) for (const range of cluster.ranges) if (range.position === position) spans.push([range.start, range.count]);
+      return [...spans, ...equipmentDamage.spansOf(geometry), ...weaponDamage.spansOf(geometry)];
+    }, onSplit: (built, split) => { followSeat(built, split); splitBuilt.push(built); splitCopies.push(split); } });
+    if (splitBuilt.length) {
+      const stale = staleSeatSpans(splitBuilt, [...destructibleClusters.values()].flatMap((cluster) => cluster.ranges.map((range) => range.position)),
+        (geometry) => equipmentDamage.holds(geometry) || weaponDamage.holds(geometry));
+      if (stale) throw new Error(`${specId}: the turret seat's split left ${stale} span(s) on the built buffers it replaced`);
+      if (geometryReceipt) {
+        turretSeatSplitBuilt.set(turretG, splitBuilt);
+        // the spans that followed onto the split copies, per owner, with each lid's centre (the copy's frame) and each
+        // weapon module, so a receipt can damage them (tools/turret-foot-fit.selftest.mjs)
+        const copies = new Set(splitCopies.map((geometry) => geometry.getAttribute('position')));
+        const centre = (geometry: THREE.BufferGeometry, [start, count]: readonly [number, number]): [number, number, number] => {
+          const p = geometry.getAttribute('position'), c: [number, number, number] = [0, 0, 0];
+          for (let i = start; i < start + count; i++) { c[0] += p.getX(i) / count; c[1] += p.getY(i) / count; c[2] += p.getZ(i) / count; }
+          return c;
+        };
+        turretG.userData.turretSeatSplitSpans = {
+          era: [...destructibleClusters.values()].flatMap((cluster) => cluster.ranges).filter((range) => copies.has(range.position)).length,
+          equipment: splitCopies.reduce((n, geometry) => n + equipmentDamage.spansOf(geometry).length, 0),
+          weapon: splitCopies.reduce((n, geometry) => n + weaponDamage.spansOf(geometry).length, 0),
+          equipmentAt: splitCopies.flatMap((geometry) => equipmentDamage.spansOf(geometry).map((span) => centre(geometry, span))),
+          weaponModules: [...new Set(splitCopies.flatMap((geometry) => weaponDamage.modulesOf(geometry)))],
+        };
+      }
+    }
     // 274: hull kit standing over the seated turret's foot, named for the turret-deck gate (ringZoneGuard.ts)
     if (ringZoneParts.length) {
       const violations = ringZoneViolations({ specId, hullG, turretG, gunG, parts: ringZoneParts });

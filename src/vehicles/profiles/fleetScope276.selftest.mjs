@@ -45,6 +45,11 @@ const MOVED_ON_PURPOSE = Object.freeze({
   marder1a3: 'fleet-debt-278 c1b8637aea: the MILAN launcher is damageable weapon stock [armor, anatomy]',
   cv90_mk4_concept: 'fleet-debt-278 2c4e36606e + c96b7db78b: anatomy measures the authored launcher exits (twin pod) [anatomy]',
   raiju_ifv: 'fleet-debt-278 cdcd7700c9: the launch exits on its Jyu-MAT pods [anatomy]',
+  // turret-foot-seat-279 (Main 2026-11-26): the turret seat's foot fit (turretSeatRace.ts TURRET_FOOT_FIT) closes the
+  // slots under the lip; the turret's drawn foot, its armour plates and its anatomy follow. m46_patton, pl01 and pl01_105
+  // (split) are named above already.
+  ...Object.fromEntries(['t90a_burlak_proto', 'm6_linebacker', 'object148_proto', 'amx40_proto', 'mbt70', 'chieftain_mk10',
+    'm48_super'].map((id) => [id, 'turret-foot-seat-279: the seat\'s foot fit closes the slots under the lip [armor, build, anatomy]'])),
 });
 const KINDS = Object.freeze(['armor', 'build', 'anatomy']);
 const fingerprint = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
