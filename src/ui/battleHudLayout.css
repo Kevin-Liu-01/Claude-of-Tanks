@@ -280,7 +280,9 @@ body[data-cot-battle-layout][data-systems-fill='slots']:not(.cot-touch-layout) .
 .cot-vehicle-controls>button.cot-jump[data-airborne]{opacity:.64;}
 /* (relative for its refill edge, with the legacy .cot-jump hint's left:50% and bottom:150px (hud.ts) undone: they moved the
    tile off its slot, a blank cell left in the row) */
-.cot-vehicle-controls>button.cot-turbo{position:relative;inset:auto;}
+.cot-vehicle-controls>button.cot-turbo,.cot-vehicle-controls>button.cot-air-spin{position:relative;inset:auto;}
+/* thrust-boosts-279: the boost's charges as pips along its foot, one segment a charge, the ones left in the accent */
+.cot-vehicle-controls>button.cot-air-spin[data-charges]::after{content:'';position:absolute;left:4px;right:4px;bottom:1px;height:3px;pointer-events:none;background:linear-gradient(to right,var(--accent) 0 calc(var(--pips,0) / var(--charges,1) * 100%),var(--hud-muted) 0);-webkit-mask:repeating-linear-gradient(to right,#000 0 calc(100% / var(--charges,1) - 2px),transparent 0 calc(100% / var(--charges,1)));mask:repeating-linear-gradient(to right,#000 0 calc(100% / var(--charges,1) - 2px),transparent 0 calc(100% / var(--charges,1)));}
 .cot-vehicle-controls>button.cot-turbo[data-cooling]{opacity:1;color:var(--hud-muted);}
 .cot-vehicle-controls>button.cot-turbo[data-cooling]::after{content:'';position:absolute;left:0;bottom:-1px;height:2px;width:calc(var(--refill,1) * 100%);background:var(--accent);pointer-events:none;}
 /* Owner 2026-10-17 (out of ammo): a spent launcher or magazine control is struck through in the danger ink, no text.

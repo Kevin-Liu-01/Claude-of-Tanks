@@ -747,12 +747,13 @@ export function runCase(hullId, worldId, caseDef, options = {}) {
   }
 }
 
-function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {}) {
+function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null, ruleset: mapRules = null } = {}) {
   // (the tank-world contact census, 2026-10-13: a case may bring a real battlefield's world — its height field, its
   // collision records and the records near the site the metrics read — built by tools/tank-world-contact-census.mjs)
   const world = caseDef.world ?? makeWorld(caseDef);
   const worldDef = WORLDS[worldId];
-  const ruleset = worldDef.ruleset();
+  // options.ruleset maps the world's rules: a receipt's reverted control (physics-torture.selftest.mjs G1)
+  const ruleset = mapRules ? mapRules(worldDef.ruleset()) : worldDef.ruleset();
   const spawn = caseDef.spawn ?? {};
   const players = [{ id: 'subject', specId: hullId, team: 'alpha', spawn: { x: spawn.x ?? 0, z: spawn.z ?? 0, yaw: spawn.yaw ?? 0 } }];
   for (const extra of caseDef.extras ?? []) {

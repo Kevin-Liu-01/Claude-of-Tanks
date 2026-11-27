@@ -79,7 +79,7 @@ assert.match(access, /if \(!input\.isTouchLayout\(\)\) return autoAim \? Promise
 
 // The equal-size controls row owns the desktop and touch jump action.
 assert.match(hud, /jumpHint.innerHTML = `[^`]*uiIconSVG\('rocket', 18\)[^`]*system-status/, 'jump has its rocket, keycap and status');
-assert.match(hud, /setControlsJumpMode\(isJumpMode\(ruleset\),\{turbo:!!ruleset\?\.turbo,airSpin:!!ruleset\?\.airSpin\}\)/, 'only jump rulesets expose the control (turbo-spin-275: and their Turbo and air spin)');
+assert.match(hud, /setControlsJumpMode\(isJumpMode\(ruleset\),\{turbo:!!ruleset\?\.turbo,airSpin:!!ruleset\?\.airSpin,charges:ruleset\?\.airSpin\?\.charges\?\?0\}\)/, 'only jump rulesets expose the control (turbo-spin-275: and their Turbo and boost; thrust-boosts-279: and its charges)');
 assert.match(hud, /function setControlsJumpMode\(on:boolean,moves:[^)]*\):void\{\n\s*jumpHint\.classList\.toggle\('on',on\);/, 'the jump flag shows the control');
 // the shared control fires the real jump edge through the HUD's one binder (bindControl: a mouse press acts on its
 // pointerdown, a touch tap on its release inside the slop; raw hold handlers trip the a11y census)

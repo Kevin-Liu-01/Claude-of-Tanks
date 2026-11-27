@@ -25,15 +25,34 @@ function check(caseId, hull, world, gates, { publishedContact = false } = {}) {
 }
 const g = (what, read, max, why, replay = false) => ({ what, read, max, why, replay });
 
-// G1 — the boost ceiling: two single-jump apexes above the ground under the hull. Mashing the boost climbed 2389 m at
-// 0.6 g (Turbo) and 6655 m at 0.17 g (Moon).
+// G1 — the boost ceiling. Mashing the boost climbed 2389 m at 0.6 g (Turbo) and 6655 m at 0.17 g (Moon). The flight's
+// boosts (thrust-boosts-279: `charges` a flight, each `upMps` up, the vertical speed a boost leaves capped at
+// `climbCapMps`) bound it: a boost fires no higher than the apex before it, and raises that apex by at most
+// max(2 cap up - up^2, up^2) / 2g (rising at v <= cap - up it gains (v + up)^2 - v^2, above that cap^2 - v^2; falling, at
+// most up^2), so the ceiling is the jump's apex plus `charges` of those. Measured 67.2 m (Turbo) / 118.8 m (Moon) against
+// 108.6 / 354.3; the reverted control, the climb cap left out, climbs 238 / 974 m and fails it.
+/** The mash's ceiling over the ground (m) from the world's rules (its jump, and its boosts if it has them). */
+function boostCeiling(ruleset) {
+  const gravity = 9.81 * (ruleset.gravityScale ?? 1), jumpMps = ruleset.jumpMps ?? 6, boost = ruleset.airSpin;
+  const up = boost?.upMps ?? 0, cap = boost?.climbCapMps ?? 0;
+  const gain = boost ? Math.max(2 * cap * up - up * up, up * up) : jumpMps * jumpMps;
+  return (jumpMps * jumpMps + (boost ? boost.charges : 1) * gain) / (2 * gravity);
+}
+const mashCase = CASES.find((c) => c.id === 'jump-mash');
+const g1 = [];
 for (const world of ['turbo', 'moon']) {
   const ruleset = WORLDS[world].ruleset();
-  const gravity = 9.81 * (ruleset.gravityScale ?? 1), jumpMps = ruleset.jumpMps ?? 6;
-  const ceiling = 2 * jumpMps * jumpMps / (2 * gravity);
+  const ceiling = boostCeiling(ruleset);
+  let climbed = NaN;
   check('jump-mash', 'medium', world, [
-    g('max height (m)', (m) => m.maxHeightM, ceiling + 1, `ceiling ${ceiling.toFixed(1)} m; before: 2389 m (Turbo) / 6655 m (Moon)`),
+    g('max height (m)', (m) => (climbed = m.maxHeightM), ceiling + 1, `ceiling ${ceiling.toFixed(1)} m; before: 2389 m (Turbo) / 6655 m (Moon)`),
   ]);
+  const uncapped = runCase(HULLS.medium, world, mashCase, { ruleset: (r) => ({ ...r, airSpin: { ...r.airSpin, climbCapMps: Infinity } }) });
+  runs++;
+  if (!(uncapped.maxHeightM > ceiling + 1)) {
+    failures.push(`jump-mash ${world} medium: the reverted control (no climb cap) climbs ${uncapped.maxHeightM.toFixed(1)} m, under the ${ceiling.toFixed(1)} m ceiling: G1 would not catch it`);
+  }
+  g1.push(`${world} ${climbed.toFixed(1)} m of ${ceiling.toFixed(1)} (no cap ${uncapped.maxHeightM.toFixed(1)})`);
 }
 
 // G2/G3 — a cliff edge is an edge to tip over, not a slope to chase: the attitude spring took the ground 10 m below
@@ -411,4 +430,4 @@ if (failures.length) {
   for (const line of failures) console.error(`  ${line}`);
   process.exit(1);
 }
-console.log(`physics-torture.selftest: ${runs} torture runs — boost ceiling, cliff edges, the Sirocco climb and swing, stacking, roof edges, the Moon step, crest launches, trench crossings, firing and hits in flight, the landing stroke and the dive, settling contacts, terrain walls, prediction replay and rest all hold`);
+console.log(`physics-torture.selftest: ${runs} torture runs — boost ceiling (the jump's apex + charges x max(2 cap up - up^2, up^2) / 2g: ${g1.join(', ')}), cliff edges, the Sirocco climb and swing, stacking, roof edges, the Moon step, crest launches, trench crossings, firing and hits in flight, the landing stroke and the dive, settling contacts, terrain walls, prediction replay and rest all hold`);
