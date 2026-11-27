@@ -46,7 +46,8 @@ import {
   combatAnatomyCalibration, type AnatomyTurretRingReceipt,
 } from './combatAnatomyCalibrationRegistry.ts';
 import {
-  resetVehicleGround, setVehicleGroundFromRoot, supportsShadowHook, vehicleAmbientFloorHook, withSuitShadeDefault,
+  registerVehicleMaterial, releaseVehicleMaterial, resetVehicleGround, setVehicleGroundFromRoot, vehicleAmbientFloorHook,
+  withSuitShadeDefault,
 } from './materials.ts';
 import { programVariantOrigin } from '../engine/programVariants.ts';
 import { TURRET_SWEEP_BIN_M, TURRET_SWEEP_FLOOR_M } from './turretSeatPlane.ts';
@@ -2041,15 +2042,14 @@ export function createTurretRingWellMaterial(engineCtx: RingEngineContext | null
   };
   // (264) it compiles the vehicle hook, so it reads the suit's shade: its draws carry none, and read 0
   withSuitShadeDefault(material);
-  if (engineCtx && supportsShadowHook(engineCtx) && engineCtx.setupShadowMaterial) {
-    engineCtx.setupShadowMaterial(material, hook);
-  } else material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => TURRET_RING_PROGRAM_KEY;
-  return material;
+  // (battle-retention-279) registered as every vehicle material is (materials.ts vehicleMaterialSetup: the cascade on a
+  // real context, the hook directly on a stub, the program key): a direct setupShadowMaterial here left it outside
+  // VEHICLE_REGISTRATION, so nothing could tell it from a world's entry
+  return registerVehicleMaterial(engineCtx, material, TURRET_RING_PROGRAM_KEY, undefined, hook);
 }
 
-function releaseTurretRingWellMaterial(material: THREE.Material, engineCtx: RingEngineContext | null | undefined): void {
-  engineCtx?.releaseShadowMaterial?.(material);
+function releaseTurretRingWellMaterial(material: THREE.Material): void {
+  releaseVehicleMaterial(material);
   material.dispose();
 }
 
@@ -2241,7 +2241,7 @@ export function createTurretRingPresentation(options: TurretRingPresentationOpti
     },
     dispose() {
       hide();
-      if (material) releaseTurretRingWellMaterial(material, engineCtx);
+      if (material) releaseTurretRingWellMaterial(material);
       material = null;
     },
   };

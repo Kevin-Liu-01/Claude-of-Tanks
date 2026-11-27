@@ -3227,18 +3227,21 @@ function vehicleMaterialSetup(
 }
 
 /**
- * Register a vehicle material built outside createTankMaterials (the decorations' kit materials, a profile's re-hook)
- * with the bare readability hook and its program key, so its clones (cloneVehicleMaterial) keep the cascade
- * registration too. `cascaded`: the caller's own verdict on the context (the decorations probe it once themselves),
- * else probed here.
+ * Register a vehicle material built outside createTankMaterials (the decorations' kit materials, a profile's re-hook,
+ * the wreck's turret-ring well) with the bare readability hook, or the caller's `hook` built on it, and its program key,
+ * so its clones (cloneVehicleMaterial) keep the cascade registration too. `cascaded`: the caller's own verdict on the
+ * context (the decorations probe it once themselves), else probed here. (battle-retention-279) The one path a vehicle
+ * material takes into the shadow rig: vehicleMaterialRegistrationPath.selftest fails on a direct setupShadowMaterial
+ * call elsewhere under src/vehicles.
  */
 export function registerVehicleMaterial<T extends THREE.Material>(
   engineCtx: ShadowEngineContext | null | undefined,
   material: T,
   programKey: string,
   cascaded: boolean = supportsShadowHook(engineCtx),
+  hook: (shader: MaterialShader) => void = vehicleAmbientFloorHook,
 ): T {
-  return vehicleMaterialSetup(engineCtx, programKey, () => vehicleAmbientFloorHook, cascaded)(material);
+  return vehicleMaterialSetup(engineCtx, programKey, () => hook, cascaded)(material);
 }
 
 /** Take a registered vehicle material (a clone a visual owns) out of the cascade registry before it is disposed. */

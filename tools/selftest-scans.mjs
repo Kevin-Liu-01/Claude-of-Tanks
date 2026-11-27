@@ -146,6 +146,8 @@ export const SELFTEST_SCANS = Object.freeze({
   // 274.0: the plate-fit receipt reads every anatomy group's fitted pieces
   'src/vehicles/plateFitPolygons.selftest.mjs': lists('src/vehicles/combatAnatomyGroups/*.generated.ts'),
   'src/vehicles/trackPatterns.selftest.mjs': lists('src/vehicles/**/*.js'),
+  // (battle-retention-279) every vehicle module, for a direct setupShadowMaterial call outside vehicleMaterialSetup
+  'src/vehicles/vehicleMaterialRegistrationPath.selftest.mjs': lists('src/vehicles/**/*.ts'),
   'src/vehicles/vehicleMaterialRawClone.selftest.mjs': lists('src/{app,engine,fx,game,mp,ui,vehicles,world}/**/*.ts'),
   'src/vehicles/weaponFinish.selftest.mjs': lists('src/vehicles/profiles/*.ts'),
   'src/world/civic/civicPlans.selftest.mjs': lists('src/world/civic/*.ts'),
