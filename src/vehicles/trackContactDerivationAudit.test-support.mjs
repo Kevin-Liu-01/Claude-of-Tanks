@@ -77,6 +77,12 @@ export function createTrackContactDerivationAudit(tier) {
       for (const key of FIELDS) compare(key, published[key], built[key]);
       assert.equal(!published.endRise, !built.endRise, `${id}: the ${tier} build and the receipt both carry the end rise or neither`);
       if (published.endRise) for (const key of RISES) compare(`endRise.${key}`, published.endRise[key], built.endRise[key]);
+      // (279) the support run a raised outer road wheel carries past the ground contact: published where drawn, and only there
+      assert.equal(!published.support, !built.support, `${id}: the ${tier} build and the receipt both carry a support run or neither`);
+      if (published.support) {
+        for (const key of ['halfLenM', 'zCenterM']) compare(`support.${key}`, published.support[key], built.support[key]);
+        for (const key of RISES) compare(`support.endRise.${key}`, published.support.endRise[key], built.support.endRise[key]);
+      }
       tanks++;
       const profile = drawnBandProfile(tank.root, published.halfWidM);
       if (!profile.size) return;

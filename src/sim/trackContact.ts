@@ -21,6 +21,17 @@ export interface TrackContactReceipt {
   readonly bottomYM?: number | null;
   readonly panYM?: number | null;
   readonly endRise?: { readonly dzM: number; readonly frontM: number; readonly rearM: number } | null;
+  /**
+   * (279) What the support solve carries the hull on where it differs from the ground contact: a raised outer road
+   * wheel's foot stands above the ground run, so the contact ends short of it, but its springs carry the hull as soon as
+   * the ground reaches it (tankFactoryCore drawnBandContact). The run past it and that run's end rise; absent wherever
+   * the outer road wheels sit at the common seat.
+   */
+  readonly support?: {
+    readonly halfLenM: number;
+    readonly zCenterM: number;
+    readonly endRise: { readonly dzM: number; readonly frontM: number; readonly rearM: number };
+  } | null;
 }
 
 interface ContactDims {
@@ -78,6 +89,33 @@ export function validatedContactGeometry(
   };
 }
 
+/**
+ * (279) The contact the movement solve carries the hull on: the receipt's ground run, or its support run where it has one
+ * (a raised outer road wheel's springs bear past the ground contact's end, TrackContactReceipt.support). Every term of the
+ * solve reads this one span (the support samples and their end guards, the dive lever, the hold transfer, the hull's end
+ * guards, the landing turn); the ground run rides along as `ground`.
+ */
+export function solveContactGeometry(
+  source: Partial<TrackContactReceipt> & { halfLenM?: number | null; halfWidM?: number | null; zCenterM?: number | null },
+  dimensions: ContactDims,
+): MovementContactGeometry {
+  const contact = validatedContactGeometry(source, dimensions);
+  const support = source.support;
+  if (!support) return contact;
+  const length = dimensions.hullLengthM;
+  return {
+    ...contact,
+    halfLenM: clampContactValue(support.halfLenM, CONTACT_LEN_FRAC_MIN * length, CONTACT_LEN_FRAC_MAX * length),
+    zCenterM: clampContactValue(support.zCenterM, -CONTACT_ZC_FRAC_MAX * length, CONTACT_ZC_FRAC_MAX * length),
+    endRise: {
+      dzM: clampContactValue(support.endRise.dzM || 0.4, 0.2, 0.6),
+      frontM: clampContactValue(support.endRise.frontM, 0.02, 0.5),
+      rearM: clampContactValue(support.endRise.rearM, 0.02, 0.5),
+    },
+    ground: { halfLenM: contact.halfLenM, zCenterM: contact.zCenterM, endRise: contact.endRise! },
+  };
+}
+
 /** Any driver's spec: the receipt rides on its armour from finalizeCombatAnatomy, read where present. */
 interface PublishedContactSpec {
   readonly dims: ContactDims;
@@ -95,7 +133,7 @@ export function publishedTrackContact(spec: PublishedContactSpec): MovementConta
   if (!receipt) return null;
   const cached = published.get(spec);
   if (cached && cached.receipt === receipt) return cached.contact;
-  const contact = validatedContactGeometry(receipt, spec.dims);
+  const contact = solveContactGeometry(receipt, spec.dims);
   published.set(spec, { receipt, contact });
   return contact;
 }

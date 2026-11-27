@@ -7,7 +7,7 @@ import { Vector3 } from 'three';
 import '../../tools/tank-surface-collect.mjs'; // node canvas shim for the three tanks built below
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { PRODUCTION_TANK_IDS, TANK_SPECS } from '../vehicles/specs.ts';
-import { publishedTrackContact, validatedContactGeometry } from './trackContact.ts';
+import { publishedTrackContact, solveContactGeometry } from './trackContact.ts';
 import { createTankState, updateTank, SIM_DT } from './movement.ts';
 import { betweenBuilds } from '../../tools/build-loop-yield.mjs';
 
@@ -38,13 +38,26 @@ for (const id of ['t90am', 'challenger3', 'udes03']) {
   await betweenBuilds(); // the last build is free to go (tools/build-loop-yield.mjs)
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'low', batchStatic: false, decor: false });
   try {
-    const drawn = validatedContactGeometry(tank.contactGeom, TANK_SPECS[id].dims);
+    const drawn = solveContactGeometry(tank.contactGeom, TANK_SPECS[id].dims);
     const published = publishedTrackContact(TANK_SPECS[id]);
     for (const key of ['halfLenM', 'halfWidM', 'zCenterM', 'bottomYM', 'panYM']) {
       assert.ok(Math.abs((published[key] ?? 0) - (drawn[key] ?? 0)) < 1e-3, `${id}: ${key} ${published[key]} published, ${drawn[key]} drawn`);
     }
     for (const key of ['dzM', 'frontM', 'rearM']) {
       assert.ok(Math.abs(published.endRise[key] - drawn.endRise[key]) < 1e-3, `${id}: endRise.${key}`);
+    }
+    // (279) the T-90AM's front road wheel stands 59 mm over the common seat: its ground contact (the receipt's run) ends
+    // short of that wheel, and the support run the solve carries the hull on (publishedTrackContact) reaches past it; the
+    // other two seat every road wheel and publish one run
+    const receipt = TANK_SPECS[id].armor.trackContact;
+    assert.equal(!!receipt.support, id === 't90am', `${id}: a support run only where an outer road wheel is raised`);
+    assert.equal(!!published.ground, id === 't90am', `${id}: the solve carries the hull on the support run where there is one`);
+    if (receipt.support) {
+      const frontWheelZ = 2.70061; // profiles/t90X.ts wheelZs, the raised station
+      assert.ok(receipt.zCenterM + receipt.halfLenM < frontWheelZ && published.zCenterM + published.halfLenM > frontWheelZ + 0.15,
+        `${id}: the ground contact ends short of the raised front road wheel and the solve's run reaches past it `
+        + `(${(receipt.zCenterM + receipt.halfLenM).toFixed(3)} / ${(published.zCenterM + published.halfLenM).toFixed(3)} m)`);
+      for (const key of ['halfLenM', 'zCenterM']) assert.ok(Math.abs(published.ground[key] - receipt[key]) < 1e-3, `${id}: ground.${key}`);
     }
   } finally {
     tank.dispose?.();
@@ -58,7 +71,7 @@ for (const id of ['t90am', 'challenger3', 'udes03']) {
   const id = 't90am';
   const spec = TANK_SPECS[id];
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'low', batchStatic: false, decor: false });
-  const drawn = validatedContactGeometry(tank.contactGeom, spec.dims);
+  const drawn = solveContactGeometry(tank.contactGeom, spec.dims);
   tank.dispose?.();
   const ground = (x, z) => 0.6 * Math.sin(z / 4.1) + 0.25 * Math.sin(x / 3.3 + z / 7.7);
   const field = { getHeightAt: ground, getHeightAtFast: ground, getGroundType: () => 'medium' };
