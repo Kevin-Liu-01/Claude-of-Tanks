@@ -116,19 +116,29 @@ export function applyHinterlandTreeImpostors(object: THREE.Object3D, options: Hi
     if (!bucket) { bucket = []; buckets.set(key, bucket); }
     bucket.push(i);
   }
-  const material = new THREE.MeshStandardMaterial({
+  // world-pools-272: one pool for every species and mirror, the cell per instance
+  let total = 0;
+  for (const bucket of buckets.values()) total += bucket.length;
+  // (battle-retention-279) the material is made and registered with the shadow rig only for a pool that draws it: the
+  // world's release unregisters what its group draws (worldBuildCoordinator releaseRoot), so a material registered with
+  // every tree adopted stood in the rig's registry for the page's life, and its program key's closure held these
+  // options, the battlefield's forest-form law and through it the whole released world (live 278: every earlier battle's
+  // world group alive at the Garage on desktop)
+  const material = total > 0 ? new THREE.MeshStandardMaterial({
     map: library.albedo.texture, vertexColors: true, alphaTest: TREE_IMPOSTOR_ALPHA_TEST, alphaToCoverage: true,
     side: THREE.DoubleSide, roughness: 1.0, metalness: 0.0,
-  });
-  material.envMapIntensity = HORIZON_FOREST_IMPOSTOR_SKY_FILL;
-  material.customProgramCacheKey = () => `hinterland-tree-impostor-v2-${HINTERLAND_WRITE_DEPTH ? 'depth' : 'drawn'}`;
+  }) : null;
+  if (material) {
+    material.envMapIntensity = HORIZON_FOREST_IMPOSTOR_SKY_FILL;
+    material.customProgramCacheKey = () => `hinterland-tree-impostor-v2-${HINTERLAND_WRITE_DEPTH ? 'depth' : 'drawn'}`;
+  }
   // (the land's written depth and haze law, project.ts: past the square the land writes a nearer depth, so its trees
   // must too, or the land would stand in front of them; and they take the same haze for the distance it no longer covers)
   const haze = outland.userData.hinterlandHaze as { sigma: number; air: HinterlandAir | null } | undefined;
   const air = haze?.air ?? null;
   const proj = new THREE.Matrix4();
   const hazeUniforms: Record<string, THREE.IUniform> = { uHlProj: { value: proj }, uHlAir: { value: air?.clarity ?? 1 }, ...(air?.uniforms ?? {}) };
-  options.setupMaterial(material, (shader) => {
+  if (material) options.setupMaterial(material, (shader) => {
     library.applyProgram(shader);
     applyCanopyDiffuseWrap(shader, HORIZON_FOREST_IMPOSTOR_WRAP, true, HORIZON_FOREST_IMPOSTOR_THIN);
     Object.assign(shader.uniforms, hazeUniforms);
@@ -155,12 +165,9 @@ ${HINTERLAND_DEPTH_WRITE_GLSL}`);
   const group = new THREE.Group();
   group.name = 'hinterland-tree-impostors';
   group.matrixAutoUpdate = false;
-  // world-pools-272: one pool for every species and mirror, the cell per instance
-  let total = 0;
-  for (const bucket of buckets.values()) total += bucket.length;
-  const geometry = total > 0 ? library.poolGeometry(total) : null;
+  const geometry = material ? library.poolGeometry(total) : null;
   const rows = new THREE.InstancedBufferAttribute(new Float32Array(total), 1);
-  const mesh = geometry ? new THREE.InstancedMesh(geometry, material, total) : null;
+  const mesh = geometry && material ? new THREE.InstancedMesh(geometry, material, total) : null;
   if (geometry && mesh) {
     geometry.setAttribute('aImpRow', rows);
     mesh.name = 'hinterland-tree-impostor';

@@ -1150,6 +1150,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/battle-spike-census.selftest.mjs', // battle-spikes-253: the streamed trace's splitter, the census's arguments
     'tools/battle-spike-budget.selftest.mjs', // battle-spikes-253: the spike-budget receipt's judge and the shipped budget
     'tools/battle-memory-probe.selftest.mjs', // battle-spikes-253: the memory receipt's growth across battles and its judge
+    // battle-retention-279: the Garage-return probe's rules (slope, repeat roster, ruin fire) and its gate: a heap-snapshot run is diagnostic, never judged
+    'tools/garage-return-memory.selftest.mjs',
     'tools/phone-entry-gpu.selftest.mjs', // mobile-gpu-reset-277: the phone entry probe's GPU allocation tracker
     'tools/heap-retainers.selftest.mjs', // battle-spikes-253: a leaked object's strong retainer paths from a streamed heap snapshot
     // webcontent-diet-278: no accessor in src is a closure made at its definition (V8 keeps it in a shared descriptor array:
@@ -1502,6 +1504,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // round 8 Y1 s2-01 (review r1): the same three battles seated by the page's setupBattle (MANUAL 'sims')
     'src/game/couchSessionBattle.selftest.mjs',
     'src/game/soloModeVerdict.selftest.mjs', // 2026-11-02 audit M3: a solo verdict the mode did not reach latches its controller (Zone Control scores no more in the hold)
+    'src/game/battleCachesRelease.selftest.mjs', // battle-retention-279: no per-game cache keeps a battle's world past the next battle's setup
     'src/game/battleSeatPlan.selftest.mjs', // the load card's teams before the world are the seated battle's (2026-10-26)
     'src/game/openingRouteLegs.selftest.mjs', // battle-spikes-253: the bots' opening routes a leg a step, each the eager route
     // round 8 Y1 s2-02: the first live step plans every route still pending (a slow warm drives as the eager battle)
@@ -3115,6 +3118,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // Verdant's owner-approved ring byte for byte
     'src/world/ringSpeciesStature.selftest.mjs',
     'src/world/outlandTreeAdoption.selftest.mjs', // GND (2026-10-14): the ring's and the Hinterland's trees near the square drawn by the battlefield's tiers
+    // battle-retention-279: an impostor binder registers a shadow material only for a pool that draws it (every tree
+    // adopted: none; an undrawn registration held each released world on desktop)
+    'src/world/treeImpostorShadowRegistration.selftest.mjs',
     // trees round 2 (2026-10-03): the ring forest's shapes keep their own streams (a taller ring moves trees, not shapes)
     'src/world/horizonForestShapes.selftest.mjs',
     // p2 trees lane (2026-10-01): the grown near trees, their branch-spray atlases and the build's routing
