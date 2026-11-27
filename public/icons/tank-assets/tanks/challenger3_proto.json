@@ -323,14 +323,29 @@
         "kind": "spaced",
         "turretLocal": true,
         "verts": [
-          [-1.846,0.571,-0.28],
-          [-1.794,0.7,-0.28],
-          [-1.796,0.7,-2.6],
-          [-1.849,0.571,-2.6]
+          [-1.856,0.56,-1.4],
+          [-1.796,0.7,-1.4],
+          [-1.797,0.7,-2.6],
+          [-1.857,0.56,-2.6]
         ]
       },
       {
         "hitboxId": "T07",
+        "name": "trophy_L",
+        "physicalMm": 30,
+        "keMm": 60,
+        "ceMm": 200,
+        "kind": "spaced",
+        "turretLocal": true,
+        "verts": [
+          [-1.821,0.486,-0.2],
+          [-1.72,0.7,-0.2],
+          [-1.816,0.7,-1.4],
+          [-1.899,0.522,-1.4]
+        ]
+      },
+      {
+        "hitboxId": "T08",
         "name": "turret_side_R",
         "physicalMm": 300,
         "keMm": 300,
@@ -345,7 +360,7 @@
         ]
       },
       {
-        "hitboxId": "T08",
+        "hitboxId": "T09",
         "name": "turret_side_L",
         "physicalMm": 300,
         "keMm": 300,
@@ -360,7 +375,7 @@
         ]
       },
       {
-        "hitboxId": "T09",
+        "hitboxId": "T10",
         "name": "turret_rear",
         "physicalMm": 70,
         "keMm": 70,
@@ -375,7 +390,7 @@
         ]
       },
       {
-        "hitboxId": "T10",
+        "hitboxId": "T11",
         "name": "turret_roof",
         "physicalMm": 50,
         "keMm": 50,
@@ -576,8 +591,8 @@
       }
     ]
   },
-  "geometryHash": "dd56dfe7",
-  "metadataHash": "a0d53a61",
+  "geometryHash": "c3735bfa",
+  "metadataHash": "cd9d8228",
   "presentationAnchor": {
     "xM": 0,
     "zM": 0.0058
@@ -635,15 +650,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25836,
-      "sha256": "2584076b2dfd0e57cd3cad74ea4d520e2b7d34f7cbc83e159c04049db5d7946c",
+      "bytes": 25796,
+      "sha256": "16802e080a51c182949317b2aa0f77014e4f417822d17602d400748b3e50e054",
       "thumbnail": {
         "file": "thumbs/challenger3_proto_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11054,
-        "sha256": "9f349c892f2175ab7c79fb1cf2211b5fbe9f18d8a6b83358b0219c4927b24438",
+        "bytes": 11026,
+        "sha256": "8cb6910157fa13b2a7c9e933fa5f9487e4b3dd88ec52b8d1c0b8ae57396f6db0",
         "frame": [12,84,229,249]
       }
     },
@@ -652,16 +667,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 8462,
-      "sha256": "10b963bf53154f8937bd3ea37197baaa7760997472de1824c120c62cb3cd3e4a"
+      "bytes": 8434,
+      "sha256": "681448e5a56bdef07b65bf46c10a42a30331116d886e0caabffdec42effb7375"
     },
     "side": {
       "file": "challenger3_proto_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8634,
-      "sha256": "2491929dcb875d2ff035eede7914edd4108bfc1acbd44250cbd1a4ea65504880"
+      "bytes": 8632,
+      "sha256": "f838146d3f96365c074f54cc23630c4af8e5d75481ae9474361e1b5cfdcd88e5"
     },
     "topSilhouette": {
       "file": "challenger3_proto_top_silhouette.png",
@@ -684,24 +699,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20182,
-      "sha256": "4fe133d534c670ac1e49dc3451df3e80044cf4ad4e9544c0a4dfca6ac81f9105"
+      "bytes": 20142,
+      "sha256": "8623e75da7296eeef716386e0bef7ff9441d094973d8c04fa27758fe20f312e4"
     },
     "modulesSide": {
       "file": "challenger3_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19890,
-      "sha256": "f507ee54585d44b1db35f7b18c66ec5e2a6d5bb45774738d4b5ace967e44660f"
+      "bytes": 19848,
+      "sha256": "5431d23e896c7d2f2e7f9fdd232b0166204e2f4b976f5276cb8de72ee58f9cd1"
     },
     "crewSide": {
       "file": "challenger3_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17136,
-      "sha256": "76bb5ac63cd10355ae48317d11e9f11e2bd8c21e0dd846a6bb71cd034c8887c8"
+      "bytes": 17180,
+      "sha256": "50723aad6f68a4891a24ea0da395e025c4cdec51ea8417a933e09ad306c31ee0"
     },
     "markings": {
       "file": "challenger3_proto_markings.png",
@@ -714,8 +729,8 @@
     "technicalLabels": {
       "file": "challenger3_proto_technical.json",
       "mime": "application/json",
-      "bytes": 5208,
-      "sha256": "6a4d3ab099fc40aa6f272a08c6a6bad611c0cbea688cefd16ab77a1beb1e727a"
+      "bytes": 5339,
+      "sha256": "d6e87b465fbd9c9b862e2f2834884c5663c7cbbebf44d07347b691af6a107a43"
     }
   }
 }

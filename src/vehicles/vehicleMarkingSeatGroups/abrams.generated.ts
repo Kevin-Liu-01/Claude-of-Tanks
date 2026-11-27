@@ -379,22 +379,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.4,
         "pos": [
-          -1.7783026,
-          1.2002784,
-          2.3800911
+          -1.7793983,
+          1.2002785,
+          2.38
         ],
         "quaternion": [
-          -0.0162889,
-          -0.7015268,
-          -0.0165383,
-          0.7122649
+          -0.0164141,
+          -0.7069162,
+          -0.0164141,
+          0.7069162
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
         "visibilityClearSamples": 8,
         "visibilityRatio": 0.8888889,
-        "maximumSurfaceErrorM": 0.0087006
+        "maximumSurfaceErrorM": 0.0076035
       },
       {
         "kind": "insignia",

@@ -328,15 +328,15 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [0.4347,1.3138,0.0677],
-        "max": [0.8941,1.6493,1.9273],
+        "min": [0.4347,1.3136,0.0677],
+        "max": [0.8941,1.6491,1.9273],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.8608,0.5715,0.111],
-        "max": [-0.4014,1.8308,0.9323],
+        "min": [-0.8608,0.5725,0.111],
+        "max": [-0.4014,1.8218,0.9323],
         "turretLocal": false
       },
       {
@@ -348,8 +348,8 @@
       }
     ]
   },
-  "geometryHash": "809e221a",
-  "metadataHash": "a486223a",
+  "geometryHash": "a6062f4a",
+  "metadataHash": "1e373245",
   "presentationAnchor": {
     "xM": 0.0063,
     "zM": -0.1209
@@ -409,15 +409,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28718,
-      "sha256": "749bf47c15a64a4431a831035d0e7e31a9040025624ab7c76be50bb767ebd8be",
+      "bytes": 28686,
+      "sha256": "8e67d773e69d0af5b645b902d1b50d78532bae3caceeba9beb2597515dfb54b7",
       "thumbnail": {
         "file": "thumbs/strv152_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10830,
-        "sha256": "f60f6fa16273adf42603ac4b39b68edc3c61d16404d7514c6ee01acb94429053",
+        "bytes": 10818,
+        "sha256": "969e6eda78fd48ad22ec3a410593b26013ee219a29a1b09b18a21599ab11a115",
         "frame": [18,120,225,249]
       }
     },
@@ -426,16 +426,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16438,
-      "sha256": "9358786e96c12f60eda8f6333fa0bbeb03c9014c428713006f92435d179bca2b"
+      "bytes": 16430,
+      "sha256": "3eeb6e5a0f6892016533ae36453b73c7682240ce6d3b8f7f8ea509d7ddd588bd"
     },
     "side": {
       "file": "strv152_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10780,
-      "sha256": "2e4c882e3f112639f064928da9a26bfa03f675676ce9763135e2c06942f01e54"
+      "bytes": 10788,
+      "sha256": "331fd74e84743aa9f80699fc0043b220bcb16ccada240c66e151bb07c631b172"
     },
     "topSilhouette": {
       "file": "strv152_top_silhouette.png",
@@ -458,24 +458,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27998,
-      "sha256": "b2b18184a7b57a0b49d76093ddf1035e5b3f7d58f9b1210dc67547302d77888c"
+      "bytes": 27950,
+      "sha256": "ac5e9f6f274b41ce6b215e3666a232f6ecee92e05bfe7a9f689a36df48812e04"
     },
     "modulesSide": {
       "file": "strv152_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24764,
-      "sha256": "bee2217dd7dbb65dd7acab7cf9f945db454bd00309abe8b131cfa2018b02269f"
+      "bytes": 24812,
+      "sha256": "c4a1ec98633561bd7b0970cb09164cda817fe9afbc6f34980e8215a919ec87d8"
     },
     "crewSide": {
       "file": "strv152_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23408,
-      "sha256": "872a3c0c2d90f12fc250612426c90da117348f7a55c6799957711369daaaf8d8"
+      "bytes": 23346,
+      "sha256": "a031d017a07af64a56283c675951f188e2f202201cb3db9686795492516db633"
     },
     "markings": {
       "file": "strv152_markings.png",
@@ -489,7 +489,7 @@
       "file": "strv152_technical.json",
       "mime": "application/json",
       "bytes": 3361,
-      "sha256": "9d47b94c57fea250f7d21069320b722c9d383a926196b997c7284d809502993b"
+      "sha256": "fda65e13f233fe3b4b81d7ffe97156538d92dd932ce092ce8530f9d2650eb7b8"
     }
   }
 }

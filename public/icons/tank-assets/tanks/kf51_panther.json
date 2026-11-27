@@ -4120,17 +4120,17 @@
       }
     ]
   },
-  "geometryHash": "e4e1d071",
+  "geometryHash": "374db718",
   "metadataHash": "49b2cdc3",
   "presentationAnchor": {
-    "xM": -0.0001,
-    "zM": 0.0033
+    "xM": 0,
+    "zM": 0.0034
   },
-  "presentationHash": "019723af",
+  "presentationHash": "b7dee812",
   "presentationProjection": {
     "centerYM": 2.8586,
-    "topHalfM": 7.3791,
-    "sideHalfM": 3.6896
+    "topHalfM": 7.379,
+    "sideHalfM": 3.6895
   },
   "appearance": {
     "version": 1,
@@ -4204,15 +4204,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29156,
-      "sha256": "67b0c0edc8b48ce972cd4c8c2cd5615594410b55a7dfe95c774af11c85701e4c",
+      "bytes": 29158,
+      "sha256": "a43e13f6cdf92388f9a4a1c6a6bea68fb9a8dfb08699410cf097114a03032b9e",
       "thumbnail": {
         "file": "thumbs/kf51_panther_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11962,
-        "sha256": "31beb886279d9ff78d85b328f3a88ca62c009499fa299526aad68b3d5ddc97dd",
+        "bytes": 11920,
+        "sha256": "efba50b36b390a59f863f70b953848966a1b136630d317e33a81ab6e3b0b3096",
         "frame": [15,98,228,250]
       }
     },
@@ -4221,32 +4221,32 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9648,
-      "sha256": "8b65251e76c09acc75eca554ee33aed3eb81eb857a980ec3999ebb6e6499a46b"
+      "bytes": 9678,
+      "sha256": "000daa4f4d9fd57f92f8f0ab7e25807c4622b6c06790f04e222b016f697eb4c4"
     },
     "side": {
       "file": "kf51_panther_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11508,
-      "sha256": "a6fbe7605a049f9d09463baf79de280768fc18d530cfdbfcdf2bfc60f04244eb"
+      "bytes": 11482,
+      "sha256": "0c92534982c57c76ff3d2d666056e088c4f3d1ca0ad15b3c1b91f65cd70c3b51"
     },
     "topSilhouette": {
       "file": "kf51_panther_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1063,
-      "sha256": "b2a9a0ff8131f908701c8ad5c224553f2d7f19691aba7f3000f56e29a4b2b124"
+      "bytes": 1062,
+      "sha256": "2c80b428bd11fee3f42a25b52047f9552e43e58e11037c54e5429ef19eef5c01"
     },
     "sideSilhouette": {
       "file": "kf51_panther_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4526,
-      "sha256": "365fc12382d11f14cf12df6654ebb509cc2e2c6140a1ed3940662e74e75caf13"
+      "bytes": 4516,
+      "sha256": "c5300ed6c4eb2038b08b403dac5f7dba476c790568fb0283583a3482972997ef"
     },
     "markings": {
       "file": "kf51_panther_markings.png",

@@ -1373,7 +1373,7 @@
       }
     ]
   },
-  "geometryHash": "ed1a4c6e",
+  "geometryHash": "ddac240b",
   "metadataHash": "7616976f",
   "presentationAnchor": {
     "xM": 0.0005,
@@ -1458,7 +1458,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 25092,
-      "sha256": "4b9818883d00d43aa73c8e32b4c3c90978579a48f5cfe0dc41e23631f4ddc06e",
+      "sha256": "1a2002e633d612a3ce3f1a9af36a4a8ac66049600d5cd099c8af1a96cf13c3bf",
       "thumbnail": {
         "file": "thumbs/ztz99a_angle.webp",
         "width": 256,

@@ -5597,7 +5597,7 @@
       }
     ]
   },
-  "geometryHash": "2425d7ce",
+  "geometryHash": "63d900f3",
   "metadataHash": "e99ef376",
   "presentationAnchor": {
     "xM": 0.0004,
@@ -5656,8 +5656,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26308,
-      "sha256": "4fe8c385c9e3d16d9891d1079f8c51331b92b041227659c94234ef2545da8c9a",
+      "bytes": 26310,
+      "sha256": "0ede324adadd12f5aea600b15ea62386d471bd91212cc823e430ce484e2b2922",
       "thumbnail": {
         "file": "thumbs/ztz99a2_qinglong_angle.webp",
         "width": 256,

@@ -204,9 +204,9 @@
         "turretLocal": false,
         "verts": [
           [-1.671,0.905,3.515],
-          [-1.717,1.26,3.515],
+          [-1.711,1.26,3.515],
           [-1.782,1.26,-0.093],
-          [-1.736,0.905,-0.093]
+          [-1.742,0.905,-0.093]
         ]
       },
       {
@@ -686,17 +686,17 @@
       }
     ]
   },
-  "geometryHash": "39eb5b29",
-  "metadataHash": "f060f5cf",
+  "geometryHash": "4a4e2513",
+  "metadataHash": "ec755560",
   "presentationAnchor": {
     "xM": 0,
-    "zM": -0.1184
+    "zM": -0.1175
   },
-  "presentationHash": "c8ef9690",
+  "presentationHash": "81eec328",
   "presentationProjection": {
     "centerYM": 1.8258,
-    "topHalfM": 6.0584,
-    "sideHalfM": 3.0292
+    "topHalfM": 6.0574,
+    "sideHalfM": 3.0287
   },
   "appearance": {
     "version": 1,
@@ -745,15 +745,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28806,
-      "sha256": "1feb4319450d5e7eb3b8f057027bc9530530df39c6c3225753397d6e951aeec0",
+      "bytes": 28772,
+      "sha256": "9be9cc85778d9650c0f0450824d62dca950bf7690fee5c1483065c7dc0ae94c1",
       "thumbnail": {
         "file": "thumbs/mbt70_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10932,
-        "sha256": "dbf4aecde47669331ff20119c1472a118e06f11f1604ffd57c9f0abaecaf2554",
+        "bytes": 10956,
+        "sha256": "fa960e9fdc5026b46416ea5664e13ee7537292127238587cd6c79e32c43b920e",
         "frame": [23,103,225,249]
       }
     },
@@ -762,56 +762,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17402,
-      "sha256": "9e1609ce20a06b73c8ec7ad5fa3bbb67f92df0800f24b193afa543b24cb90455"
+      "bytes": 17416,
+      "sha256": "9d2d2e93e3431ef0cab5bf572573f6fa9a8d1711e88ea86a02f44a22536c4f60"
     },
     "side": {
       "file": "mbt70_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14320,
-      "sha256": "fdf062d2cf12e37fd1bd863b4e519fa7a6b57708a10376060d0a94ca2915d612"
+      "bytes": 14284,
+      "sha256": "d3ac375c1c1da0f08931840b8a56597a396876ff2f2ad6d74d1886d27f67b427"
     },
     "topSilhouette": {
       "file": "mbt70_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1297,
-      "sha256": "6b8a37fe09badce708e538274c12b37779f829f223cc5973c5676f3dd3410a28"
+      "bytes": 1308,
+      "sha256": "f98b1b6346b32ea992b18aec87262bcadfe84a51557efb04637a5ff3cede6f05"
     },
     "sideSilhouette": {
       "file": "mbt70_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4581,
-      "sha256": "674698201973f2c324c7de109b4cac8c3490daf68291467444518e7f3d522495"
+      "bytes": 4477,
+      "sha256": "9b0dd43f9d7ca62dd9456c6763d9bbf6f77696e4b58d8cdcf36efe33b7fb37f9"
     },
     "armorSide": {
       "file": "mbt70_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34350,
-      "sha256": "abac185ec560beb5dfa6a30f5051adb897b9ccab67bf5178997dc995ae6a1bd4"
+      "bytes": 34552,
+      "sha256": "4025d5103fe17c543400c695bbff49c9573558381697ca362252a4f1aa5cf1c6"
     },
     "modulesSide": {
       "file": "mbt70_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33810,
-      "sha256": "8b7a69c8d3149d0929418dd1b1d6db35e96b81c441f9443ca87035c006da9ba3"
+      "bytes": 33566,
+      "sha256": "2e3fcc396a991f1bdc2f938298b6b96a314093e78b3c12eab58c1b58a36358cf"
     },
     "crewSide": {
       "file": "mbt70_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31192,
-      "sha256": "4da2bcd6d0b7d4bd1924d72bf808bdf4684f174c51c25b7b11eaec1e3909dbf7"
+      "bytes": 31376,
+      "sha256": "09036b03a06bf398501cbcba81efac6d73e5c478db0a34f7c6fdefada705dc88"
     },
     "markings": {
       "file": "mbt70_markings.png",
@@ -824,8 +824,8 @@
     "technicalLabels": {
       "file": "mbt70_technical.json",
       "mime": "application/json",
-      "bytes": 5164,
-      "sha256": "74e592a637dc9ae2d37a2bd4fea6de37595176a512e419a19de71cb1f6017ed3"
+      "bytes": 5163,
+      "sha256": "59fa7f1ecfd51bc96c5424864a641ad37d830019b4bec3383e95b31e41787f4b"
     }
   }
 }

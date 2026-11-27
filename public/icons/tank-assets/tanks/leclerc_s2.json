@@ -491,7 +491,7 @@
       }
     ]
   },
-  "geometryHash": "1cab6b21",
+  "geometryHash": "bb135c5d",
   "metadataHash": "70d02b35",
   "presentationAnchor": {
     "xM": 0.0023,
@@ -569,8 +569,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9276,
-      "sha256": "597f06690a73312672442d6291474c558e8de0878f74f2681026f5ebed24cba5"
+      "bytes": 9286,
+      "sha256": "a1a1f51301f7d3d77b2dd5c7f292395c652278282fa7c243d5d1015f118281bd"
     },
     "side": {
       "file": "leclerc_s2_side.webp",

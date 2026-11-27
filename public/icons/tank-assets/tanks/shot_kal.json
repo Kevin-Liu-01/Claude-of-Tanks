@@ -789,7 +789,7 @@
       }
     ]
   },
-  "geometryHash": "814138be",
+  "geometryHash": "9db54ff7",
   "metadataHash": "1461929c",
   "presentationAnchor": {
     "xM": 0,
@@ -851,15 +851,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30404,
-      "sha256": "4f8a27396fabccf07ed98b91f765dcf935cfca08a21c32976384116008671802",
+      "bytes": 30410,
+      "sha256": "4514dedb2a420481344a6a905f5f27900b7a2f2de9f282704ff232d23d2c66d9",
       "thumbnail": {
         "file": "thumbs/shot_kal_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11968,
-        "sha256": "2327b15bd05a3339420f6ab988984b8c9971786a213863dd65b102f337656f57",
+        "bytes": 11970,
+        "sha256": "6870ae69b14dc29e6138b0696caf211e84715749a0e3c349a8750246acdd30ce",
         "frame": [24,111,226,250]
       }
     },
@@ -868,8 +868,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13154,
-      "sha256": "0282adcb00595da77cdbee1b8029f01191712efdd569233b097ac3f1ffddc79c"
+      "bytes": 13156,
+      "sha256": "55113b06ce0ffafecf7eee529f2a4d73924171e2832fa65fe1ed0fd25cbf930d"
     },
     "side": {
       "file": "shot_kal_side.webp",

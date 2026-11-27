@@ -541,7 +541,7 @@
       }
     ]
   },
-  "geometryHash": "fe598859",
+  "geometryHash": "de5a5e8a",
   "metadataHash": "240b796b",
   "presentationAnchor": {
     "xM": 0.0025,
@@ -597,15 +597,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23580,
-      "sha256": "b8179e63b25c569e2f36c8f34748e8f163aeb0d30484035561f3729543861302",
+      "bytes": 23528,
+      "sha256": "ae5fcc0a0cdbc3216f62bea59b3849cc55ad4b2d6ca0c32c5a61fb686beda089",
       "thumbnail": {
         "file": "thumbs/abramsx_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9946,
-        "sha256": "85a022c65cce6f61eb89495d2d9717ce5f4642e77a533d3678f4999c0c579076",
+        "bytes": 9960,
+        "sha256": "58de66d503f536f4f12a95e6892d735d0a7fd3ce637add1bb2d823e3c9685cf8",
         "frame": [20,108,227,249]
       }
     },
@@ -614,16 +614,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11618,
-      "sha256": "33653fc07683d5c84a32d2f88856a7cdd14d7fc839cfc94c7bceabdea9eb1569"
+      "bytes": 11842,
+      "sha256": "20dd923c1cc02e076b3dbbe124daa66c40f94c48c2539eeffd1e2c109f670d8d"
     },
     "side": {
       "file": "abramsx_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9314,
-      "sha256": "046b1cedfa7c00bc5454520631964ac678d5496f928ad7ae5b49b86556e80850"
+      "bytes": 9312,
+      "sha256": "36408a8f59feb10561e04afd48376a01c173d0ece79285929649a469edcce427"
     },
     "topSilhouette": {
       "file": "abramsx_top_silhouette.png",
@@ -646,24 +646,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23970,
-      "sha256": "489c7b2389c78fc3cf0d9734b622fdd6f1de55629d8b5eb1cd9cd5d7cdcfecf0"
+      "bytes": 23984,
+      "sha256": "5d70adf9663810f68a6decb0b7667e2a8e0ec77c27b4530622cf2f90b88dd918"
     },
     "modulesSide": {
       "file": "abramsx_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25636,
-      "sha256": "ddd1fc7deff0161e0e23894538fcb5a12d123ee36f729c8e0230d8245170818a"
+      "bytes": 25644,
+      "sha256": "4bdecac121cf204c9c0b575670b94755bfd52571338875989f35bf0355928ee1"
     },
     "crewSide": {
       "file": "abramsx_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20656,
-      "sha256": "551d9e647de41606b0e94ca25a921d2a5416842873822cbe1e17fb8980ec534f"
+      "bytes": 20634,
+      "sha256": "efae57f9ebcd66af3c923830d421089dbcfd0b2c0d7b50cb6a1f12913302bb9d"
     },
     "markings": {
       "file": "abramsx_markings.png",

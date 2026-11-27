@@ -3670,7 +3670,7 @@
       }
     ]
   },
-  "geometryHash": "0827bfe7",
+  "geometryHash": "3975d914",
   "metadataHash": "0a5aa040",
   "presentationAnchor": {
     "xM": 0.003,
@@ -3730,15 +3730,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31386,
-      "sha256": "184fedb9358ae749ef01b3470d0aa0c6dfc2c16e5091476a4dd45f1f7f83ee6a",
+      "bytes": 31384,
+      "sha256": "d5a3bb00a5eac5071584d9efd75245e16a62086eaeeb6183112fd9e2eeb59015",
       "thumbnail": {
         "file": "thumbs/upior_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11994,
-        "sha256": "de41355009ffe96a0c0426bbcf288c49e150bd621f088967a7dee3f036567e75",
+        "bytes": 12002,
+        "sha256": "7e9e715ef847b8a0bd131ac5f245c5166e6f8e6c497e0ef012e9cffeb44fca89",
         "frame": [25,106,229,249]
       }
     },
@@ -3747,16 +3747,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23890,
-      "sha256": "a0a92490c5a975c5b8c862012c5d2b675fd32efd87f304071473f644c647ca89"
+      "bytes": 23882,
+      "sha256": "66f81b54fa2dc9c4276175e62e5b00bc36458ba58ce4ce0eb77fc2fa3e703767"
     },
     "side": {
       "file": "upior_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17178,
-      "sha256": "475c56fc18f0ecbff47d28b30120c716434aec15062468814472d6bfb1e9ecf7"
+      "bytes": 17160,
+      "sha256": "e572161d7cbeebbafd98e2926e75620f6f3de9e2173491d809048c2a6b6d96f0"
     },
     "topSilhouette": {
       "file": "upior_top_silhouette.png",
@@ -3779,24 +3779,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 54728,
-      "sha256": "45ad4abb55d1de31ce6d2ee41969a26863659621829c8238cba4e29621940ad2"
+      "bytes": 54762,
+      "sha256": "2e2dc224e70d2dad8834d1384e06c2016c40bd34593f6bb69aabad1e54018e4d"
     },
     "modulesSide": {
       "file": "upior_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42994,
-      "sha256": "e776e00b1f871146c6db46b6a527d42756fa96b2183d7c7f58371304bae9fea8"
+      "bytes": 42970,
+      "sha256": "b723423be9fea5501588cc3096a5148b36f0f4b745a6ea27981f2a9897f39cc1"
     },
     "crewSide": {
       "file": "upior_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42266,
-      "sha256": "e3f2749ac68fd091e90be751582a7be26fe1c3017ffe3ed43f3287ac45e7c0eb"
+      "bytes": 42232,
+      "sha256": "6234a3e3086b334928c5499a8a669b7af0512f8abd0e567cf34b278b7188fb0e"
     },
     "markings": {
       "file": "upior_markings.png",
