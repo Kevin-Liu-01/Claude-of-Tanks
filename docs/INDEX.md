@@ -30,6 +30,7 @@ Update these when behavior changes. Paths are relative to `docs/`.
 | [DECISIONS.md](DECISIONS.md) | Binding architecture decisions, non-goals and proof requirements |
 | [MODULES.md](MODULES.md) | Internal module and crew damage model |
 | [REPOSITORY-LAYOUT.md](REPOSITORY-LAYOUT.md) | Where code, documentation, tools and assets live |
+| [architecture/MAP.md](architecture/MAP.md) | Layer rules, the measured dependency graph, duplicates and the governance task pool, progress and ADRs |
 | INDEX.md | This page |
 
 ### Development

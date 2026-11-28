@@ -11,28 +11,19 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isRelativeSpecifier, moduleImportEdges, resolveImportSpecifier } from '../../../tools/static-import-closure.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const workerSrc = path.join(root, 'cloudflare/rooms/src');
 const entries = readdirSync(workerSrc).filter((f) => f.endsWith('.ts')).map((f) => path.join('cloudflare/rooms/src', f));
 assert.ok(entries.length >= 2, 'the rooms Worker has source files');
 
-const IMPORT = /(?:import|export)\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
-function resolveRelative(from, spec) {
-  const base = path.normalize(path.join(path.dirname(from), spec));
-  const candidates = [base, base.endsWith('.js') ? `${base.slice(0, -3)}.ts` : null, `${base}.ts`, path.join(base, 'index.ts')].filter(Boolean);
-  return candidates.find((c) => existsSync(path.join(root, c))) ?? null;
-}
+// every relative import, type-only ones included (they join the program); Worker URLs aside
 function relativeImports(file) {
-  const text = readFileSync(path.join(root, file), 'utf8');
-  const out = [];
-  for (const m of text.matchAll(IMPORT)) {
-    const spec = m[1] ?? m[2];
-    if (!spec || !spec.startsWith('.')) continue;
-    const target = resolveRelative(file, spec);
-    if (target) out.push(target);
-  }
-  return out;
+  return moduleImportEdges(readFileSync(path.join(root, file), 'utf8'), file)
+    .filter((edge) => edge.kind !== 'worker' && isRelativeSpecifier(edge.specifier))
+    .map((edge) => resolveImportSpecifier(path.join(root, file), edge.specifier))
+    .filter(Boolean).map((target) => path.relative(root, target).split(path.sep).join('/'));
 }
 const reached = new Map(entries.map((e) => [e, null]));
 const queue = [...entries];

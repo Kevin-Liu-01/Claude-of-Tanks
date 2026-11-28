@@ -6,8 +6,8 @@ import { dirname, join } from 'node:path';
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
 import {
   BUNDLE_PAGES, budgetMetrics, budgetViolations, budgetsFrom, htmlResources, measureDist, measureDistAsync, measurePage,
-  staticImportSpecifiers,
 } from './bundle-budget.mjs';
+import { runtimeImportSpecifiers } from './static-import-closure.mjs';
 
 // 2026-10-30 (phone-controller-266): the phone controller's page, held in a phone's hand on cellular, has its own row
 assert.deepEqual(Object.keys(BUNDLE_PAGES), ['game', 'home', 'docs', 'gallery', 'notFound', 'cn', 'pad']);
@@ -33,9 +33,10 @@ assert.deepEqual(htmlResources(`
   inlineStyles: ['@font-face{font-family:x}'],
 }, 'only bundle files (/assets/) the document requests up front are counted; fonts, icons and comments are not; inline CSS is kept apart');
 
-assert.deepEqual(staticImportSpecifiers(
+assert.deepEqual(runtimeImportSpecifiers(
   'import{a as e}from"./dep.js";export{x}from"./re.js";export*from"./star.js";import"./side.js";'
   + 'const l=()=>import("./lazy.js");const s=`import"./inString.js"`;new URL("./asset.bin",import.meta.url);',
+  'assets/chunk.js',
 ), ['./dep.js', './re.js', './star.js', './side.js'], 'import() targets, strings and asset URLs are not static edges');
 
 const dist = mkdtempSync(join(tmpdir(), 'cot-bundle-budget-'));

@@ -29,7 +29,7 @@ import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { brotliCompress, brotliCompressSync, constants, gzip, gzipSync } from 'node:zlib';
-import { parseAst } from 'rolldown/parseAst';
+import { runtimeImportSpecifiers } from './static-import-closure.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BUDGET_FILE = join(ROOT, 'tools', 'bundle-budget.json');
@@ -101,19 +101,6 @@ export function htmlResources(html) {
   return { entries, preloads, stylesheets, inlineStyles };
 }
 
-/** Relative specifiers of the static `import`/`export … from` statements of one built chunk. */
-export function staticImportSpecifiers(code, file = 'chunk.js') {
-  const program = parseAst(String(code), { lang: 'js' }, file);
-  const specifiers = [];
-  for (const node of program.body) {
-    const isEdge = node.type === 'ImportDeclaration'
-      || ((node.type === 'ExportNamedDeclaration' || node.type === 'ExportAllDeclaration') && node.source);
-    const value = isEdge ? node.source?.value : null;
-    if (typeof value === 'string' && (value.startsWith('./') || value.startsWith('../'))) specifiers.push(value);
-  }
-  return specifiers;
-}
-
 function createFileCache(distDir) {
   const cache = new Map();
   return (file) => {
@@ -148,7 +135,7 @@ function pageFiles(distDir, page, fileCache) {
     if (scripts.has(file)) continue;
     scripts.add(file);
     const entry = fileCache(file);
-    entry.imports ??= staticImportSpecifiers(entry.bytes.toString('utf8'), file)
+    entry.imports ??= runtimeImportSpecifiers(entry.bytes.toString('utf8'), file)
       .map((specifier) => posix.normalize(posix.join(posix.dirname(file), specifier)));
     queue.push(...entry.imports);
   }

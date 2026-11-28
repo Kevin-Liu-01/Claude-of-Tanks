@@ -83,6 +83,9 @@ No suffix ⇒ SI/radians. Never store radians in specs; never pass degrees at ru
   `.replace()` injection by asserting the string changed; if it didn't, `throw` at init
   (loud, catchable) — never limp along.
 - No per-frame allocation in update loops (reuse scratch Vector3s, module-scope).
+- **Layer direction and cycles** (arch-1, 2026-11-27): `tools/module-boundaries.selftest.mjs` holds every runtime
+  import to the layer rules in [architecture/MAP.md](architecture/MAP.md) and forbids static import cycles, against a
+  shrink-only pin of the debt that predates the rule ([ADR 0001](architecture/adr/0001-module-boundaries.md)).
 
 ### 1.4 Determinism & RNG
 - Canonical PRNG — copy this verbatim into any module that needs randomness (do NOT

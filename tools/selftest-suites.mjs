@@ -1734,6 +1734,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/boot-static-closure.selftest.mjs',
     // 265: the core imports no driver code; a local battle never reaches src/mp or the room host (seeded violations caught)
     'tools/driver-boundaries.selftest.mjs',
+    // arch-1: no import cycle or layer edge outside the shrink-only pin; one import reader (docs/architecture/adr/0001)
+    'tools/module-boundaries.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
     // 243: markings painted on the armour under their seats (the owner's "insignias and marks ... still glitching")
     'src/vehicles/markingFilm.selftest.mjs',

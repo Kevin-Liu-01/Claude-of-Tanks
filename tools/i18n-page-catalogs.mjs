@@ -33,6 +33,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseAst } from 'rolldown/parseAst';
+import { resolveImportSpecifier } from './static-import-closure.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -164,14 +165,6 @@ function staticallyImports(result, specifier) {
   for (const s of result.imports) if (s === specifier) all++;
   for (const s of result.dynamicImports) if (s === specifier) dynamic++;
   return all > dynamic;
-}
-
-function resolveSpecifier(fromFile, specifier) {
-  const path = resolve(dirname(fromFile), specifier.split(/[?#]/, 1)[0]);
-  if (existsSync(path)) return path;
-  if (path.endsWith('.js') && existsSync(`${path.slice(0, -3)}.ts`)) return `${path.slice(0, -3)}.ts`;
-  for (const candidate of [`${path}.ts`, resolve(path, 'index.ts')]) if (existsSync(candidate)) return candidate;
-  return null;
 }
 
 const keySets = new WeakMap();
@@ -428,7 +421,7 @@ export function scanPageCatalogs({ root = ROOT, pages, english, cache = new Map(
   // A module graph walked from its roots through static imports; a literal import() target is not walked into but
   // recorded as a boundary. A module's analysis issues count once it is reached.
   const resolved = (module, specifier) => {
-    const target = resolveSpecifier(resolve(rootDir, module), specifier);
+    const target = resolveImportSpecifier(resolve(rootDir, module), specifier);
     if (!target) {
       issues.push(`${module}: unresolved import ${specifier}`);
       return null;

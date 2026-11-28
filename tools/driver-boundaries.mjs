@@ -5,8 +5,9 @@
 // First-party tooling: Kevin B. Liu.
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, relative, resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 import { parseAst } from 'rolldown/parseAst';
+import { importEdgesOf, isRelativeSpecifier, resolveImportSpecifier } from './static-import-closure.mjs';
 
 const SCRIPT_RE = /\.(?:[cm]?[jt]s)$/;
 
@@ -63,14 +64,6 @@ const MAIN_ONLINE_DECLARATIONS = Object.freeze([
 
 const key = (root, path) => relative(root, path).split('\\').join('/');
 
-function resolveSpecifier(fromFile, specifier) {
-  const path = resolve(dirname(fromFile), specifier.split(/[?#]/, 1)[0]);
-  if (existsSync(path) && SCRIPT_RE.test(path)) return path;
-  if (path.endsWith('.js') && existsSync(`${path.slice(0, -3)}.ts`)) return `${path.slice(0, -3)}.ts`;
-  for (const candidate of [`${path}.ts`, resolve(path, 'index.ts')]) if (existsSync(candidate)) return candidate;
-  return existsSync(path) ? path : null;
-}
-
 function walk(node, visit, parent = null, field = null) {
   if (!node || typeof node !== 'object') return;
   if (Array.isArray(node)) { for (const item of node) walk(item, visit, parent, field); return; }
@@ -83,7 +76,6 @@ function walk(node, visit, parent = null, field = null) {
 }
 
 const isLiteralString = (node) => node?.type === 'Literal' && typeof node.value === 'string';
-const isImportMetaUrl = (node) => node?.type === 'MemberExpression' && node.object?.type === 'MetaProperty' && node.property?.name === 'url';
 
 const analysed = new Map();
 /**
@@ -94,7 +86,7 @@ function analysisOf(source, file) {
   const hit = analysed.get(file);
   if (hit && hit.source === source) return hit;
   const program = parseAst(String(source), { lang: file.endsWith('.ts') ? 'ts' : 'js' }, file);
-  const entry = { source, edges: edgesOf(program), uses: usesOf(program) };
+  const entry = { source, edges: runtimeEdgesOf(program), uses: usesOf(program) };
   analysed.set(file, entry);
   return entry;
 }
@@ -104,20 +96,9 @@ function moduleEdges(source, file = 'module.ts') {
   return analysisOf(source, file).edges;
 }
 
-function edgesOf(program) {
-  const edges = [];
-  for (const node of program.body) {
-    if (node.type === 'ImportDeclaration' && node.importKind !== 'type') edges.push({ specifier: node.source.value, kind: 'static' });
-    else if ((node.type === 'ExportNamedDeclaration' || node.type === 'ExportAllDeclaration') && node.source && node.exportKind !== 'type') {
-      edges.push({ specifier: node.source.value, kind: 'static' });
-    }
-  }
-  walk(program, (node) => {
-    if (node.type === 'ImportExpression' && isLiteralString(node.source)) edges.push({ specifier: node.source.value, kind: 'lazy' });
-    if (node.type === 'NewExpression' && node.callee?.name === 'URL' && isLiteralString(node.arguments?.[0]) && isImportMetaUrl(node.arguments?.[1])
-      && SCRIPT_RE.test(node.arguments[0].value)) edges.push({ specifier: node.arguments[0].value, kind: 'worker' });
-  });
-  return edges.filter((edge) => typeof edge.specifier === 'string' && (edge.specifier.startsWith('./') || edge.specifier.startsWith('../')));
+/** The runtime edges the boundaries follow: every relative edge the canonical reader returns but the erased type-only ones. */
+function runtimeEdgesOf(program) {
+  return importEdgesOf(program).filter((edge) => edge.kind !== 'type' && isRelativeSpecifier(edge.specifier));
 }
 
 /** A reader over the checkout, with `overrides` (repo path -> source) standing in for files: a receipt's seeded violation. */
@@ -144,7 +125,7 @@ function runtimeClosure(entries, { root = process.cwd(), read = checkoutReader(r
     const file = queue.shift();
     if (!SCRIPT_RE.test(file)) continue;
     const edges = moduleEdges(read(file), file).map((edge) => {
-      const target = resolveSpecifier(resolve(rootDir, file), edge.specifier);
+      const target = resolveImportSpecifier(resolve(rootDir, file), edge.specifier);
       return target ? { to: key(rootDir, target), kind: edge.kind } : null;
     }).filter(Boolean);
     const all = [...edges, ...(extraEdges[file] ?? [])];
@@ -286,7 +267,7 @@ export function mainDriverViolations({ root = process.cwd(), read = checkoutRead
   /** A module main.ts names that is the online driver, or whose closure reaches its client stack. */
   const isOnline = (target) => ONLINE_DRIVER.test(target) || reachesOnline.has(target);
   const resolveFromMain = (specifier) => {
-    const target = resolveSpecifier(resolve(rootDir, file), specifier);
+    const target = resolveImportSpecifier(resolve(rootDir, file), specifier);
     return target ? key(rootDir, target) : null;
   };
   const onlineBindings = new Set();

@@ -254,6 +254,10 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/gallery-link-stamps.selftest.mjs': tracked('**'),
   // 265: the core's roots are every module under src/sim (git ls-files)
   'tools/driver-boundaries.mjs': tracked('src/sim/**'),
+  // arch-1: the layer and cycle rules read every runtime module (git ls-files); the receipt also reads every tool and
+  // receipt for a second specifier resolver
+  'tools/module-boundaries.mjs': tracked('{src,server,api,cloudflare}/**', 'middleware.ts'),
+  'tools/module-boundaries.selftest.mjs': tracked('{api,cloudflare,scripts,server,src,tools}/**'),
   'tools/browser-launch-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
   'tools/browser-tree-cap.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
   'tools/typing-keys-census.selftest.mjs': tracked('src/**'),
