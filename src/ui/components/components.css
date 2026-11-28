@@ -172,9 +172,6 @@ button.cot-c-chip{cursor:pointer}
 :where([data-load-state='error']){position:relative}
 [data-load-state='error']::after{content:'';position:absolute;top:var(--s1);right:var(--s1);width:var(--status-dot);
   height:var(--status-dot);border-radius:50%;background:var(--danger);pointer-events:none}
-/* a status dot's blink (--status-dot, paused-dot-276; the PAUSED tag's): lit, then dim, a hard step each way under
-   step-end and never a fade, so the dot is a crisp solid circle in every frame. Its user holds it under reduced motion */
-@keyframes cot-c-dot-blink{0%{opacity:1}50%,100%{opacity:.35}}
 /* a revealed box (reveal.ts revealWhenReady; loading states, owner 2026-10-27): its image or video fades in once decoded,
    over the box's own tone or skeleton; a file that never arrives leaves the tone, never a broken frame */
 [data-reveal]>:is(img,video,picture){opacity:0;transition:opacity var(--dur-base) var(--ease-enter)}

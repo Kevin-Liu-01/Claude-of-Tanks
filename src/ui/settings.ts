@@ -320,13 +320,11 @@ const SETTINGS_CSS = `
 .cot-set-hdr h2{margin-right:auto;font:600 max(20px,var(--fs-20))/1.15 var(--font-display);letter-spacing:var(--track-title);
   color:var(--ink-1);}
 /* PAUSE: the battle-pause tag in the header, shown only while the open panel freezes a live battle (root gets .paused;
-   the Garage's Esc never shows it): a chip with the accent's lamp, the kit's status dot blinking on and off (paused-dot-276:
-   components.css cot-c-dot-blink, a hard blink, never a fade or a glow; reduced motion holds it lit) */
-.cot-set-paused{display:none;align-items:center;gap:var(--s2);padding:0 var(--s3);height:28px;
+   the Garage's Esc never shows it): a chip on the accent's wash and ring that holds the word alone, no dot (paused-badge-279,
+   Kevin 2026-11-27: "gone completely") */
+.cot-set-paused{display:none;align-items:center;padding:0 var(--s3);height:28px;
   font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;
   color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);border-radius:var(--control-radius);}
-.cot-set-paused::before{content:'';width:var(--status-dot);height:var(--status-dot);flex:0 0 auto;border-radius:50%;
-  background:var(--accent);animation:cot-c-dot-blink calc(var(--dur-stage) * 2.4) step-end infinite;}
 .cot-settings.paused .cot-set-paused{display:inline-flex;}
 /* the close glyph: the kit's ghost icon button (one close glyph, no frame) */
 .cot-set-close svg{width:18px;height:18px;}
@@ -498,10 +496,9 @@ body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-
   calc((16px - var(--cot-control-floor,44px)) / 2) calc(16px - var(--cot-control-floor,44px) + var(--s2));}
 .cot-set-info svg{width:16px;height:16px;}
 .cot-set-info[aria-expanded='true']{color:var(--accent);}
-/* settings_ui r2: the panel respects reduced motion — enter transition,
-   paused lamp and listening pulse all freeze; hover transitions collapse */
+/* settings_ui r2: the panel respects reduced motion — enter transition
+   and listening pulse freeze; hover transitions collapse */
 @media (prefers-reduced-motion:reduce){
-  .cot-set-paused::before{animation:none;}
   .cot-chip.listening{animation:none;}
   .cot-settings *{transition-duration:0s !important;}
 }
