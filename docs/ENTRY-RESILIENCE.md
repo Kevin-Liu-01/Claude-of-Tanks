@@ -77,7 +77,12 @@ personal field (`ip`, `userAgent`, `name`, `playerName`, `email`, `room`,
 `roomCode`, `host`, `hostName`, `cookie`, `token`, …) anywhere is refused
 with `400 pii_field:<name>`. All of this is one module,
 `server/telemetryRecord.ts`, imported by the Worker, the fallback, the report
-and the client receipt, so the halves cannot drift.
+and the client receipt, so the halves cannot drift. What the page itself must
+agree on (the schema version, the timing and note limits, the boot stages with
+their own column) is the import-free leaf `src/entry/telemetrySchema.ts`, which
+the beacon and the record both import; the render black-world record's encoding
+lives with its guard, `src/engine/blackWorldRecord.ts`, so the page never
+bundles the services' validator.
 
 **Request budget** (`src/entry/telemetry.ts`): a clean boot is exactly one
 request (the session record, ~1 KB); a boot plus a battle is two; a failing

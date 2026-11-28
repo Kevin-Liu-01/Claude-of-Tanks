@@ -27,6 +27,8 @@ directory, a Worker URL, nested declarations).
    - `src/sim`, `src/world`, `src/vehicles`, `src/engine`, `src/fx`, `src/audio` import no page shell, driver,
      composition or service module (`server/`, `api/`, `cloudflare/`; the core bots excepted, per §1.6);
    - `src/mp` imports no page shell, composition module or local-driver module;
+   - `src/entry` (the telemetry beacon and its record schema, arch-2) is a leaf every layer may import, and it imports
+     nothing outside itself;
    - `server`, `cloudflare`, `api` import nothing of the page (the phone-pad pairing room's protocol and actor in
      `src/pad` excepted: the services run them).
 3. No static import cycle between runtime modules. Lazy and Worker edges do not form evaluation cycles and are allowed.

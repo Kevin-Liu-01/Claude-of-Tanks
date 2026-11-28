@@ -27,8 +27,6 @@ export const PINNED_EDGES = Object.freeze({
     'src/audio/listenerPoseRuntime.ts -> src/game/playerVisibility.ts', // T-shared-1
     'src/engine/battleAtmosphereAccess.ts -> src/app/lazyChunk.ts', // T-lazy-1
     'src/engine/battleAtmosphereAccess.ts -> src/app/lazyRuntimeOwner.ts', // T-lazy-1
-    'src/engine/blackWorldGuard.ts -> server/telemetryRecord.ts', // T-telemetry-1
-    'src/engine/blackWorldGuardInstall.ts -> src/entry/telemetry.ts', // T-telemetry-1
     'src/engine/blackWorldGuardInstall.ts -> src/game/battleScope.ts', // T-shared-2
     'src/engine/cameraRig.ts -> src/game/strikeViewState.ts', // T-shared-2
     'src/engine/cameraRig.ts -> src/ui/accessibilityPreferences.ts', // T-ui-leaf-1
@@ -39,7 +37,6 @@ export const PINNED_EDGES = Object.freeze({
     'src/engine/lighting.ts -> src/dev/debugIntent.ts', // T-ui-leaf-1
     'src/engine/nightLightingAccess.ts -> src/app/lazyRuntimeOwner.ts', // T-lazy-1
     'src/engine/post.ts -> src/app/lazyChunk.ts', // T-lazy-1
-    'src/engine/renderer.ts -> src/entry/telemetry.ts', // T-telemetry-1
     'src/engine/renderer.ts -> src/ui/components/modalLayer.ts', // T-ui-leaf-1
     'src/engine/renderer.ts -> src/ui/i18n.ts', // T-ui-leaf-1
     'src/engine/volumetricClouds.ts -> src/ui/accessibilityPreferences.ts', // T-ui-leaf-1
@@ -65,7 +62,6 @@ export const PINNED_EDGES = Object.freeze({
     'src/vehicles/wreckTurretDriverLoader.ts -> src/app/lazyChunk.ts', // T-lazy-1
     'src/world/frontlineAtmosphereAccess.ts -> src/app/lazyRuntimeOwner.ts', // T-lazy-1
     'src/world/mapAmbienceAccess.ts -> src/app/lazyRuntimeOwner.ts', // T-lazy-1
-    'src/world/simKernelsReport.ts -> src/entry/telemetry.ts', // T-telemetry-1
     'src/world/worldActivationRuntime.ts -> src/ui/minimapAssetRuntime.ts', // T-ui-leaf-1
     'src/world/worldActivationRuntime.ts -> src/ui/minimapAssetUrl.ts', // T-ui-leaf-1
     'src/world/worldBuildCoordinator.ts -> src/app/lazyChunk.ts', // T-lazy-1

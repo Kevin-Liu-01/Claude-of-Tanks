@@ -33,8 +33,8 @@ const DT = 1 / 60;
 
 const { installBlackWorldGuard, judgeVerdict, countProbeCells, countGroundCells, CPU, PROBE_CELLS, PROBE_EVERY, NAN_MIN_CELLS,
   NAN_BITS_GLSL, MAX_REPORTS } = await import('./blackWorldGuard.ts');
-const { readRenderBlackWorld, renderBlackWorldCode, renderBlackWorldMessage, validateTelemetryRecord } =
-  await import('../../server/telemetryRecord.ts');
+const { readRenderBlackWorld, renderBlackWorldCode, renderBlackWorldMessage } = await import('./blackWorldRecord.ts');
+const { validateTelemetryRecord } = await import('../../server/telemetryRecord.ts');
 
 function createWorld({ focused = () => true, compileAsync = null, samples = 0, exempt = () => false, modelLoss = false,
   preset = () => 'high', planned = false, worldPorts = null } = {}) {

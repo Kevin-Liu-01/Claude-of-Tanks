@@ -23,13 +23,13 @@ edge (static, lazy, Worker); `tools/driver-boundaries.mjs` enforces the finer co
 
 | Layer | Areas | May import | Owner of |
 | --- | --- | --- | --- |
-| 0 Contracts and leaves | `src/*.ts` root leaves (`workerCalls`, `workerClientHealth`, `authorship`, `runtimeTypes`), `src/mp/wire`, `src/mp/room`, `api/_lib` | nothing above | wire formats, deployment policy, shared primitives |
+| 0 Contracts and leaves | `src/*.ts` root leaves (`workerCalls`, `workerClientHealth`, `authorship`, `runtimeTypes`), `src/entry` (the telemetry beacon and its record schema), `src/mp/wire`, `src/mp/room`, `api/_lib` | nothing above | wire formats, deployment policy, shared primitives |
 | 1 Core | `src/sim`, the bots (`src/game/ai.ts`, `botAbilities.ts`, `botConstruction.ts`), world collision and kernels, vehicle specs and inventories | layer 0 | every game rule (`matchRuleset.ts`), the step, armour, ballistics, spotting |
 | 2 Content and render foundation | `src/world` builders, `src/vehicles` builders, `src/engine` | 0-1 | maps, tanks, renderer, camera, lighting |
 | 3 Presentation services | `src/fx`, `src/audio` | 0-2 | effects and sound, reacting to the bus |
 | 4 Drivers | local: `src/game` (`state.ts`, `solo*`, Watch, replays); online: `src/mp`, `server/match`, `server/rooms`, `cloudflare/rooms` | 0-3 (the online driver never the local one, §1.6) | running the core for a battle or a room |
 | 5 Page shell | `src/ui`, `src/presentation`, `src/docs`, `src/gallery`, `src/techTree`, `src/pad`, `src/dev` | 0-4 | screens, HUD, site pages |
-| 6 Composition | `src/main.ts`, `src/app`, `src/entry` | everything | boot, wiring, lazy owner access |
+| 6 Composition | `src/main.ts`, `src/app` | everything | boot, wiring, lazy owner access |
 
 Services (`server/`, `cloudflare/`, `api/`) run headless: they reach layers 0, 1 and the online driver, never the page.
 The phone-pad pairing room is the exception by design: its protocol and actor live in `src/pad` (`padProtocol.ts`,
@@ -40,18 +40,18 @@ Nothing shipped imports `tools/`. The Field Manual's chapters and search index (
 
 ## Dependency graph (measured)
 
-3,077 runtime modules (receipts, fixtures, oracles, the Workers' test suites and declarations aside) and 10,132
+3,079 runtime modules (receipts, fixtures, oracles, the Workers' test suites and declarations aside) and 10,132
 resolved runtime edges (9,285 static, 829 lazy, 18 Worker; type-only edges aside). Area-level edges form one strongly
 connected component of 20 areas: every area can reach every other, so no area can be understood or changed alone. The
-component is not caused by deep entanglement. It is caused by 60 edges from lower areas up to a handful of misplaced
-leaves (the pin in `tools/module-boundaries.pin.mjs` tags each with its task):
+component is not caused by deep entanglement. It was caused by 60 edges from lower areas up to a handful of misplaced
+leaves (the pin in `tools/module-boundaries.pin.mjs` tags each with its task; 56 remain after arch-2):
 
 | Upward edges | Count | Cause | Task |
 | --- | --- | --- | --- |
 | vehicles, world, engine, fx, audio (18) and mp (1) → `src/app/lazyChunk.ts`, `lazyRuntimeOwner.ts` | 19 | the lazy-chunk policy (imports only `lazyImportRetry.ts`) lives in the composition layer | T-lazy-1 |
 | fx, audio, engine → `src/game` (`eraActivation`, `shotCadence`, `weaponHitKind`, `killcamScreen`, `playerVisibility`, `gunshipVisual`, `missionAttachmentVisual`, `strikeViewState`, `battleScope`) | 13 | presentation definitions filed under the local driver | T-shared-1, T-shared-2 |
 | engine, fx, audio, vehicles, world → `src/ui`, `src/techTree`, `src/dev` (`i18n`, `accessibilityPreferences`, `flagCodes`, `glacisText`, `minimapAsset*`, `modalLayer`, `tiers`, `debugIntent`) | 17 | preferences, locale and data filed under the page shell | T-ui-leaf-1 |
-| engine, world → `src/entry/telemetry.ts`; engine → `server/telemetryRecord.ts` | 4 | the beacon client is filed as composition; the record schema lives with the services | T-telemetry-1 |
+| engine, world → `src/entry/telemetry.ts`; engine → `server/telemetryRecord.ts` | 4 → 0 | the beacon is a leaf (it was filed as composition); the render guard took its record encoding from the services' validator | T-telemetry-1 (done, arch-2) |
 | mp → `src/game` (`campaignOperations`, `preBattleCountdown`, `appLifecycle`, `couchSeats`, `gunshipVisual`) | 6 | the online host reaches local-driver modules; `campaignOperations` reaches `localStorage` | T-mp-1, T-shared-2 |
 | api → `src/game/jevProtocol.ts` | 1 | a contract filed under the local driver | T-mp-1 |
 

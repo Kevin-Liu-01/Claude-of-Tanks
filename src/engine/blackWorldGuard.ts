@@ -57,7 +57,7 @@ import {
   renderBlackWorldMessage,
   type RenderBlackWorldClass,
   type RenderBlackWorldStep,
-} from '../../server/telemetryRecord.ts';
+} from './blackWorldRecord.ts';
 
 export const PROBE_COLUMNS = 16;
 export const PROBE_ROWS = 9;

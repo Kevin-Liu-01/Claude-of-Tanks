@@ -413,7 +413,16 @@ function cleanBoot(f, { readyMs = 4200 } = {}) {
 }
 
 const source = await readFile(new URL('./telemetry.ts', import.meta.url), 'utf8');
-assert.doesNotMatch(source, /^import\s/m, 'the beacon client imports nothing at all so it can load before the renderer');
+// The beacon loads before the renderer: it imports only the record schema it shares with the services (arch-2), and the
+// schema imports nothing.
+assert.deepEqual([...source.matchAll(/^import\s.*$/gm)].map((match) => match[0]),
+  ["import { TELEMETRY_MAX_NOTES, TELEMETRY_MAX_TIMINGS, TELEMETRY_SCHEMA_VERSION, TELEMETRY_STAGE_SLOTS } from './telemetrySchema.ts';"],
+  'the beacon client imports only its schema leaf so it can load before the renderer');
+assert.doesNotMatch(await readFile(new URL('./telemetrySchema.ts', import.meta.url), 'utf8'), /^import\s/m, 'the schema leaf imports nothing');
+// The inline boot watchdog in index.html cannot import the schema: its error record's version is held to it here.
+const { TELEMETRY_SCHEMA_VERSION } = await import('./telemetrySchema.ts');
+const inlineVersions = [...(await readFile(new URL('../../index.html', import.meta.url), 'utf8')).matchAll(/JSON\.stringify\(\{ v: (\d+), sid: window\.__COT_TELEMETRY_SID/g)].map((match) => Number(match[1]));
+assert.deepEqual(inlineVersions, [TELEMETRY_SCHEMA_VERSION], 'the inline watchdog writes the schema version src/entry/telemetrySchema.ts names');
 assert.match(source, /sendBeacon\(endpoint, text\)/, 'the browser transport prefers sendBeacon');
 assert.match(source, /keepalive: true/, 'fetch keepalive is the fallback transport');
 assert.match(source, /VITE_SELF_HOSTED\s*===\s*'1'/, 'self-hosted builds compile the beacon out like analytics');

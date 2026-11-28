@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import {
-  TELEMETRY_BLOBS, TELEMETRY_DOUBLES, TELEMETRY_MAX_BODY_BYTES, TELEMETRY_STAGE_SLOTS, parseTelemetryTimings,
+  TELEMETRY_BLOBS, TELEMETRY_DOUBLES, TELEMETRY_MAX_BODY_BYTES, parseTelemetryTimings,
   serializeTelemetryTimings, telemetryCapabilityClass, telemetryDataPoint, telemetryRowFromRecord,
   telemetryRowFromSql, validateTelemetryRecord,
 } from './telemetryRecord.ts';
+import { TELEMETRY_STAGE_SLOTS } from '../src/entry/telemetrySchema.ts';
 
 // The shared v2 record: every refusal, every bound, and the Analytics Engine
 // column layout both directions (record → data point → SQL row → named row).

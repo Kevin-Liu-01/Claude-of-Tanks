@@ -60,21 +60,28 @@ export const RULES = Object.freeze([
   {
     id: 'foundation-layers-import-no-shell',
     from: [/^src\/(?:sim|world|vehicles|engine|fx|audio)\//],
-    to: [/^src\/(?:app|ui|mp|entry|presentation|docs|gallery|dev|pad|techTree)\//, NOT_CORE_GAME, /^src\/main\.ts$/, /^server\//, /^api\//, /^cloudflare\//],
+    to: [/^src\/(?:app|ui|mp|presentation|docs|gallery|dev|pad|techTree)\//, NOT_CORE_GAME, /^src\/main\.ts$/, /^server\//, /^api\//, /^cloudflare\//],
     why: 'simulation, world, vehicles, renderer, effects and audio sit below the drivers, the UI and the composition root: '
       + 'they receive what they need as parameters or from a shared leaf, never by reaching up',
   },
   {
     id: 'online-driver-imports-no-page-shell',
     from: [/^src\/mp\//],
-    to: [/^src\/(?:app|ui|entry|presentation|docs|gallery|dev|pad|techTree)\//, NOT_CORE_GAME, /^src\/main\.ts$/],
+    to: [/^src\/(?:app|ui|presentation|docs|gallery|dev|pad|techTree)\//, NOT_CORE_GAME, /^src\/main\.ts$/],
     why: 'the online driver runs the core for a room (ARCHITECTURE §1.6); the page shell and the local driver compose it, '
       + 'not the other way round',
   },
   {
+    id: 'telemetry-beacon-is-a-leaf',
+    from: [/^src\/entry\//],
+    to: [/^src\/(?!entry\/)[^/]+\//, /^src\/[^/]+\.[cm]?[jt]s$/, /^server\//, /^api\//, /^cloudflare\//],
+    why: 'src/entry is the entry-telemetry beacon and its record schema: it loads before the renderer, so every layer may '
+      + 'import it and it imports nothing outside itself (docs/ENTRY-RESILIENCE.md); the services take only its schema',
+  },
+  {
     id: 'services-import-no-page',
     from: [/^server\//, /^cloudflare\//, /^api\//],
-    to: [/^src\/(?:app|ui|engine|fx|audio|entry|presentation|docs|gallery|dev|techTree)\//, NOT_CORE_GAME, /^src\/main\.ts$/],
+    to: [/^src\/(?:app|ui|engine|fx|audio|presentation|docs|gallery|dev|techTree)\//, /^src\/entry\/telemetry\.ts$/, NOT_CORE_GAME, /^src\/main\.ts$/],
     why: 'the room services, Workers and serverless functions run headless: they share the core and the wire, never the page',
   },
 ]);

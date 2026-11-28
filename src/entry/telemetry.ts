@@ -24,18 +24,15 @@
  * clean sessions (failures always send).
  */
 
+import { TELEMETRY_MAX_NOTES, TELEMETRY_MAX_TIMINGS, TELEMETRY_SCHEMA_VERSION, TELEMETRY_STAGE_SLOTS } from './telemetrySchema.ts';
+
 export const TELEMETRY_ENDPOINT = '/api/telemetry';
 export const TELEMETRY_OPT_OUT_KEY = 'cot.telemetry';
-const SCHEMA_VERSION = 2;
 const DEFAULT_MAX_REQUESTS = 3;
 const DEFAULT_MAX_ERRORS = 3;
 const DEFAULT_MAX_BODY_BYTES = 1500;
 const DEFAULT_ERROR_DELAY_MS = 1000;
-const MAX_TIMINGS = 24;
-const MAX_NOTES = 6;
-const NAMED_STAGES = new Set([
-  'imports', 'renderer', 'sky', 'lighting', 'garage', 'vehicle', 'hud', 'ui', 'audio', 'post', 'studio', 'ready',
-]);
+const NAMED_STAGES: ReadonlySet<string> = new Set(TELEMETRY_STAGE_SLOTS);
 
 /** `hud_mask_failed` (2026-09-25): the damage panel gave up on a tank's top-down masks —
  *  `reason` the spec id, `code` the mask pipeline's failure code; it folds into one session note.
@@ -350,7 +347,7 @@ export function createEntryTelemetry({
   );
 
   const setTiming = (key: string, ms: number): void => {
-    if (key in timings || Object.keys(timings).length < MAX_TIMINGS) { timings[key] = ms; return; }
+    if (key in timings || Object.keys(timings).length < TELEMETRY_MAX_TIMINGS) { timings[key] = ms; return; }
     if (!NAMED_STAGES.has(key)) return;
     // A named stage outranks a gap entry once the map is full.
     const gap = Object.keys(timings).find((existing) => existing.includes('>'));
@@ -367,7 +364,7 @@ export function createEntryTelemetry({
   };
 
   const withCommon = (record: WireRecord, clean: boolean): WireRecord => ({
-    v: SCHEMA_VERSION, sid: sessionId, build, ...record,
+    v: TELEMETRY_SCHEMA_VERSION, sid: sessionId, build, ...record,
     ...(clean && weight > 1 ? { w: weight } : {}),
     ...(notes.length ? { notes: notes.splice(0, notes.length) } : {}),
   });
@@ -454,7 +451,7 @@ export function createEntryTelemetry({
 
   const note = (text: string): void => {
     const code = telemetryCode(text);
-    if (notes.length < MAX_NOTES && !notes.includes(code)) notes.push(code);
+    if (notes.length < TELEMETRY_MAX_NOTES && !notes.includes(code)) notes.push(code);
   };
 
   const stage = (name: string, phase: 'begin' | 'end', ms?: number): void => {

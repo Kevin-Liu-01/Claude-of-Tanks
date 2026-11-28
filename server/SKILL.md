@@ -55,7 +55,8 @@ tree with the cutover of 2026-09-29 (`docs/MULTIPLAYER-V2.md` §13.10).
   grant per admitted `room_relay`, never cached or logged; STUN only when no
   secret is set. Run `node server/relayCredentials.selftest.mjs`. Credentials are
   never committed (the deprecated STUN-only `api/ice.ts` route is retired, 229).
-- `telemetryRecord.ts` is the shared entry-telemetry schema; `jev/main.ts` is the
+- `telemetryRecord.ts` is the shared entry-telemetry schema (validation and the Analytics Engine layout; the page's half is
+  `src/entry/telemetrySchema.ts`); `jev/main.ts` is the
   local HTTP wrapper around `api/jev.ts` for the Vite dev server (`npm run jev:dev`,
   port 8794; docs/JEV-COMMANDER.md).
 - Never make a client authoritative for hits, damage, reloads or the match

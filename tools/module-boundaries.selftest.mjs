@@ -24,6 +24,8 @@ const seeded = {
   // a build-time chapter may use tools/; a shipped module may not import the chapter
   'src/docs/chapters/modes.ts': "import '../../../tools/static-import-closure.mjs';\n",
   'src/ui/hud.ts': "import '../docs/chapters/index.ts';\n",
+  // the beacon imports only within src/entry
+  'src/entry/telemetry.ts': "import './telemetrySchema.ts';\nimport '../ui/i18n.ts';\n",
 };
 const seededGraph = runtimeGraph({ root, files: Object.keys(seeded), read: (file) => seeded[file] });
 assert.deepEqual(staticCycles(seededGraph), [['src/sim/damage.ts', 'src/sim/matchRuleset.ts']], 'a static import loop is a cycle');
@@ -35,8 +37,9 @@ assert.deepEqual(seededEdges.get('foundation-layers-import-no-shell'), [
 assert.deepEqual(seededEdges.get('runtime-imports-no-tools'), ['src/fx/effects.ts -> tools/static-import-closure.mjs'],
   'a build-time chapter may import tools/');
 assert.deepEqual(seededEdges.get('shipped-imports-no-build-time'), ['src/ui/hud.ts -> src/docs/chapters/index.ts']);
+assert.deepEqual(seededEdges.get('telemetry-beacon-is-a-leaf'), ['src/entry/telemetry.ts -> src/ui/i18n.ts']);
 const seededResult = moduleBoundaryViolations({ graph: seededGraph, pinnedCycles: [], pinnedEdges: {} });
-assert.equal(seededResult.violations.length, 5, `cycle + four layer edges:\n${seededResult.violations.join('\n')}`);
+assert.equal(seededResult.violations.length, 6, `cycle + five layer edges:\n${seededResult.violations.join('\n')}`);
 assert.ok(seededResult.violations[0].startsWith('import cycle (static imports): src/sim/damage.ts <-> src/sim/matchRuleset.ts'));
 
 // A relative import naming no file is reported, not dropped.

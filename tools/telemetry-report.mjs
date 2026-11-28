@@ -15,9 +15,10 @@
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import {
-  TELEMETRY_BLOBS, TELEMETRY_DOUBLES, TELEMETRY_STAGE_SLOTS, readRenderBlackWorld, telemetryRowFromRecord, telemetryRowFromSql,
-  validateTelemetryRecord,
+  TELEMETRY_BLOBS, TELEMETRY_DOUBLES, telemetryRowFromRecord, telemetryRowFromSql, validateTelemetryRecord,
 } from '../server/telemetryRecord.ts';
+import { TELEMETRY_STAGE_SLOTS } from '../src/entry/telemetrySchema.ts';
+import { readRenderBlackWorld } from '../src/engine/blackWorldRecord.ts';
 
 export const TELEMETRY_DATASET = 'cot_telemetry';
 export const TELEMETRY_SQL_ENDPOINT = 'https://api.cloudflare.com/client/v4/accounts/{account}/analytics_engine/sql';
